@@ -15,23 +15,12 @@ struct LibraryFilters: Hashable {
     var safeWithInjuries = false
 
     var isEmpty: Bool { self == LibraryFilters() }
-
-    /// Each filter set, as a chip that clears it.
-    var chips: [(title: String, clear: (inout LibraryFilters) -> Void)] {
-        var chips: [(String, (inout LibraryFilters) -> Void)] = []
-        if let kind { chips.append((kind.label, { $0.kind = nil })) }
-        if let pattern { chips.append((pattern.label, { $0.pattern = nil })) }
-        if let equipment { chips.append((equipment.label, { $0.equipment = nil })) }
-        if let muscle { chips.append((muscle.label, { $0.muscle = nil })) }
-        if let easyOn { chips.append(("Easy on the \(easyOn.label.lowercased())", { $0.easyOn = nil })) }
-        if inMyGym { chips.append(("In my gym", { $0.inMyGym = false })) }
-        if safeWithInjuries { chips.append(("Safe with my injuries", { $0.safeWithInjuries = false })) }
-        return chips
-    }
 }
 
 /// Every exercise, searchable and filterable, beside the one chosen: what it is, what it costs,
-/// what could replace it, and the person's own history with it.
+/// what could replace it, and the person's own history with it. The list is the family's: a page
+/// header, a search field and the filters as chips, the exercises as rows on the card fill; the
+/// exercise beside it is the phone's exercise page.
 struct LibraryView: View {
     @Environment(AppModel.self) private var model
     @State private var query = ""
@@ -48,21 +37,21 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            list
-                .navigationTitle("Library")
-                .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 440)
-        } detail: {
-            NavigationStack {
+        NavigationStack {
+            HStack(spacing: 0) {
+                list
+                    .frame(width: Platform.isMac ? 320 : 360)
+                Rectangle().fill(Ink.hairline).frame(width: 1).ignoresSafeArea()
+                detail
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .background(.pageBackground)
+            .navigationTitle("Library")
+            .ownHeader()
+            .toolbar {
                 if let selection, let exercise = model.catalog[selection] {
-                    ExerciseDetailView(exercise: exercise) { self.selection = $0 }
-                        .id(exercise.id)
-                } else {
-                    ContentUnavailableView(
-                        "Choose an exercise", systemImage: "books.vertical",
-                        description: Text("Its cue, muscles and joints, what could replace it, and your history with it.")
-                    )
-                    .navigationTitle("Library")
+                    // A quiet action in the text's colour, as the exercise page has it, not the accent.
+                    ToolbarItem(placement: .primaryAction) { AsideButton(exercise: exercise).tint(Ink.text) }
                 }
             }
             .sessionResumeToolbar()
@@ -79,47 +68,104 @@ struct LibraryView: View {
         }
     }
 
+    @ViewBuilder
+    private var detail: some View {
+        if let selection, let exercise = model.catalog[selection] {
+            ExerciseDetailView(exercise: exercise, inLibrary: true) { self.selection = $0 }
+                .id(exercise.id)
+        } else {
+            VStack(spacing: 8) {
+                Image(systemName: "books.vertical").font(.title).foregroundStyle(Ink.text3)
+                Text("Choose an exercise").font(.headline).foregroundStyle(Ink.text)
+                Text("Its cue, muscles and joints, what could replace it, and your history with it.")
+                    .font(.subheadline).foregroundStyle(Ink.text2).multilineTextAlignment(.center)
+            }
+            .padding(32)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
     private var list: some View {
         let inProgram = model.currentMesocycle?.exerciseIDs ?? []
-        return List(selection: $selection) {
-            if !filters.isEmpty {
-                Section {
-                    FlowLayout(spacing: 6) {
-                        ForEach(Array(filters.chips.enumerated()), id: \.offset) { _, chip in
-                            Button {
-                                chip.clear(&filters)
-                            } label: {
-                                Label(chip.title, systemImage: "xmark.circle.fill").font(.caption.weight(.semibold))
-                            }
-                            .buttonStyle(.bordered)
-                            .buttonBorderShape(.capsule)
-                            .controlSize(.small)
-                            .accessibilityLabel("Remove filter: \(chip.title)")
-                        }
-                    }
+        return VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                PageHeader(eyebrow: "\(results.count) of \(model.catalog.all.count) exercises", title: "Library")
+                InkSearchField(text: $query, prompt: "Exercises, muscles, equipment", identifier: "library.search")
+                chips
+            }
+            .padding(.horizontal, 16)
+            List(selection: $selection) {
+                ForEach(results) { exercise in
+                    LibraryRow(
+                        exercise: exercise, inProgram: inProgram.contains(exercise.id), setAside: model.settings.avoid.contains(exercise.id),
+                        ruledOut: model.analysis?.life.injuries.contains { $0.excludes(exercise) } ?? false, selected: selection == exercise.id
+                    )
+                    .tag(exercise.id)
+                    .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
-                } footer: {
-                    Text("\(results.count) of \(model.catalog.all.count) exercises")
+                    .listRowInsets(EdgeInsets(top: 1, leading: 10, bottom: 1, trailing: 10))
+                    .contextMenu { rowMenu(exercise) }
+                    .accessibilityIdentifier("library.row")
                 }
             }
-            ForEach(results) { exercise in
-                LibraryRow(
-                    exercise: exercise, inProgram: inProgram.contains(exercise.id), setAside: model.settings.avoid.contains(exercise.id),
-                    ruledOut: model.analysis?.life.injuries.contains { $0.excludes(exercise) } ?? false
-                )
-                .tag(exercise.id)
-                .contextMenu { rowMenu(exercise) }
-                .accessibilityIdentifier("library.row")
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, 44)
+            .overlay {
+                if results.isEmpty {
+                    Text(query.isEmpty ? "Nothing matches these filters." : "Nothing called \u{201C}\(query)\u{201D}.")
+                        .font(.subheadline).foregroundStyle(Ink.text2).padding(24)
+                }
             }
         }
-        .inkList()
-        .searchable(text: $query, prompt: "Exercises, muscles, equipment")
-        .overlay {
-            if results.isEmpty { ContentUnavailableView.search(text: query) }
+    }
+
+    /// Every filter as a chip: a menu of its choices, filled once one is picked, and the two toggles.
+    private var chips: some View {
+        FlowLayout(spacing: 6) {
+            FilterChip(title: "Kind", value: filters.kind?.label) {
+                Picker("Kind", selection: $filters.kind) {
+                    Text("Every kind").tag(ExerciseKind?.none)
+                    ForEach(ExerciseKind.allCases, id: \.self) { Text($0.label).tag(ExerciseKind?.some($0)) }
+                }
+            }
+            FilterChip(title: "Movement", value: filters.pattern?.label) {
+                Picker("Movement", selection: $filters.pattern) {
+                    Text("Any movement").tag(MovementPattern?.none)
+                    ForEach(ExerciseFilter.patterns(in: model.catalog.all, kind: filters.kind)) { Text($0.label).tag(MovementPattern?.some($0)) }
+                }
+            }
+            FilterChip(title: "Equipment", value: filters.equipment?.label) {
+                Picker("Equipment", selection: $filters.equipment) {
+                    Text("Any equipment").tag(Equipment?.none)
+                    ForEach(ExerciseFilter.equipment(in: model.catalog.all, kind: filters.kind)) { Text($0.label).tag(Equipment?.some($0)) }
+                }
+            }
+            FilterChip(title: "Muscle", value: filters.muscle?.label) {
+                Picker("Muscle", selection: $filters.muscle) {
+                    Text("Any muscle").tag(Muscle?.none)
+                    ForEach(Muscle.allCases) { Text($0.label).tag(Muscle?.some($0)) }
+                }
+            }
+            FilterChip(title: "Easy on", value: filters.easyOn.map { "Easy on the \($0.label.lowercased())" }) {
+                Picker("Easy on", selection: $filters.easyOn) {
+                    Text("Any joint").tag(Joint?.none)
+                    ForEach(Joint.allCases) { Text($0.label).tag(Joint?.some($0)) }
+                }
+            }
+            ToggleChip(title: "In my gym", on: $filters.inMyGym)
+            ToggleChip(title: "Safe with my injuries", on: $filters.safeWithInjuries)
+            if !filters.isEmpty {
+                Button("Clear") { filters = LibraryFilters() }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 30)
+                    .accessibilityLabel("Clear the filters")
+            }
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) { filterMenu }
-        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("library.filter")
     }
 
     @ViewBuilder
@@ -132,46 +178,6 @@ struct LibraryView: View {
         Button("Show Substitutes", systemImage: "arrow.triangle.2.circlepath") { selection = exercise.id }
     }
 
-    private var filterMenu: some View {
-        Menu {
-            Picker("Kind", selection: $filters.kind) {
-                Text("Every kind").tag(ExerciseKind?.none)
-                ForEach(ExerciseKind.allCases, id: \.self) { Text($0.label).tag(ExerciseKind?.some($0)) }
-            }
-            Picker("Movement", selection: $filters.pattern) {
-                Text("Any movement").tag(MovementPattern?.none)
-                ForEach(ExerciseFilter.patterns(in: model.catalog.all, kind: filters.kind)) { Text($0.label).tag(MovementPattern?.some($0)) }
-            }
-            .pickerStyle(.menu)
-            Picker("Equipment", selection: $filters.equipment) {
-                Text("Any equipment").tag(Equipment?.none)
-                ForEach(ExerciseFilter.equipment(in: model.catalog.all, kind: filters.kind)) { Text($0.label).tag(Equipment?.some($0)) }
-            }
-            .pickerStyle(.menu)
-            Picker("Muscle", selection: $filters.muscle) {
-                Text("Any muscle").tag(Muscle?.none)
-                ForEach(Muscle.allCases) { Text($0.label).tag(Muscle?.some($0)) }
-            }
-            .pickerStyle(.menu)
-            Picker("Easy on", selection: $filters.easyOn) {
-                Text("Any joint").tag(Joint?.none)
-                ForEach(Joint.allCases) { Text($0.label).tag(Joint?.some($0)) }
-            }
-            .pickerStyle(.menu)
-            Divider()
-            Toggle("In My Gym", isOn: $filters.inMyGym)
-            Toggle("Safe with My Injuries", isOn: $filters.safeWithInjuries)
-            if !filters.isEmpty {
-                Divider()
-                Button("Clear Filters", role: .destructive) { filters = LibraryFilters() }
-            }
-        } label: {
-            Label("Filter", systemImage: filters.isEmpty ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-        }
-        .help("Filter by kind, movement, equipment, muscle, joint, your gym and your injuries")
-        .accessibilityIdentifier("library.filter")
-    }
-
     private func filter() {
         let filter = ExerciseFilter(
             kind: filters.kind, pattern: filters.pattern, equipment: filters.equipment, muscle: filters.muscle, easyOn: filters.easyOn,
@@ -181,30 +187,115 @@ struct LibraryView: View {
     }
 }
 
+/// A filter as the family's chip: its name, or what's picked, with a chevron; a menu of the choices.
+private struct FilterChip<Choices: View>: View {
+    let title: String
+    let value: String?
+    @ViewBuilder let choices: Choices
+
+    var body: some View {
+        Menu {
+            choices
+        } label: {
+            HStack(spacing: 4) {
+                Text(value ?? title).lineLimit(1)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(value == nil ? Ink.text2 : Color.accentColor)
+            .padding(.horizontal, 11)
+            .frame(minHeight: 30)
+            .background(value == nil ? Ink.raised : Color.accentColor.opacity(0.18), in: .capsule)
+            .contentShape(.capsule)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel(value.map { "\(title): \($0)" } ?? title)
+    }
+}
+
+/// A filter that's on or off, as a chip filled when it's on.
+private struct ToggleChip: View {
+    let title: String
+    @Binding var on: Bool
+
+    var body: some View {
+        Button {
+            on.toggle()
+        } label: {
+            HStack(spacing: 4) {
+                if on { Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)) }
+                Text(title).lineLimit(1)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(on ? Color.accentColor : Ink.text2)
+            .padding(.horizontal, 11)
+            .frame(minHeight: 30)
+            .background(on ? Color.accentColor.opacity(0.18) : Ink.raised, in: .capsule)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .fixedSize()
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
 /// An exercise in the list: its name, what it is, and whether it's in the program, set aside, or
-/// ruled out by an injury.
+/// ruled out by an injury. The one chosen is lifted onto the card fill with the accent's edge.
 private struct LibraryRow: View {
     let exercise: Exercise
     let inProgram: Bool
     let setAside: Bool
     let ruledOut: Bool
+    let selected: Bool
 
     var body: some View {
-        HStack {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(exercise.name).lineLimit(1)
-                Text(exercise.kindLine).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Text(exercise.name).font(.callout.weight(.semibold)).foregroundStyle(setAside ? Ink.text3 : Ink.text).lineLimit(1)
+                Text(exercise.kindLine).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
             }
-            Spacer()
+            Spacer(minLength: 4)
             if inProgram {
-                Image(systemName: "calendar").foregroundStyle(.tint).help("In this block").accessibilityLabel("In this block")
+                Text("In block").eyebrow(.accentColor).help("In this block").accessibilityLabel("In this block")
             }
             if ruledOut {
-                Image(systemName: "bandage").foregroundStyle(Ink.ok).help("Ruled out by an injury").accessibilityLabel("Ruled out by an injury")
+                Image(systemName: "bandage").font(.caption).foregroundStyle(Ink.ok).help("Ruled out by an injury")
+                    .accessibilityLabel("Ruled out by an injury")
             }
             if setAside {
-                Image(systemName: "nosign").foregroundStyle(.secondary).help("Set aside").accessibilityLabel("Set aside")
+                Image(systemName: "nosign").font(.caption).foregroundStyle(Ink.text3).help("Set aside").accessibilityLabel("Set aside")
             }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(selected ? Color.cardBackground : .clear, in: .rect(cornerRadius: 12, style: .continuous))
+        .overlay {
+            if selected {
+                RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.accentColor.opacity(0.7), lineWidth: 1.5)
+            }
+        }
+        .contentShape(.rect)
+    }
+}
+
+/// Set aside, or allow back: the exercise page's quiet action.
+private struct AsideButton: View {
+    @Environment(AppModel.self) private var model
+    let exercise: Exercise
+
+    var body: some View {
+        if model.settings.avoid.contains(exercise.id) {
+            Button("Allow Back") { model.setAside(exercise.id, false) }
+                .help("Let the program use it again")
+                .accessibilityIdentifier("library.allowBack")
+        } else if exercise.kind == .strength {
+            Button("Set Aside") { model.setAside(exercise.id, true) }
+                .help("Never programme it; today's session swaps it out")
+                .accessibilityIdentifier("library.setAside")
         }
     }
 }
@@ -230,6 +321,8 @@ struct ExerciseDetailView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
     let exercise: Exercise
+    /// In the wide Library's pane, whose bar has Set aside and no title: the page sets its own.
+    var inLibrary = false
     /// Shows another exercise in the library: a substitute picked here.
     let select: (String) -> Void
     @State private var shown: ExerciseDetailContent?
@@ -280,18 +373,7 @@ struct ExerciseDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .background(.pageBackground)
-        .navigationTitle(exercise.name)
-        .inlineTitle()
-        #if os(iOS)
-        // The page sets the name large under its eyebrow; the bar keeps only back and Set aside, and
-        // the tab bar goes, as on the design's detail screens.
-        .toolbar(removing: sizeClass.isWide ? nil : .title)
-        .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .tabBar)
-        #endif
-        .toolbar {
-            // A quiet action in the text's colour, as the design has it, not the accent.
-            ToolbarItem(placement: .primaryAction) { asideButton.tint(Ink.text) }
-        }
+        .modifier(DetailChrome(title: exercise.name, inLibrary: inLibrary, wide: sizeClass.isWide) { asideButton.tint(Ink.text) })
         .task(id: key) { shown = ExerciseDetailContent(exercise: exercise, model: model) }
         .accessibilityIdentifier("library.detail")
     }
@@ -561,6 +643,34 @@ struct ExerciseDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// The exercise page's bar: the name set large on the page itself, so the bar keeps only back and
+/// Set aside (and the tab bar goes, as on the design's detail screens). In the wide Library the
+/// Library's own bar has Set aside.
+private struct DetailChrome<Aside: View>: ViewModifier {
+    let title: String
+    let inLibrary: Bool
+    let wide: Bool
+    @ViewBuilder let aside: Aside
+
+    func body(content: Content) -> some View {
+        if inLibrary {
+            content
+        } else {
+            content
+                .navigationTitle(title)
+                .inlineTitle()
+                #if os(iOS)
+            .toolbar(removing: wide ? nil : .title)
+            .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
+                #endif
+                .toolbar {
+                    // A quiet action in the text's colour, as the design has it, not the accent.
+                    ToolbarItem(placement: .primaryAction) { aside }
+                }
         }
     }
 }

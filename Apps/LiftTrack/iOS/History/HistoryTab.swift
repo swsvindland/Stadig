@@ -43,6 +43,60 @@ struct HistoryTable: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                PageHeader(eyebrow: "\(model.sessions.count) sessions · \(model.activities.count) activities", title: "History")
+                InkSearchField(text: $query, prompt: "Sessions, exercises, activities", identifier: "history.search")
+                    .frame(maxWidth: 420)
+            }
+            .padding(.horizontal, 16)
+            table
+        }
+        .background(.pageBackground)
+        .navigationTitle("History")
+        .ownHeader()
+        .toolbar {
+            #if !os(macOS)
+            ToolbarItem(placement: .primaryAction) {
+                Button("Delete", systemImage: "trash", role: .destructive) { delete(selection, confirm: true) }
+                    .keyboardShortcut(.delete, modifiers: [])
+                    .disabled(selection.isEmpty)
+                    .accessibilityIdentifier("history.deleteSelected")
+            }
+            #endif
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    inspecting.toggle()
+                } label: {
+                    Label(inspecting ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.trailing")
+                }
+                .keyboardShortcut("i", modifiers: [.command, .option])
+                .help(inspecting ? "Hide the inspector" : "Show the inspector")
+            }
+        }
+        .sideInspector(isPresented: $inspecting) {
+            HistoryInspector(row: selection.count == 1 ? rows.first { selection.contains($0.id) } : nil, count: selection.count)
+        }
+        .confirmationDialog(
+            confirming.count == 1 ? "Delete this \(confirming[0].isSession ? "session" : "activity")?" : "Delete \(confirming.count) items?",
+            isPresented: Binding(get: { !confirming.isEmpty }, set: { if !$0 { confirming = [] } }), titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                model.delete(historyRows: confirming)
+                selection.subtract(confirming.map(\.id))
+                confirming = []
+            }
+            .accessibilityIdentifier("history.confirmDelete")
+        } message: {
+            Text("Sessions leave Apple Health too. This can't be undone.")
+        }
+        .task(id: Key(rows: model.historyRows, sortOrder: sortOrder, query: query)) {
+            rows = model.historyRows.filter { query.isEmpty || $0.matches(query) }.sorted(using: sortOrder)
+        }
+        .accessibilityIdentifier("history.table")
+    }
+
+    private var table: some View {
         Table(rows, selection: $selection, sortOrder: $sortOrder) {
             TableColumn("Date", value: \.date) { row in
                 Text(row.date, format: .dateTime.day().month(.abbreviated).year().hour().minute())
@@ -88,57 +142,12 @@ struct HistoryTable: View {
         .onDeleteCommand { delete(selection, confirm: true) }
         #endif
         .inkList()
-        .searchable(text: $query, prompt: "Sessions, exercises, activities")
-        .navigationTitle("History")
-        .navigationSubtitleIfAvailable("\(model.sessions.count) sessions · \(model.activities.count) activities")
-        .toolbar {
-            #if !os(macOS)
-            ToolbarItem(placement: .primaryAction) {
-                Button("Delete", systemImage: "trash", role: .destructive) { delete(selection, confirm: true) }
-                    .keyboardShortcut(.delete, modifiers: [])
-                    .disabled(selection.isEmpty)
-                    .accessibilityIdentifier("history.deleteSelected")
-            }
-            #endif
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    inspecting.toggle()
-                } label: {
-                    Label(inspecting ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.trailing")
-                }
-                .keyboardShortcut("i", modifiers: [.command, .option])
-                .help(inspecting ? "Hide the inspector" : "Show the inspector")
-            }
-        }
-        .sideInspector(isPresented: $inspecting) {
-            HistoryInspector(row: selection.count == 1 ? rows.first { selection.contains($0.id) } : nil, count: selection.count)
-        }
         .overlay {
             if rows.isEmpty {
-                if query.isEmpty {
-                    ContentUnavailableView("Nothing yet", systemImage: "clock", description: Text("Sessions and outside activities show here."))
-                } else {
-                    ContentUnavailableView.search(text: query)
-                }
+                Text(query.isEmpty ? "Sessions and outside activities show here." : "Nothing called \u{201C}\(query)\u{201D}.")
+                    .font(.subheadline).foregroundStyle(Ink.text2).padding(24)
             }
         }
-        .confirmationDialog(
-            confirming.count == 1 ? "Delete this \(confirming[0].isSession ? "session" : "activity")?" : "Delete \(confirming.count) items?",
-            isPresented: Binding(get: { !confirming.isEmpty }, set: { if !$0 { confirming = [] } }), titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                model.delete(historyRows: confirming)
-                selection.subtract(confirming.map(\.id))
-                confirming = []
-            }
-            .accessibilityIdentifier("history.confirmDelete")
-        } message: {
-            Text("Sessions leave Apple Health too. This can't be undone.")
-        }
-        .task(id: Key(rows: model.historyRows, sortOrder: sortOrder, query: query)) {
-            rows = model.historyRows.filter { query.isEmpty || $0.matches(query) }.sorted(using: sortOrder)
-        }
-        .accessibilityIdentifier("history.table")
     }
 
     /// A column's least width: the Mac's, for its 13-point table text, or iPad's and Vision Pro's,
@@ -195,9 +204,12 @@ private struct HistoryInspector: View {
                 ActivityDetail(log: activity)
             }
         } else {
-            ContentUnavailableView(
-                count > 1 ? "\(count) selected" : "Nothing selected", systemImage: "sidebar.trailing",
-                description: Text(count > 1 ? "" : "Select a session to see its sets."))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(count > 1 ? "\(count) selected" : "Nothing selected").font(.headline).foregroundStyle(Ink.text)
+                if count <= 1 { Text("Select a session to see its sets.").font(.subheadline).foregroundStyle(Ink.text2) }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }
