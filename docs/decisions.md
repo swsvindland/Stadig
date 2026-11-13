@@ -2,6 +2,13 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Lift's screens drawn to their boards.** The same day. The calls, mine to check:
+  - **Progress opens on Strength again,** with Your shape a row that opens its own page (as in Stadig Macro), reversing last night's "Progress opens on Your shape". Each lift opens its exercise page.
+  - **Today keeps to the board:** the hero, then the scores, then one card of actions, quests and steps; the assessment is a row with a slim ruler that opens its own page, the block's notes went to the session's "whole session" list, and at most one line sits under the hero. "Short on time?" offers only lengths shorter than the session.
+  - **The session drops its notes above the exercise and the cue line;** how the next set adjusts shows under the set marked "Up next". The rest clock is 116 points.
+  - **Plan's "…" holds** life modes, Focus, Prioritise automatically and Settings; **Body's** proportions, photos and check-ins are rows that open pages.
+  - **Left as they are:** pushed pages keep the system back button (hiding the bar broke the swipe back); Progress's Month/Year switch and "+2" wait for score history.
+
 - **Stadig Macro's tabs drawn to their boards.** The same day, to close the gap between the design and the app. The calls, mine to check:
   - **Log:** the day's meals as cards with P/C/F dots, the calories as a numeral and a **…** menu; the card's old **+** is "Add to meal" in that menu. Rows drop the food marker on the phone's cards. The hour slots, the Now line and Log again's chips stay (the board has none, the app needs them), and today opens on the current hour.
   - **Plan:** on pace means losing within 0.7 to 1.4 times the phase's rate (maintenance: within ±0.25% a week); "Faster than planned" and "Slower than planned" outside that. No "Adjust" or "Set my own targets", which the app doesn't have.
