@@ -204,6 +204,9 @@ struct TargetsSheet: View {
                     .foregroundStyle(Ink.text)
                     .focused($focus, equals: field)
                     .frame(width: min(gramsWidth, 58 * 1.5))
+                    // A fingertip's height to tap into, taken back from the row so it stays as drawn.
+                    .frame(minHeight: 44)
+                    .padding(.vertical, -max(0, 44 - min(gramsSize, 24 * 1.5) * 1.2) / 2)
                     .macLabelsHidden()
                     .accessibilityLabel("\(macro.label), grams a day")
                     .accessibilityValue("\(Format.whole(grams)) grams, \(Format.percent(share)) of calories")

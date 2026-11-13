@@ -371,6 +371,7 @@ struct WeekStrip: View {
 /// it when carbs and fat are shown. On a past day being caught up, the whole usual day a tap away.
 struct DaySummaryLine: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let day: Day
     var wide = false
 
@@ -427,20 +428,38 @@ struct DaySummaryLine: View {
         } else {
             kcal = (counted.kcal, day > model.today ? "kcal planned" : "kcal eaten")
         }
-        return HStack(alignment: .firstTextBaseline, spacing: 5) {
-            Measure(value: Format.whole(kcal.value), unit: kcal.unit, size: 20)
-            if let protein = targets?.protein {
+        let calories = Measure(value: Format.whole(kcal.value), unit: kcal.unit, size: 20)
+        let protein = targets?.protein.map { protein in
+            let left = protein - counted.protein
+            return Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g protein left" : "g protein over", size: 20)
+        }
+        let line = HStack(alignment: .firstTextBaseline, spacing: 5) {
+            calories
+            if let protein {
                 Text("·").font(.callout).foregroundStyle(Ink.text3).accessibilityHidden(true)
-                let left = protein - counted.protein
-                Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g protein left" : "g protein over", size: 20)
+                protein
             }
             if let later {
                 Text("· \(Format.whole(later)) later").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
             }
         }
-        .foregroundStyle(Ink.text)
         .lineLimit(1)
-        .minimumScaleFactor(0.75)
+        return Group {
+            if typeSize.isAccessibilitySize {
+                // On a line where it fits whole, else a number to a line, rather than shrunk and cut.
+                ViewThatFits(in: .horizontal) {
+                    line
+                    VStack(alignment: .leading, spacing: 2) {
+                        calories
+                        protein
+                        if let later { Text("\(Format.whole(later)) later").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3) }
+                    }
+                }
+            } else {
+                line.minimumScaleFactor(0.75)
+            }
+        }
+        .foregroundStyle(Ink.text)
     }
 
     func counted(_ intake: DayIntake) -> Nutrients { intake.counted(on: day, today: model.today) }
