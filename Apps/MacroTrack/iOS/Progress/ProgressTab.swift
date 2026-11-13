@@ -45,6 +45,7 @@ struct ProgressTab: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+            .roomForComposer()
             .background(.pageBackground)
             .navigationTitle("Progress")
             .widePage(!compact)

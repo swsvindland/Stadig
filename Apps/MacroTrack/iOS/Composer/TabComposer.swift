@@ -17,6 +17,8 @@ private struct TabComposerFoot: ViewModifier {
     let isEnabled: Bool
     @FocusState private var typing: Bool
     @State private var composer = TodayComposer()
+    /// The composer's height at the foot, for the page's room under its end.
+    @State private var footHeight: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
@@ -33,10 +35,19 @@ private struct TabComposerFoot: ViewModifier {
                 }
             }
             .animation(.snappy(duration: 0.2), value: covers)
+            // What a page's scroll view needs to rest clear of the field and its fade (`roomForComposer`).
+            .environment(\.composerRoom, isEnabled ? footHeight + Self.fade : 0)
             // Empty without room for it, rather than gone: the screen keeps its state when an iPad
             // window narrows or widens.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if isEnabled { TabComposer(tab: tab, composer: composer, typing: $typing, compact: sizeClass == .compact) }
+                if isEnabled {
+                    TabComposer(tab: tab, composer: composer, typing: $typing, compact: sizeClass == .compact)
+                        .onGeometryChange(for: CGFloat.self) {
+                            $0.size.height
+                        } action: {
+                            footHeight = $0
+                        }
+                }
             }
     }
 
@@ -44,6 +55,33 @@ private struct TabComposerFoot: ViewModifier {
     /// typing reads the same on every tab: what's left now and after what's typed at the top, the
     /// matches rising over the field. An iPad's page stays, with the composer at its foot.
     var covers: Bool { isEnabled && typing && sizeClass == .compact }
+
+    /// How far the composer's ground fades in over the page (`composerGround()`'s default).
+    static let fade: CGFloat = 40
+}
+
+extension EnvironmentValues {
+    /// The room a phone tab's composer takes at the foot of its page, with the fade over it.
+    @Entry var composerRoom: CGFloat = 0
+}
+
+extension View {
+    /// Room under a tab page's scroll view for the composer at its foot. The composer's inset
+    /// doesn't reach a scroll view inside the tab's navigation stack, which makes room for the tab
+    /// bar only, so a page at its end had its last card under the field and its fade, out of reach
+    /// of taps. On the page's own scroll view, not its whole content: a row that scrolls sideways
+    /// inside it would take the room too.
+    func roomForComposer() -> some View {
+        modifier(RoomForComposer())
+    }
+}
+
+private struct RoomForComposer: ViewModifier {
+    @Environment(\.composerRoom) private var room
+
+    func body(content: Content) -> some View {
+        content.safeAreaPadding(.bottom, room)
+    }
 }
 
 /// Today's typing state over a tab: the header in a line for the day the composer logs to, on the

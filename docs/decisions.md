@@ -8,6 +8,8 @@ Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries)
   - **The best match has no + on a phone**, since the field's arrow and Return log it; the others keep theirs.
   - **The logger reads an amount typed** as the composer does ("chick 200" is 200 g), one food at a time; with several foods typed it searches the words as before.
   - **Log and Plan take the board's tab symbols**, a list and a flag, for the clipboard and the map.
+  - **A page pushed from Plan or Progress has the screen to itself**: Your shape, the check-ins, All nutrients and the meal plan lose the composer (and the tab bar), as their boards have neither; Back brings it back.
+  - **A row that does something is in the text's colour with a grey symbol** (`ActionRowLabel`) in Settings, the supplements list and sheets, so the green is each screen's one action; food quality's colours are the palette's good, ok and bad.
 
 - **Stadig Lift's pages and sheets in the design's language.** The same day. The calls, mine to check:
   - **Small choices are chips and segments**, as onboarding asks them: About you, Focus and Gym in Settings, crunch mode's time and equipment, an injury's joints, an activity's time of day. Menus that remain show their value in grey, not the accent (`valueTint()`).

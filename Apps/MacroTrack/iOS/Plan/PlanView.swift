@@ -47,6 +47,7 @@ struct PlanView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+            .roomForComposer()
             .background(.pageBackground)
             .navigationTitle("Plan")
             .widePage(!compact)
