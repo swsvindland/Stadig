@@ -15,6 +15,7 @@ struct SlotInspector: View {
     /// The block running now, where tonight's targets mean something.
     let current: Bool
     @State private var shown: ExerciseDetailContent?
+    @State private var eyebrow = ""
 
     var body: some View {
         let exercise = model.catalog.resolve(slot.exerciseID)
@@ -22,7 +23,7 @@ struct SlotInspector: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(eyebrow(exercise)).eyebrow(.accentColor).lineLimit(2)
+                    Text(eyebrow).eyebrow(.accentColor).lineLimit(2)
                     PageTitle(exercise.name, size: 24)
                     Text(slot.reason ?? ProgramRows.defaultReason(slot.role)).font(.subheadline).foregroundStyle(Ink.text2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -51,12 +52,16 @@ struct SlotInspector: View {
             .padding(16)
         }
         .scrollIndicators(.hidden)
-        .task(id: slot.exerciseID) { shown = ExerciseDetailContent(exercise: model.catalog.resolve(slot.exerciseID), model: model) }
+        .task(id: slot.exerciseID) {
+            let exercise = model.catalog.resolve(slot.exerciseID)
+            eyebrow = eyebrowLine(exercise)
+            shown = ExerciseDetailContent(exercise: exercise, model: model)
+        }
         .accessibilityIdentifier("program.inspector")
     }
 
     /// "Upper A · Tonight · 3 × 6 at 42.5 kg", or the day and what the exercise is.
-    private func eyebrow(_ exercise: Exercise) -> String {
+    private func eyebrowLine(_ exercise: Exercise) -> String {
         if current, let plan = model.plan(), plan.dayID == day.id, let item = plan.items.first(where: { $0.slotID == slot.id }),
             let first = item.workSets.first
         {

@@ -422,10 +422,9 @@ private struct LiftRow: View {
             name
                 .padding(.horizontal, 10)
                 .frame(width: layout.names, alignment: .leading)
-            ForEach(Array(lift.cells.enumerated()), id: \.offset) { index, cell in
+            ForEach(Array(lift.cells.enumerated()), id: \.offset) { _, cell in
                 LedgerCellView(
-                    cell: cell, exercise: lift.exercise, unit: content.unit, estimateKg: lift.estimateKg, selected: selected,
-                    lit: index == content.nowIndex
+                    cell: cell, exercise: lift.exercise, unit: content.unit, estimateKg: lift.estimateKg, selected: selected
                 )
                 .padding(.leading, 14)
                 .padding(.trailing, 12)
@@ -515,7 +514,6 @@ private struct LedgerCellView: View {
     let unit: WeightUnit
     let estimateKg: Double?
     let selected: Bool
-    let lit: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
