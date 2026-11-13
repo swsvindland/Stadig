@@ -2,6 +2,11 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **One set of page pieces for both apps.** The same day, so Stadig Lift and Stadig Macro read as one family. The calls, mine to check:
+  - **`Components/Stadig.swift` holds all of it, identical in both apps:** the page header and pushed-page header (which keeps the swipe back), round icon buttons, the solid and ghost button (`InkButtonStyle`, 52, 44 or 34 points by control size), onboarding's step bar and heading, the segmented control, row cards, card titles and section eyebrows. Lift's `Page.swift` and Macro's `InkControls.swift` are gone.
+  - **Stadig Macro's buttons are ink buttons like Lift's,** not glass capsules; its Your shape and check-ins are pushed pages like Lift's; onboarding questions are 36 points in both apps (Macro's board drew 32); form section headers are eyebrows in both.
+  - **Macro's empty days are calmer:** on the Log tab each run of open hours is one row, "ADD AT" with three hours and More (`LogHours.offered`, tested), so any hour stays two taps away; on Today a short day sits at the foot, its empty line just over the tiles, and the first food lands without it moving.
+
 - **Stadig Lift's screens drawn to their boards.** The same day. The calls, mine to check:
   - **Progress opens on Strength again,** with Your shape a row that opens its own page (as in Stadig Macro), reversing last night's "Progress opens on Your shape". Each lift opens its exercise page.
   - **Today keeps to the board:** the hero, then the scores, then one card of actions, quests and steps; the assessment is a row with a slim ruler that opens its own page, the block's notes went to the session's "whole session" list, and at most one line sits under the hero. "Short on time?" offers only lengths shorter than the session.
