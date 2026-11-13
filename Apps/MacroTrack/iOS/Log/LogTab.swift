@@ -92,6 +92,7 @@ struct LogTab: View {
             .hidesNavigationBar(!wide)
             .sheet(item: Binding(get: { wide ? nil : editing }, set: { editing = $0 })) { entry in EntryEditor(entry: entry) }
             .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 420) }
+            .debugSheet("day") { choosingDay = true }
             .notesWork(editing != nil || choosingDay, covering: choosingDay || (editing != nil && !wide))
             .sideInspector(isPresented: paneOpen, min: 320, ideal: 360, max: 440) { pane }
             // Let go of it, or an Undo of the move would bring the pane back out of nowhere.
@@ -742,28 +743,33 @@ struct DayChooser: View {
 
     var body: some View {
         NavigationStack {
-            DatePicker(
-                "Day",
-                selection: Binding(
-                    get: { model.selectedDay.date() },
-                    set: { date in
-                        model.selectedDay = Day(date)
-                        dismiss()
-                    }),
-                displayedComponents: .date
-            )
-            .datePickerStyle(.graphical)
-            .labelsHidden()
-            .padding()
-            .accessibilityIdentifier("log.datePicker")
-            .navigationTitle("Choose a day")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("dayChooser.cancel")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    SheetHeading(eyebrow: "Log", title: "Choose a day")
+                    DatePicker(
+                        "Day",
+                        selection: Binding(
+                            get: { model.selectedDay.date() },
+                            set: { date in
+                                model.selectedDay = Day(date)
+                                dismiss()
+                            }),
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding(.horizontal, 8)
+                    .card(padding: 8)
+                    .accessibilityIdentifier("log.datePicker")
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "dayChooser.cancel") { dismiss() }
             }
         }
-        .presentationDetents([.height(460)])
+        .presentationDetents([.height(560), .large])
     }
 }

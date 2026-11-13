@@ -19,6 +19,7 @@ struct MealTray: View {
         }
         .animation(.snappy, value: moment?.entries.map(\.id))
         .sheet(isPresented: $showing) { MealSheet(date: date) }
+        .debugSheet("meal") { showing = model.mealBeingLogged(at: date) != nil }
         .notesWork(showing)
     }
 
@@ -90,8 +91,10 @@ struct MealSheet: View {
 
     var body: some View {
         let moment = model.mealBeingLogged(at: date)
+        let title = moment.map { Self.title($0, state: model.saveState(of: $0.entries)) } ?? "This meal"
         NavigationStack {
             List {
+                FormHeading(eyebrow: "Logging · this meal", title: title)
                 if let moment {
                     Section {
                         NutrientSummary(nutrients: moment.nutrients)
@@ -124,20 +127,16 @@ struct MealSheet: View {
                 }
             }
             .insetGroupedList()
+            .navigationTitle(title)
             // In reach at the sheet's half height, below however many foods.
-            .safeAreaInset(edge: .bottom) {
-                if let moment { SaveMealBar(entries: moment.entries).padding() }
+            .inkSheet {
+                SheetBar(label: "Done", identifier: "mealSheet.done") { dismiss() }
+            } foot: {
+                if let moment { SheetFoot { SaveMealBar(entries: moment.entries) } }
             }
-            .navigationTitle(moment.map { Self.title($0, state: model.saveState(of: $0.entries)) } ?? "This meal")
-            .inlineTitle()
             // A sheet of its own: pushed here it's held to this one's half height, where the keypad
             // and Save leave no room for the amount being typed.
             .sheet(item: $editing) { entry in EntryEditor(entry: entry, canTake: false) }
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.accessibilityIdentifier("mealSheet.done")
-                }
-            }
         }
         // A food's amount covers this too, and its few seconds shouldn't run out behind it. Over the
         // list, clear of the bar at the foot: a toast that's just come here would sit on Save as Meal.
@@ -322,9 +321,6 @@ struct SavedMealView: View {
         return Form {
             if !wide {
                 DetailHeader(eyebrow: "Saved meal", title: meal.name)
-                    .padding(.top, 6)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
             }
             Section {
                 NutrientSummary(nutrients: total)

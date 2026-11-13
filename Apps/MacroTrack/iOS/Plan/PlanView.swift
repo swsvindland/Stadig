@@ -471,6 +471,7 @@ struct RecommendationCard: View {
         .sheet(isPresented: $choosing) {
             PhaseChooser(recommended: plan).macSheetSize(width: 460, height: 560)
         }
+        .debugSheet("phase") { choosing = ready }
     }
 }
 
@@ -531,38 +532,55 @@ struct PhaseChooser: View {
 
     var body: some View {
         NavigationStack {
-            List(PhaseKind.allCases.filter { $0 != .dietBreak }) { kind in
-                Button {
-                    let weeks = kind == .miniCut ? 5 : kind == .reverseDiet ? 6 : 8
-                    model.start(
-                        PhasePlan(
-                            phases: [PlannedPhase(kind: kind, weeks: weeks, start: model.today)],
-                            headline: "\(kind.label), your choice.",
-                            reasons: [
-                                "You picked this over the recommendation (\(recommended.headline.lowercased()))",
-                                "Targets still adapt each week from your logs and weigh-ins.",
-                            ],
-                            confidence: nil, arc: "Revisited when the phase ends or the data says to."))
-                    dismiss()
-                } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text(kind.label).font(.headline)
-                            if recommended.phases.first?.kind == kind { Pill(text: "Recommended", color: .accentColor) }
+            List {
+                FormHeading(
+                    eyebrow: "Plan", title: "Choose a phase",
+                    detail: "Your own choice over the recommendation. Targets still adapt each week from your logs and weigh-ins.")
+                Section {
+                    ForEach(PhaseKind.allCases.filter { $0 != .dietBreak }) { kind in
+                        Button {
+                            start(kind)
+                        } label: {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 8) {
+                                        Text(kind.label).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                                        if recommended.phases.first?.kind == kind { Pill(text: "Recommended", color: .accentColor) }
+                                    }
+                                    Text(kind.explanation).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                                }
+                                Spacer(minLength: 4)
+                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
+                            }
+                            .padding(.vertical, 4)
+                            .contentShape(.rect)
                         }
-                        Text(kind.explanation).font(.subheadline).foregroundStyle(.secondary)
+                        .buttonStyle(.plain)
+                        .hoverHighlight()
+                        .accessibilityIdentifier("phaseChooser.\(kind.rawValue)")
                     }
                 }
-                .buttonStyle(.plain)
-                .hoverHighlight()
-                .accessibilityIdentifier("phaseChooser.\(kind.rawValue)")
+                .inkRows()
             }
-            .navigationTitle("Choose a phase")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("phaseChooser.cancel") }
+            .inkForm()
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "phaseChooser.cancel") { dismiss() }
             }
         }
+    }
+
+    private func start(_ kind: PhaseKind) {
+        let weeks = kind == .miniCut ? 5 : kind == .reverseDiet ? 6 : 8
+        model.start(
+            PhasePlan(
+                phases: [PlannedPhase(kind: kind, weeks: weeks, start: model.today)],
+                headline: "\(kind.label), your choice.",
+                reasons: [
+                    "You picked this over the recommendation (\(recommended.headline.lowercased()))",
+                    "Targets still adapt each week from your logs and weigh-ins.",
+                ],
+                confidence: nil, arc: "Revisited when the phase ends or the data says to."))
+        dismiss()
     }
 }
 

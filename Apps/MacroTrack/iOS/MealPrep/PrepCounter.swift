@@ -49,6 +49,7 @@ struct PrepCounter: View {
         .inkGround()
         .keepsScreenAwake()
         .sheet(isPresented: $showSteps) { steps.macSheetSize(width: 520, height: 700) }
+        .debugSheet("steps") { showSteps = true }
         // Closed with a reading set and no Next since: it's kept all the same.
         .onDisappear { model.saveReadings(run) }
     }
@@ -114,13 +115,15 @@ struct PrepCounter: View {
     var steps: some View {
         NavigationStack {
             if let plan = model.mealPlans.first(where: { $0.id == run.planID }) {
-                List { PrepPage(plan: plan) }
-                    .insetGroupedList()
-                    .navigationTitle("Prep day")
-                    .inlineTitle()
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) { Button("Done") { showSteps = false } }
-                    }
+                List {
+                    FormHeading(eyebrow: "Prep day · step \(run.index + 1) of \(run.guide.steps.count)", title: "Every step")
+                    PrepPage(plan: plan)
+                }
+                .insetGroupedList()
+                .navigationTitle("Prep day")
+                .inkSheet {
+                    SheetBar(label: "Done", identifier: "prepCounter.stepsDone") { showSteps = false }
+                }
             }
         }
     }

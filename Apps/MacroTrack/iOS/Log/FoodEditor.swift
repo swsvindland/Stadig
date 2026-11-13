@@ -45,6 +45,7 @@ struct FoodEditor: View {
     var body: some View {
         NavigationStack {
             Form {
+                FormHeading(eyebrow: "Logging · \(FoodLabel.short(food.name))", title: "Your numbers")
                 Section {
                     FoodNameFields(name: $name, brand: $brand, identifier: "foodEditor")
                 } header: {
@@ -64,28 +65,31 @@ struct FoodEditor: View {
                 .inkRows()
                 if model.isCorrected(food.id) {
                     Section {
-                        Button("Use the numbers from \(Self.catalogName(food))", role: .destructive) {
+                        FormActionRow("Use the numbers from \(Self.catalogName(food))", destructive: true, identifier: "foodEditor.removeCorrection")
+                        {
                             if let original = model.removeCorrection(of: food.id) { saved(original) }
                             dismiss()
                         }
-                        .accessibilityIdentifier("foodEditor.removeCorrection")
                     } footer: {
                         Text("Goes back to the numbers the food database has. Foods already logged keep theirs.")
                     }
-                    .inkRows()
                 }
             }
             .inkForm()
             .navigationTitle("Your numbers")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("foodEditor.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(corrected == nil)
-                        .accessibilityIdentifier("foodEditor.save")
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "foodEditor.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
+                        save()
+                    } label: {
+                        Text("Save").frame(maxWidth: .infinity)
+                    }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(corrected == nil)
+                    .accessibilityIdentifier("foodEditor.save")
                 }
             }
             .onAppear(perform: fill)

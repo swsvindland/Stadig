@@ -27,117 +27,35 @@ struct MealPlanSetup: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    ForEach(MealSlot.allCases) { slot in
-                        Toggle(
-                            isOn: Binding(
-                                get: { preferences.slots.contains(slot) },
-                                set: { on in
-                                    if on { preferences.slots.insert(slot) } else { preferences.slots.remove(slot) }
-                                })
-                        ) {
-                            Label(slot.label, systemImage: slot.symbol)
-                        }
-                    }
-                } header: {
-                    Text("Prep which meals?").eyebrow()
-                } footer: {
-                    Text("The rest are yours, with room kept for them in your targets.")
-                }
-
-                let bowls = [MealSlot.lunch, .dinner].filter(preferences.slots.contains)
-                if !bowls.isEmpty {
-                    Section {
-                        Toggle("One dish all week", isOn: $preferences.oneDish)
-                            .accessibilityIdentifier("mealPlanSetup.oneDish")
-                    } footer: {
-                        Text(
-                            "Every \(bowls.map { $0.label.lowercased() }.joined(separator: " and ")) from one batch, instead of two dishes taking turns."
-                        )
-                    }
-                }
-
-                Section {
-                    Picker("Diet", selection: $preferences.diet) {
-                        ForEach(PlanPreferences.Diet.allCases) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("Diet").eyebrow()
-                }
-
-                Section {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], alignment: .leading, spacing: 8) {
-                        ForEach(Self.leaveOut, id: \.word) { item in
-                            let on = preferences.avoid.contains(item.word)
-                            Button {
-                                if on { preferences.avoid.remove(item.word) } else { preferences.avoid.insert(item.word) }
-                            } label: {
-                                Text(item.label).font(.subheadline).frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .buttonBorderShape(.capsule)
-                            .tint(on ? .orange : .secondary)
-                            .accessibilityValue(on ? "Left out" : "")
-                        }
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Leave out").eyebrow()
-                }
-
-                Section {
-                    TextField("More spicy, no salmon, cheaper…", text: $request, axis: .vertical)
-                        .accessibilityIdentifier("mealPlanSetup.request")
-                } header: {
-                    Text("Anything else?").eyebrow()
-                } footer: {
-                    Text("Read on this \(Platform.deviceName) with Apple Intelligence when it can.")
-                }
-
-                Section {
-                    Picker("Start", selection: $tomorrow) {
-                        Text(
-                            "\(Format.day(model.planStart(tomorrow: false), style: .dateTime.weekday(.wide).month().day())), prep \(Format.prepDay(model.planStart(tomorrow: false).adding(days: -1), today: model.today))"
-                        )
-                        .tag(false)
-                        Text("Tomorrow, prep today").tag(true)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                } header: {
-                    Text("Start").eyebrow()
-                }
+                FormHeading(
+                    eyebrow: "Plan · meal prep", title: "Plan a week",
+                    detail: "A week of meals sized to your targets, with the grocery list and a timed prep.")
+                Group { sections }.inkRows()
             }
-            .navigationTitle("Plan a week")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        planning?.cancel()
-                        dismiss()
+            .inkForm()
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "mealPlanSetup.cancel") {
+                    planning?.cancel()
+                    dismiss()
+                }
+            } foot: {
+                SheetFoot {
+                    Button {
+                        make()
+                    } label: {
+                        HStack(spacing: 8) {
+                            if working { ProgressView().tint(Ink.onAccent) }
+                            Text(working ? "Planning…" : "Make my plan")
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .accessibilityIdentifier("mealPlanSetup.cancel")
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(preferences.slots.isEmpty || working)
+                    .accessibilityIdentifier("mealPlanSetup.make")
                 }
             }
             .onDisappear { planning?.cancel() }
-            .safeAreaInset(edge: .bottom) {
-                Button {
-                    make()
-                } label: {
-                    HStack {
-                        if working { ProgressView() }
-                        Text(working ? "Planning…" : "Make my plan").fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                }
-                .primaryAction().controlSize(.large)
-                .disabled(preferences.slots.isEmpty || working)
-                .accessibilityIdentifier("mealPlanSetup.make")
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-            }
             .onAppear {
                 guard !loaded else { return }
                 loaded = true
@@ -146,6 +64,85 @@ struct MealPlanSetup: View {
                 preferences.want = []
                 if model.planStart(tomorrow: false).days(until: model.today) <= -6 { tomorrow = false }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var sections: some View {
+        Section {
+            ForEach(MealSlot.allCases) { slot in
+                Toggle(
+                    isOn: Binding(
+                        get: { preferences.slots.contains(slot) },
+                        set: { on in
+                            if on { preferences.slots.insert(slot) } else { preferences.slots.remove(slot) }
+                        })
+                ) {
+                    Label(slot.label, systemImage: slot.symbol)
+                }
+            }
+        } header: {
+            Text("Prep which meals?").eyebrow()
+        } footer: {
+            Text("The rest are yours, with room kept for them in your targets.")
+        }
+
+        let bowls = [MealSlot.lunch, .dinner].filter(preferences.slots.contains)
+        if !bowls.isEmpty {
+            Section {
+                Toggle("One dish all week", isOn: $preferences.oneDish)
+                    .accessibilityIdentifier("mealPlanSetup.oneDish")
+            } footer: {
+                Text(
+                    "Every \(bowls.map { $0.label.lowercased() }.joined(separator: " and ")) from one batch, instead of two dishes taking turns."
+                )
+            }
+        }
+
+        Section {
+            InkSegmented(options: PlanPreferences.Diet.allCases.map { ($0, $0.label) }, selection: $preferences.diet)
+                .padding(.vertical, 4)
+                .accessibilityIdentifier("mealPlanSetup.diet")
+        } header: {
+            Text("Diet").eyebrow()
+        }
+
+        Section {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(Self.leaveOut, id: \.word) { item in
+                    let on = preferences.avoid.contains(item.word)
+                    ChoiceChip(title: item.label, isOn: on, identifier: "mealPlanSetup.avoid.\(item.word)") {
+                        if on { preferences.avoid.remove(item.word) } else { preferences.avoid.insert(item.word) }
+                    }
+                    .accessibilityValue(on ? "Left out" : "")
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Leave out").eyebrow()
+        }
+
+        Section {
+            TextField("More spicy, no salmon, cheaper…", text: $request, axis: .vertical)
+                .accessibilityIdentifier("mealPlanSetup.request")
+        } header: {
+            Text("Anything else?").eyebrow()
+        } footer: {
+            Text("Read on this \(Platform.deviceName) with Apple Intelligence when it can.")
+        }
+
+        Section {
+            Picker("Start", selection: $tomorrow) {
+                Text(
+                    "\(Format.day(model.planStart(tomorrow: false), style: .dateTime.weekday(.wide).month().day())), prep \(Format.prepDay(model.planStart(tomorrow: false).adding(days: -1), today: model.today))"
+                )
+                .tag(false)
+                Text("Tomorrow, prep today").tag(true)
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } header: {
+            Text("Start").eyebrow()
         }
     }
 
@@ -215,6 +212,7 @@ struct MealPrepCard: View {
         }
         .card()
         .sheet(isPresented: $showSetup) { MealPlanSetup().macSheetSize(width: 560, height: 680) }
+        .debugSheet("mealPlanSetup") { if model.mealPlan == nil { showSetup = true } }
         .navigationDestination(item: $opened) { page in
             if let plan = model.mealPlan { MealPlanView(planID: plan.id, page: page) }
         }
