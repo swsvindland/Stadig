@@ -100,35 +100,34 @@ struct MealPlanView: View {
         if let plan = model.mealPlans.first(where: { $0.id == planID }) {
             Group {
                 // With room, the week, the groceries and prep day side by side; on a phone, one at a time.
-                if sizeClass == .compact { pages(plan) } else { MealPlanBoard(plan: plan, request: requestField(plan)) }
-            }
-            .navigationTitle(sizeClass == .compact ? page.title : "Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))")
-            .inlineTitle()
-            .toolbar {
-                // With room, counter mode is a button away wherever the prep list has scrolled to.
-                if sizeClass != .compact {
-                    ToolbarItem(placement: .barTrailing) {
-                        // Words, not a symbol: nothing says "counter mode" at a glance.
-                        Button(model.prepRun?.planID == plan.id ? "Back to Prep" : "Start Prep") { model.startPrep(plan) }
-                            .accessibilityIdentifier("mealPlan.counter")
+                if sizeClass == .compact {
+                    pages(plan)
+                } else {
+                    MealPlanBoard(plan: plan, request: requestField(plan)) {
+                        // With room, the page's own header: counter mode a button away wherever the
+                        // prep list has scrolled to (words, not a symbol: nothing says "counter mode"
+                        // at a glance), and the plan's options.
+                        WideHeader(eyebrow: "Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))", title: "Meal plan") {
+                            Button(model.prepRun?.planID == plan.id ? "Back to Prep" : "Start Prep") { model.startPrep(plan) }
+                                .buttonStyle(.solid)
+                                .fixedSize()
+                                .accessibilityIdentifier("mealPlan.counter")
+                            options(plan) { CircleIcon(symbol: "ellipsis") }
+                                .circleMenuStyle()
+                        }
+                        .padding(.horizontal, -16)
                     }
                 }
-                ToolbarItem(placement: .barTrailing) {
-                    Menu {
-                        Button("Other dishes", systemImage: "shuffle") { model.shuffleMealPlan(plan) }
-                            .disabled(model.swappableRecipes(in: plan).isEmpty)
-                        Button("New plan…", systemImage: "square.and.pencil") { showSetup = true }
-                        ShareLink(item: GroceryPage.text(plan, unit: model.units.weight)) {
-                            Label("Share grocery list", systemImage: "square.and.arrow.up")
-                        }
-                        Button("Delete plan", systemImage: "trash", role: .destructive) { confirmDelete = true }
-                    } label: {
-                        Image(systemName: "ellipsis")
+            }
+            .navigationTitle(sizeClass == .compact ? page.title : "Meal plan")
+            .inlineTitle()
+            .widePage(sizeClass != .compact)
+            .hidesNavigationBar(sizeClass != .compact)
+            .toolbar {
+                if sizeClass == .compact {
+                    ToolbarItem(placement: .barTrailing) {
+                        options(plan) { Image(systemName: "ellipsis") }
                     }
-                    .accessibilityLabel("Plan options")
-                    .accessibilityIdentifier("mealPlan.options")
-                    // While a request is being read, so the plan it's for can't be deleted or replaced under it.
-                    .disabled(working)
                 }
             }
             .sheet(isPresented: $showSetup) { MealPlanSetup { planID = $0.id }.macSheetSize(width: 560, height: 680) }
@@ -145,6 +144,25 @@ struct MealPlanView: View {
                 "No meal plan", systemImage: "takeoutbag.and.cup.and.straw",
                 description: Text("Plan a week from the Plan tab."))
         }
+    }
+
+    /// Other dishes, a new plan, the grocery list to share, and deleting the plan.
+    func options(_ plan: MealPlan, @ViewBuilder label: () -> some View) -> some View {
+        Menu {
+            Button("Other dishes", systemImage: "shuffle") { model.shuffleMealPlan(plan) }
+                .disabled(model.swappableRecipes(in: plan).isEmpty)
+            Button("New plan…", systemImage: "square.and.pencil") { showSetup = true }
+            ShareLink(item: GroceryPage.text(plan, unit: model.units.weight)) {
+                Label("Share grocery list", systemImage: "square.and.arrow.up")
+            }
+            Button("Delete plan", systemImage: "trash", role: .destructive) { confirmDelete = true }
+        } label: {
+            label()
+        }
+        .accessibilityLabel("Plan options")
+        .accessibilityIdentifier("mealPlan.options")
+        // While a request is being read, so the plan it's for can't be deleted or replaced under it.
+        .disabled(working)
     }
 
     /// The week as cards on the ink ground, ending on Start prep, which opens prep day's steps; the

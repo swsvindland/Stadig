@@ -33,10 +33,18 @@ struct MealPlanTab: View {
 
 /// A week's plan with room for it: the days by meal in a grid, the dishes, and the grocery list and
 /// prep day beside them rather than behind a picker.
-struct MealPlanBoard<Request: View>: View {
+struct MealPlanBoard<Request: View, Header: View>: View {
     @Environment(AppModel.self) private var model
     let plan: MealPlan
     let request: Request
+    /// The page's header, over the week.
+    let header: Header
+
+    init(plan: MealPlan, request: Request, @ViewBuilder header: () -> Header) {
+        self.plan = plan
+        self.request = request
+        self.header = header()
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -96,6 +104,7 @@ struct MealPlanBoard<Request: View>: View {
         let swappable = Set(model.swappableRecipes(in: plan))
         return ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                header
                 VStack(alignment: .leading, spacing: 8) {
                     request
                     let day = plan.planned(on: plan.start)

@@ -29,7 +29,16 @@ struct HistoryView: View {
                             "No history yet", systemImage: "calendar", description: Text("Each day you log or weigh in appears here."))
                     }
                 }
+                // The page's own header over the table, on the ground, as the other pages have it.
+                .scrollContentBackground(.hidden)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    WideHeader(eyebrow: eyebrow, title: "History")
+                        .padding(.top, 8)
+                }
+                .background(.pageBackground)
                 .navigationTitle("History")
+                .inlineTitle()
+                .widePage()
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -50,6 +59,13 @@ struct HistoryView: View {
         }
         .task(id: model.analysisVersion) { await load() }
         .onChange(of: sortOrder) { _, order in shown = rows.sorted(using: order) }
+    }
+
+    /// How far back the log goes: "84 days since Aug 21".
+    var eyebrow: String {
+        guard let first = rows.map(\.day).min() else { return "Every day you log" }
+        let days = first.days(until: model.today) + 1
+        return "\(days) \(days == 1 ? "day" : "days") since \(Format.day(first, style: .dateTime.month(.abbreviated).day()))"
     }
 
     var table: some View {

@@ -1,5 +1,6 @@
 import NutritionEngine
 import SwiftUI
+import SystemCore
 import SystemStore
 
 /// Today for the day at a glance, Log for its food hour by hour, Plan for the phase and targets,
@@ -106,6 +107,8 @@ struct RootView: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        // Over the sidebar's destinations, the day's one number, as the menu bar has it.
+        .tabViewSidebarHeader { SidebarHeader() }
         #if os(iOS)
         #if DEBUG
         // -sidebar opens an iPad on its sidebar, where the screens have the least room.
@@ -116,15 +119,41 @@ struct RootView: View {
         // Clear of the selection bar where it's at the foot of the screen. The logger shows its own,
         // in with the meal: one behind it would be a second Undo nobody can reach. It takes over when
         // the logger closes, with its few seconds starting again. On a phone each tab shows it over
-        // its composer, and Today an Undo in the meal just logged too. Today, wide as well, shows
-        // its own over its composer.
+        // its composer, and Today an Undo in the meal just logged too. Today and Log, wide as well,
+        // show theirs over their composers.
         .toastOverlay(
-            bottomPadding: model.selection.isEmpty ? 24 : 92, showing: wide && model.logger == nil && !model.toastCovered && model.tab != .today
+            bottomPadding: model.selection.isEmpty ? 24 : 92,
+            showing: wide && model.logger == nil && !model.toastCovered && model.tab != .today && model.tab != .log
         )
         // A meal photo dragged onto the window from Photos or Finder is read like one chosen.
         .dropDestination(for: DroppedImage.self) { images, _ in
             if let photo = images.first?.data { model.logDroppedPhoto(photo) }
         }
+    }
+}
+
+/// The sidebar's head: the app's name over what's left today on a thin ruler, so the number is in
+/// sight from Foods or History as it is from the menu bar.
+private struct SidebarHeader: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let eaten = model.dayIntake(on: model.today).eaten.kcal
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Stadig Macro").eyebrow()
+            if let kcal = model.analysis?.targets.kcal, kcal > 0 {
+                let left = kcal - eaten
+                Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "kcal left" : "kcal over", size: 24, weight: .heavy)
+                    .foregroundStyle(Ink.text)
+                Ruler.thin(eaten / kcal)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.top, 4)
+        .padding(.bottom, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("sidebar.left")
     }
 }
 

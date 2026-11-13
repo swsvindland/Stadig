@@ -28,25 +28,6 @@ struct TodayMore: View {
     }
 }
 
-/// Settings, from a screen's toolbar: a sheet on iPhone, iPad and Vision Pro. The Mac has its
-/// Settings window in the app menu (⌘,), so the button isn't there.
-struct SettingsButton: View {
-    @Environment(AppModel.self) private var model
-    let identifier: String
-
-    var body: some View {
-        if !Platform.isMac {
-            Button {
-                model.showSettings = true
-            } label: {
-                // A title, for when a full toolbar folds it into its menu.
-                Label("Settings", systemImage: "gearshape")
-            }
-            .accessibilityIdentifier(identifier)
-        }
-    }
-}
-
 /// What today asks for, in a line: the mode and its note.
 struct ModeLine: View {
     let targets: DailyTargets

@@ -28,25 +28,29 @@ struct PlanView: View {
                     .readableWidth()
                 } else if let analysis = model.analysis {
                     // With room: the phase and its reasons, and beside them what feeds and follows it.
-                    HStack(alignment: .top, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 12) { phase(analysis) }
-                            .frame(maxWidth: .infinity)
-                        VStack(alignment: .leading, spacing: 12) { side(analysis) }
-                            .frame(minWidth: 300, idealWidth: 380, maxWidth: 420)
+                    VStack(alignment: .leading, spacing: 4) {
+                        WideHeader(eyebrow: eyebrow, title: "Plan") {
+                            if !Platform.isMac {
+                                CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "plan.settings") { model.showSettings = true }
+                            }
+                        }
+                        HStack(alignment: .top, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 12) { phase(analysis) }
+                                .frame(maxWidth: .infinity)
+                            VStack(alignment: .leading, spacing: 12) { side(analysis) }
+                                .frame(minWidth: 300, idealWidth: 380, maxWidth: 420)
+                        }
+                        .padding([.horizontal, .bottom], 20)
                     }
-                    .padding(20)
+                    .padding(.top, 12)
                     .frame(maxWidth: 1180)
                     .frame(maxWidth: .infinity)
                 }
             }
             .background(.pageBackground)
             .navigationTitle("Plan")
-            .hidesNavigationBar(compact)
-            .toolbar {
-                if !Platform.isMac, !compact {
-                    ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "plan.settings") }
-                }
-            }
+            .widePage(!compact)
+            .hidesNavigationBar()
         }
     }
 
