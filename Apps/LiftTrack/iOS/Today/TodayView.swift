@@ -513,7 +513,9 @@ struct ScoresCard: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(stat.label).font(.caption).foregroundStyle(Ink.text3)
                 Spacer()
-                if let line, let trend = TrendWord(line.trend) {
+                if let change = line?.change {
+                    ScoreChangeLabel(change: change)
+                } else if let line, let trend = TrendWord(line.trend) {
                     Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
                 }
             }
@@ -522,7 +524,13 @@ struct ScoresCard: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(stat.label)
-        .accessibilityValue(line?.score.map { "\($0)" } ?? "Not measured yet")
+        .accessibilityValue(line.map(Self.spoken) ?? "Not measured yet")
+    }
+
+    /// "57, up 2 this month".
+    static func spoken(_ line: StatLine) -> String {
+        guard let score = line.score else { return "Not measured yet" }
+        return [String(score), line.change?.spoken(calendar: .current)].compactMap(\.self).joined(separator: ", ")
     }
 }
 

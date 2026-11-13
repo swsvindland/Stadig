@@ -59,7 +59,7 @@ struct ProgressTab: View {
     private func column(_ analysis: LiftAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             header(analysis)
-            StrengthCard(analysis: analysis, trend: model.stats.first { $0.stat == .strength }.flatMap { TrendWord($0.trend) })
+            StrengthCard(analysis: analysis, line: model.stats.first { $0.stat == .strength })
             Button {
                 showShape = true
             } label: {
@@ -109,7 +109,7 @@ struct ProgressTab: View {
             header(analysis)
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 12) {
-                    StrengthCard(analysis: analysis, trend: model.stats.first { $0.stat == .strength }.flatMap { TrendWord($0.trend) })
+                    StrengthCard(analysis: analysis, line: model.stats.first { $0.stat == .strength })
                     RowCard {
                         NavigationLink {
                             RatingsPage(trust: analysis.trust)
@@ -128,7 +128,7 @@ struct ProgressTab: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                YourShape(lines: model.stats, analysis: analysis) { stat in
+                YourShape(lines: model.stats, earlier: model.earlierShape, analysis: analysis) { stat in
                     switch stat {
                     case .strength, .vitality: break
                     case .physique: model.tab = .body
@@ -151,8 +151,9 @@ struct ProgressTab: View {
 struct StrengthCard: View {
     @Environment(AppModel.self) private var model
     let analysis: LiftAnalysis
-    /// Rising, steady: the chip beside the level.
-    var trend: TrendWord?
+    /// Strength as Your shape has it: how far it moved this month is the chip beside the level, or
+    /// its trend before there's a month to measure.
+    var line: StatLine?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -168,7 +169,11 @@ struct StrengthCard: View {
                             .accessibilityElement(children: .combine)
                         }
                         Spacer(minLength: 8)
-                        if let trend { TrendChip(trend: trend).padding(.bottom, 6) }
+                        if let change = line?.change {
+                            ScoreChangeChip(change: change).padding(.bottom, 6)
+                        } else if let trend = line.flatMap({ TrendWord($0.trend) }) {
+                            TrendChip(trend: trend).padding(.bottom, 6)
+                        }
                     }
                     LevelRuler(score: overall)
                     if let next = nextLevel(overall) {
@@ -255,10 +260,14 @@ struct StrengthCard: View {
     }
 }
 
-/// The six scores as one figure, and each in a row: its number, the app that measures it, a line on
-/// what moves it, and its trend. A score Stadig Macro measures waits for it, said plainly.
+/// The six scores as one figure, with where they stood a few months ago dashed behind it, and each in
+/// a row: its number, the app that measures it, a line on what moves it, and how far it moved this
+/// month (its trend, before there's a month to measure). A score Stadig Macro measures waits for it,
+/// said plainly.
 struct YourShape: View {
     let lines: [StatLine]
+    /// The scores as they stood a few months ago, dashed behind (`AppModel.earlierShape`).
+    var earlier: EarlierShape?
     let analysis: LiftAnalysis
     let open: (StatKind) -> Void
 
@@ -268,7 +277,7 @@ struct YourShape: View {
     var sideBySide = false
 
     var body: some View {
-        let axes = ScoreShape.axes(lines)
+        let axes = ScoreShape.axes(lines, earlier: earlier)
         let waiting = axes.contains { $0.score == nil && $0.stat == .vitality } && !macroSetUp
         VStack(alignment: .leading, spacing: 10) {
             Text(
@@ -298,6 +307,7 @@ struct YourShape: View {
                 .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .frame(maxWidth: sideBySide ? 380 : 320)
                 .frame(maxWidth: .infinity)
+            if let earlier { ShapeLegend(earlier: earlier) }
             if waiting {
                 HStack(spacing: 6) {
                     Path { path in
@@ -357,7 +367,7 @@ struct YourShape: View {
         .hoverHighlight()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(stat.label)
-        .accessibilityValue("\(line?.score.map(String.init) ?? "Not measured yet"). \(caption(stat, line: line))")
+        .accessibilityValue("\(line.map(ScoresCard.spoken) ?? "Not measured yet"). \(caption(stat, line: line))")
         .accessibilityIdentifier("progress.score\(stat.rawValue.identifierSuffix)")
     }
 
@@ -375,7 +385,9 @@ struct YourShape: View {
                 Text(caption(stat, line: line)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
             }
             Spacer(minLength: 4)
-            if let line, score != nil, let trend = TrendWord(line.trend) {
+            if let change = line?.change {
+                ScoreChangeLabel(change: change)
+            } else if let line, score != nil, let trend = TrendWord(line.trend) {
                 Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
             }
         }
@@ -844,7 +856,9 @@ struct OtherScores: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text(stat.label).font(.caption).foregroundStyle(Ink.text3).lineLimit(1).minimumScaleFactor(0.8)
                         Spacer(minLength: 2)
-                        if let line, line.score != nil, let trend = TrendWord(line.trend) {
+                        if let change = line?.change {
+                            ScoreChangeLabel(change: change)
+                        } else if let line, line.score != nil, let trend = TrendWord(line.trend) {
                             Text(trend.text).font(.caption).foregroundStyle(trend.color).lineLimit(1)
                         }
                     }
@@ -854,7 +868,7 @@ struct OtherScores: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(stat.label)
-                .accessibilityValue(line?.score.map { "\($0)" } ?? "Not measured yet")
+                .accessibilityValue(line.map(ScoresCard.spoken) ?? "Not measured yet")
             }
         }
         .padding(.horizontal, 16)
@@ -880,7 +894,7 @@ struct YourShapePage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 if !sizeClass.isWide { DetailHeader(eyebrow: "Progress", title: "Your shape") }
-                YourShape(lines: model.stats, analysis: model.analysis ?? analysis) { stat in
+                YourShape(lines: model.stats, earlier: model.earlierShape, analysis: model.analysis ?? analysis) { stat in
                     switch stat {
                     case .strength: dismiss()
                     case .physique: model.tab = .body

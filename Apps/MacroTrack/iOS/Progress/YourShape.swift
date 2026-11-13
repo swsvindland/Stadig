@@ -9,10 +9,13 @@ import SystemStore
 final class ShapeScores {
     private(set) var lines: [StatLine] = []
     private(set) var bothApps = false
+    /// The scores as they stood a few months ago, dashed behind the figure.
+    private(set) var earlier: EarlierShape?
 
     func read(_ model: AppModel) {
         lines = StatsBoard.lines(shared: model.shared, today: model.today)
         bothApps = StatsBoard.bothApps(shared: model.shared, today: model.today)
+        earlier = StatsBoard.earlier(lines, today: model.today)
     }
 
     /// Measured scores first, each group in the board's order; the figure keeps its fixed corners.
@@ -34,12 +37,13 @@ private struct ShapeBody: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(scores.summary).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 4)
-            ScoreShape(axes: ScoreShape.axes(scores.lines))
+            ScoreShape(axes: ScoreShape.axes(scores.lines, earlier: scores.earlier))
                 // Its corner labels sit outside the figure at a fixed reach: past the largest
                 // standard size they run off the screen. The rows below say every score at any size.
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .frame(maxWidth: 360)
                 .frame(maxWidth: .infinity)
+            if let earlier = scores.earlier { ShapeLegend(earlier: earlier) }
             VStack(spacing: 0) {
                 ForEach(Array(scores.rows.enumerated()), id: \.element.id) { index, line in
                     if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
@@ -51,7 +55,8 @@ private struct ShapeBody: View {
     }
 }
 
-/// A score: its number, its name and which app measures it, what it says, and where it's heading.
+/// A score: its number, its name and which app measures it, what it says, and how far it moved this
+/// month (where it's heading, before there's a month to measure).
 private struct ShapeRow: View {
     let line: StatLine
     let bothApps: Bool
@@ -72,7 +77,9 @@ private struct ShapeRow: View {
                     .font(.caption).foregroundStyle(Ink.text3).lineLimit(2)
             }
             Spacer(minLength: 4)
-            if let trend = Self.trend(line.trend) {
+            if let change = line.change {
+                ScoreChangeLabel(change: change)
+            } else if let trend = Self.trend(line.trend) {
                 Text(trend.0).font(.caption.weight(.semibold)).foregroundStyle(trend.1)
             }
         }

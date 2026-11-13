@@ -149,4 +149,19 @@ struct ContractTests {
         #expect(try roundTrips(summary))
         #expect(AppSummary.schemaVersion == 1)
     }
+
+    /// Each app's score history, the file beside its summary: a reading a day for each stat.
+    @Test func scoreHistory() throws {
+        let json =
+            #"{"app":"liftTrack","stats":{"discipline":[{"day":"2026-03-01","score":84}],"strength":[{"day":"2026-02-28","score":60.2},{"day":"2026-03-02","score":61.5}]}}"#
+        let history = try decode(ScoreHistory.self, json)
+        #expect(history.app == .liftTrack)
+        #expect(
+            history.points(.strength) == [
+                ScorePoint(day: Day(year: 2026, month: 2, day: 28), score: 60.2), ScorePoint(day: Day(year: 2026, month: 3, day: 2), score: 61.5),
+            ])
+        #expect(history.points(.discipline) == [ScorePoint(day: Day(year: 2026, month: 3, day: 1), score: 84)])
+        #expect(String(decoding: try ContractJSON.encoder.encode(history), as: UTF8.self) == json)
+        #expect(ScoreHistory.schemaVersion == 1)
+    }
 }

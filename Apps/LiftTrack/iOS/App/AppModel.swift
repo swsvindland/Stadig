@@ -115,12 +115,20 @@ final class AppModel {
     private(set) var sharedProfile: SharedProfile?
     /// What Stadig Macro published, for the scores it measures.
     private(set) var macroSummary: AppSummary?
+    /// Stadig Macro's scores day by day, for how its scores have moved.
+    @ObservationIgnored private var macroScores: ScoreHistory?
+    /// This app's own scores day by day, from its store (`ScoreDayRecord`), as last published.
+    @ObservationIgnored private var publishedScores: ScoreHistory?
 
     // Derived.
     private(set) var analysis: LiftAnalysis?
     /// The six scores as Your shape shows them: this app's, fresh, with Stadig Macro's once it's set
     /// up too (`StatsBoard`), so both apps give the same numbers.
     private(set) var stats: [StatLine] = []
+    /// Your shape as it stood when the look-back began (`StatsBoard.earlier`), for its dashed outline.
+    private(set) var earlierShape: EarlierShape?
+    /// How far Physique has moved over the look-back ("+3 since August"), for Body.
+    private(set) var physiqueChange: ScoreChange?
 
     // Live session and presentation.
     var live: LiveSession? {
@@ -309,10 +317,13 @@ final class AppModel {
         let sharedProfile = shared.read(.profile)
         let lifeModes = syncLifeModes()
         let macroSummary = shared.read(.summary(.macroTrack))
+        let macroScores = shared.read(.scores(.macroTrack))
         let changed =
             nutrition != self.nutrition || sharedProfile != self.sharedProfile || lifeModes != self.lifeModes || macroSummary != self.macroSummary
+            || macroScores != self.macroScores
         guard changed else { return }
         self.macroSummary = macroSummary
+        self.macroScores = macroScores
         self.nutrition = nutrition
         self.sharedProfile = sharedProfile
         self.lifeModes = lifeModes
@@ -379,8 +390,13 @@ final class AppModel {
         // Without their stamps: compared with what was last published here, then with the files on
         // disk (after a relaunch), so readers are woken and "updated" moves only when something did.
         var summary = Analyst.summary(state, analysis)
-        let lines = StatsBoard.lines(lift: summary, macro: macroSummary, today: today)
-        if lines != stats { stats = lines }
+        let scores = recordScores(summary.stats)
+        let lines = StatsBoard.lines(lift: summary, macro: macroSummary, histories: [scores] + [macroScores].compactMap(\.self), today: today)
+        if lines != stats {
+            stats = lines
+            earlierShape = StatsBoard.earlier(lines, today: today)
+            physiqueChange = lines.first { $0.stat == .physique }?.change(over: StatsBoard.lookBack(today: today), today: today)
+        }
         var calendar = analysis.calendar
         summary.updated = .distantPast
         calendar.updated = .distantPast
@@ -400,6 +416,23 @@ final class AppModel {
         #if os(iOS)
         WatchLink.shared.publish(self)
         #endif
+    }
+
+    /// Today's scores into the store, a record a day that reaches the person's other devices, and
+    /// the history they make into the shared container for Stadig Macro and the other devices' copy
+    /// of it, written only when it changes. Another device's copy of the file, arriving, isn't
+    /// answered: each device writes what its own store has, which iCloud brings to the same days.
+    private func recordScores(_ readings: [StatReading]) -> ScoreHistory {
+        let history = store.recordScores(readings, app: .liftTrack, on: today, now: Date())
+        guard !history.isEmpty, history != publishedScores else { return history }
+        do {
+            if shared.read(.scores(.liftTrack)) != history { try shared.write(history, to: .scores(.liftTrack), by: .liftTrack) }
+        } catch {
+            appLog.error("Couldn't publish the scores: \(error.localizedDescription)")
+        }
+        // Not tried again until it changes, if that failed: a newer app's file stays as it is.
+        publishedScores = history
+        return history
     }
 
     // MARK: Links

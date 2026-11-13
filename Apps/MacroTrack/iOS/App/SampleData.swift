@@ -105,12 +105,33 @@ enum SampleData {
             model.store.save(SavedMeal(name: name, from: moment.entries.filter { $0.foodID.map(ids.contains) ?? false }, updatedAt: moment.end))
         }
         model.reload()
+        // The scores day by day since they began, arriving at today's.
+        model.store.save(scores(arrivingAt: StatsBoard.lines(shared: model.shared, today: model.today), since: start, today: model.today))
+        model.recompute()
         if LaunchOptions.current.has("-seedPlan"), let plan = model.recommendation {
             model.start(plan)
         }
         // A week of meals being eaten from, started yesterday: Today shows its meals.
         if LaunchOptions.current.has("-seedMealPlan") {
             model.makeMealPlan(preferences: PlanPreferences(slots: Set(MealSlot.allCases)), start: .today.adding(days: -1))
+        }
+    }
+
+    /// The scores each day from `start` to yesterday, as the person's store would have recorded them,
+    /// arriving at today's: Discipline up as the targets settled, Vitality down a point with the odd
+    /// day missed. The same path every launch.
+    static func scores(arrivingAt lines: [StatLine], since start: Day, today: Day) -> [ScoreDayRecord] {
+        let rise: [StatKind: Double] = [.discipline: 2.6, .vitality: -1.3]
+        let now = lines.compactMap { line in line.sources.first { $0.app == .macroTrack }?.exact.map { (stat: line.stat, score: $0) } }
+        let span = Double(max(1, start.days(until: today)))
+        return stride(from: start.days(until: today), to: 0, by: -1).map { back in
+            let day = today.adding(days: -back)
+            var scores: [StatKind: Double] = [:]
+            for (stat, score) in now {
+                let wobble = 0.2 * sin(Double(day.ordinal + 7 * stat.rawValue.count))
+                scores[stat] = ((score - (rise[stat] ?? 0) * Double(back) / span + wobble) * 10).rounded() / 10
+            }
+            return ScoreDayRecord(day: day, scores: scores, updatedAt: day.at(hour: 21, minute: 0))
         }
     }
 
