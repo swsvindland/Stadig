@@ -13,7 +13,9 @@ import SystemCore
 enum LiveScanDemo {
     static var enabled: Bool { LaunchOptions.current.has("-liveScanDemo") }
     /// A valid UPC-A that neither catalog has.
-    static let barcode = "098765432105"
+    /// A code the catalogs don't know, so the label is read; `-liveScanBarcode 898248001411` (siggi's
+    /// skyr) is one they do, for the found food's card.
+    static var barcode: String { LaunchOptions.current.value(after: "-liveScanBarcode") ?? "098765432105" }
 
     @MainActor
     static func run(_ scan: LiveScan) async {

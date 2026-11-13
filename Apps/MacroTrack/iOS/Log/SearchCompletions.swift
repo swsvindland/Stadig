@@ -34,10 +34,19 @@ struct SearchCompletionChips: View {
                         Button {
                             pick(option)
                         } label: {
-                            Text(option).font(.subheadline).lineLimit(1)
+                            // The composer's chips: the card colour with a hairline.
+                            Text(option)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Ink.text)
+                                .lineLimit(1)
+                                .padding(.horizontal, 12)
+                                .frame(height: 34)
+                                .background(Color.cardBackground, in: .capsule)
+                                .overlay(Capsule().stroke(Ink.hairline))
+                                .contentShape(.capsule)
                         }
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
+                        .buttonStyle(.plain)
+                        .hoverHighlight()
                         .accessibilityLabel("Search for \(option)")
                         .accessibilityIdentifier("search.completion")
                     }

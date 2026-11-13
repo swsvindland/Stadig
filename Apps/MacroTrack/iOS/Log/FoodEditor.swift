@@ -45,19 +45,23 @@ struct FoodEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Food") {
-                    FoodNameFields(name: $name, brand: $brand, identifier: "foodEditor")
-                }
                 Section {
-                    field("Calories", $kcal, "kcal", "foodEditor.kcal")
-                    field("Protein", $protein, "g", "foodEditor.protein")
-                    field("Carbs", $carbs, "g", "foodEditor.carbs")
-                    field("Fat", $fat, "g", "foodEditor.fat")
+                    FoodNameFields(name: $name, brand: $brand, identifier: "foodEditor")
                 } header: {
-                    Text("Per \(FoodUnits.entryLabel(for: food, count: count, unit: unit))")
+                    SectionEyebrow("Food")
+                }
+                .inkRows()
+                Section {
+                    NumberFieldRow(title: "Calories", text: $kcal, unit: "kcal", identifier: "foodEditor.kcal")
+                    NumberFieldRow(title: "Protein", text: $protein, unit: "g", identifier: "foodEditor.protein")
+                    NumberFieldRow(title: "Carbs", text: $carbs, unit: "g", identifier: "foodEditor.carbs")
+                    NumberFieldRow(title: "Fat", text: $fat, unit: "g", identifier: "foodEditor.fat")
+                } header: {
+                    SectionEyebrow("Per \(FoodUnits.entryLabel(for: food, count: count, unit: unit))")
                 } footer: {
                     Text(note)
                 }
+                .inkRows()
                 if model.isCorrected(food.id) {
                     Section {
                         Button("Use the numbers from \(Self.catalogName(food))", role: .destructive) {
@@ -68,9 +72,11 @@ struct FoodEditor: View {
                     } footer: {
                         Text("Goes back to the numbers the food database has. Foods already logged keep theirs.")
                     }
+                    .inkRows()
                 }
             }
-            .navigationTitle("Edit Food")
+            .inkForm()
+            .navigationTitle("Your numbers")
             .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -84,6 +90,7 @@ struct FoodEditor: View {
             }
             .onAppear(perform: fill)
         }
+        .loggerGround()
         .macSheetSize(width: 460, height: 560)
     }
 
@@ -101,20 +108,6 @@ struct FoodEditor: View {
         case .usda: "USDA"
         case .off: "Open Food Facts"
         case .custom, .recipe, .label: "the food database"
-        }
-    }
-
-    func field(_ title: String, _ text: Binding<String>, _ unit: String, _ identifier: String) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            TextField("0", text: text, prompt: Text("0"))
-                .labelsHidden()
-                .fieldKeyboard(.decimal)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 90)
-                .accessibilityIdentifier(identifier)
-            Text(unit).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
         }
     }
 
@@ -165,10 +158,36 @@ struct EditFoodButton: View {
 
     var body: some View {
         Button(action: action) {
-            HeaderIcon(symbol: "pencil")
+            CircleIcon(symbol: "pencil")
         }
         .accessibilityLabel("Edit this food's numbers")
         .accessibilityIdentifier("portion.editFood")
         .help("Edit this food's numbers")
+    }
+}
+
+/// A number typed in a form: its name on the left, the number large and tabular on the right with
+/// its unit smaller beside it, as the design sets a value.
+struct NumberFieldRow: View {
+    let title: String
+    @Binding var text: String
+    let unit: String
+    var identifier: String?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.body.weight(.medium)).foregroundStyle(Ink.text)
+            Spacer()
+            TextField("0", text: $text, prompt: Text("0").foregroundStyle(Ink.text3))
+                .labelsHidden()
+                .fieldKeyboard(.decimal)
+                .multilineTextAlignment(.trailing)
+                .font(.title3.weight(.bold).monospacedDigit())
+                .foregroundStyle(Ink.text)
+                .frame(width: 110)
+                .accessibilityIdentifier(identifier ?? "")
+            Text(unit).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2).frame(width: 34, alignment: .leading)
+        }
+        .frame(minHeight: 40)
     }
 }

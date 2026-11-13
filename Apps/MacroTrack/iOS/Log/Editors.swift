@@ -34,15 +34,13 @@ struct QuickAddView: View {
         }
         .inkRows()
         .inkForm()
-        .navigationTitle("Quick add")
+        .contentMargins(.top, 4, for: .scrollContent)
         .safeAreaInset(edge: .bottom) {
             HStack(spacing: 8) {
                 // A number pad has no key for the next field.
                 if let next {
                     Button("Next") { focus = next }
-                        .font(.headline)
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
+                        .secondaryAction().controlSize(.large)
                         .accessibilityIdentifier("quickAdd.next")
                 }
                 Button {
@@ -55,11 +53,11 @@ struct QuickAddView: View {
                 .accessibilityIdentifier("quickAdd.add")
                 .disabled(nutrients.kcal <= 0 && nutrients.protein <= 0)
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
             .padding(.vertical, 8)
             // Opaque: the rows scroll under it, and a translucent bar (or a disabled button over
             // them) showed the Fat row through "Add".
-            .background(Ink.ground.ignoresSafeArea(edges: .horizontal))
+            .background(Color.pageBackground.ignoresSafeArea(edges: .horizontal))
         }
         .onAppear { focus = .kcal }
     }
@@ -79,15 +77,23 @@ struct QuickAddView: View {
         return Nutrients(kcal: k, protein: p, carbs: c, fat: f)
     }
 
+    /// A number to type, its name on the left and the number large on the right, as the design
+    /// sets a value: tabular, with its unit smaller beside it.
     func row(_ title: String, _ text: Binding<String>, _ unit: String, _ field: Field) -> some View {
-        HStack {
-            Text(title)
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.body.weight(.medium)).foregroundStyle(Ink.text)
             Spacer()
-            TextField("0", text: text).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 100)
+            TextField("0", text: text, prompt: Text("0").foregroundStyle(Ink.text3))
+                .fieldKeyboard(.decimal)
+                .multilineTextAlignment(.trailing)
+                .font(.title3.weight(.bold).monospacedDigit())
+                .foregroundStyle(Ink.text)
+                .frame(width: 110)
                 .focused($focus, equals: field)
                 .accessibilityIdentifier("quickAdd.\(field)")
-            Text(unit).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
+            Text(unit).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2).frame(width: 34, alignment: .leading)
         }
+        .frame(minHeight: 40)
     }
 }
 

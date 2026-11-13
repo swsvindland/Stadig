@@ -4,9 +4,10 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Point at a barcode; the food opens with the usual portion ready to add. Codes the catalog
-/// doesn't know become a food from the label, read live as the camera moves over it (or from a
-/// photo), kept for next time.
+/// Point at a barcode; the food lands as a card under the camera with the usual portion on a ruler,
+/// logged with one tap while the camera keeps looking for the next (the card opens the full amount
+/// for units and the rest). Codes the catalog doesn't know become a food from the label, read live
+/// as the camera moves over it (or from a photo), kept for next time.
 struct BarcodeLogView: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
@@ -23,6 +24,10 @@ struct BarcodeLogView: View {
     @State private var supplement: Supplement?
     /// A fresh live scan each time one is returned to.
     @State private var scanID = UUID()
+    /// A food a barcode found, with the amount on its card's ruler.
+    @State private var found: FoundFood?
+    /// What the last food logged from a card left, while the camera looks for the next.
+    @State private var logged: String?
 
     var body: some View {
         Group {
@@ -41,30 +46,26 @@ struct BarcodeLogView: View {
                 notFound(missing)
             } else if covered {
                 Color.clear
-            } else if LiveLabelScanner.isAvailable && scanning {
-                LiveLabelScanner(kind: .food, lookup: lookup) { outcome in finish(outcome) }
-                    .id(scanID)
-                    // In the bar, as the supplement scanner has it: over the camera it sat on the
-                    // start of the scanner's instructions. The light is at the bar's other end.
-                    .toolbar {
-                        ToolbarItem(placement: .barLeading) {
-                            Menu {
-                                Button("Type the barcode", systemImage: "keyboard") { scanning = false }
-                                Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
-                                Button("Search by name", systemImage: "magnifyingglass") { session.backToSearch() }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                            }
-                            .accessibilityLabel("Other ways")
-                        }
-                    }
+            } else if LiveScan.isAvailable && scanning {
+                LiveLabelScanner(
+                    kind: .food, lookup: lookup, finish: finish,
+                    menu: {
+                        // Over the camera's corner, the light at the other.
+                        Button("Type the barcode", systemImage: "keyboard") { scanning = false }
+                        Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
+                        Button("Search by name", systemImage: "magnifyingglass") { session.backToSearch() }
+                    },
+                    foot: { reading in foot(reading: reading) }
+                )
+                .id(scanID)
             } else {
                 manualEntry
             }
         }
-        .navigationTitle(LiveLabelScanner.isAvailable ? "Scan" : "Barcode")
         // Back from the portion: scan the next thing.
         .onChange(of: session.portion) { _, now in if now == nil { scanID = UUID() } }
+        .animation(.snappy, value: found?.food.id)
+        .animation(.snappy, value: logged)
         // Wherever the read was started from (the scanner's menu has no message of its own).
         .alert("Couldn't read the label", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK") { error = nil }
@@ -81,24 +82,93 @@ struct BarcodeLogView: View {
             Section {
                 TextField("Barcode number", text: $manual)
                     .fieldKeyboard(.number)
-                    .font(.title3.monospacedDigit())
+                    .font(.title3.weight(.semibold).monospacedDigit())
                     .onSubmit { handle(manual) }
                     .accessibilityIdentifier("barcode.number")
                 Button("Look up") { handle(manual) }.disabled(manual.count < 6)
                     .accessibilityIdentifier("barcode.lookUp")
             } footer: {
-                if !LiveLabelScanner.isAvailable { Text(ScanWords.typeTheBarcode) }
+                if !LiveScan.isAvailable { Text(ScanWords.typeTheBarcode) }
             }
+            .inkRows()
             // Without the live scanner, a label photo is the other way in: a food with no barcode, or one
             // the catalogs don't know.
-            if !LiveLabelScanner.isAvailable {
+            if !LiveScan.isAvailable {
                 Section {
                     labelPhotoChoices
                 } footer: {
                     Text("Its numbers are read for you to check, and it's kept as your own food.")
                 }
+                .inkRows()
             }
         }
+        .inkForm()
+    }
+
+    // MARK: Under the camera
+
+    /// The found food's card, or what the last one left, then the shutter for a plate. While the
+    /// label's card is up the shutter steps aside: a label's being read, not a plate.
+    @ViewBuilder
+    func foot(reading: Bool) -> some View {
+        if let found {
+            FoundFoodCard(
+                found: Binding(get: { self.found ?? found }, set: { self.found = $0 }),
+                open: { session.portion = .add(found.food, source: .barcode) },
+                log: { log(found) },
+                scanAgain: {
+                    self.found = nil
+                    scanID = UUID()
+                }
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        } else if let logged, !reading {
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark").font(.body.weight(.bold)).foregroundStyle(Ink.good)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(logged).font(.headline).foregroundStyle(Ink.text)
+                    Text("Still scanning. Point at the next one.").font(.caption).foregroundStyle(Ink.text3)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .background(Color.cardBackground, in: .rect(cornerRadius: 26, style: .continuous))
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("scan.logged")
+            .transition(.opacity)
+        }
+        if found == nil, !reading { shutter }
+    }
+
+    /// A photo of the plate, where the device's model can read one; else what to point at.
+    var shutter: some View {
+        VStack(spacing: 8) {
+            if model.ai.canSeePhotos {
+                Button {
+                    session.mode = .camera
+                } label: {
+                    Circle().fill(Ink.text).frame(width: 64, height: 64)
+                        .padding(4)
+                        .overlay(Circle().stroke(Ink.text, lineWidth: 2))
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .hoverHighlight()
+                .accessibilityLabel("Snap your plate")
+                .accessibilityIdentifier("scan.plate")
+            }
+            Text(model.ai.canSeePhotos ? "Point at a barcode or label, or snap your plate" : "Point at a barcode or the Nutrition Facts")
+                .font(.caption).foregroundStyle(Ink.text3)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    func log(_ found: FoundFood) {
+        guard model.log([model.entry(for: found.food, count: found.count, unit: found.unit, source: .barcode)]) else { return }
+        let left = model.analysis?.targets.kcal.map { $0 - model.dayIntake(on: model.selectedDay).eaten.kcal }
+        logged = left.map { $0 >= 0 ? "Logged. \(Format.whole($0)) kcal left" : "Logged. \(Format.whole(-$0)) kcal over" } ?? "Logged"
+        self.found = nil
+        scanID = UUID()
     }
 
     /// A photo of the nutrition label, from Photos or a file, read the way a camera's is.
@@ -125,7 +195,7 @@ struct BarcodeLogView: View {
                 labelPhotoChoices
             }
             Button("Search by name") { session.backToSearch() }
-            Button(LiveLabelScanner.isAvailable ? "Scan again" : "Type another barcode") {
+            Button(LiveScan.isAvailable ? "Scan again" : "Type another barcode") {
                 missing = nil
                 error = nil
                 scanning = true
@@ -157,7 +227,16 @@ struct BarcodeLogView: View {
     func finish(_ outcome: LiveScanOutcome) {
         switch outcome {
         case .food(let food):
-            session.portion = .add(food, source: .barcode)
+            // The same package again, while its card's up: the amount on the ruler stays.
+            guard found?.food.id != food.id else { return }
+            let draft = model.draft(for: .add(food, source: .barcode))
+            // Typed rather than scanned there's no camera to put a card under: the amount opens.
+            guard LiveScan.isAvailable, scanning, let unit = draft.amount.unit, let count = draft.amount.count else {
+                session.portion = .add(food, source: .barcode)
+                return
+            }
+            logged = nil
+            found = FoundFood(food: food, count: count, unit: unit)
         case .supplement(let found):
             supplement = found
         case .label(let result, let barcode):
@@ -218,21 +297,25 @@ struct LabelReviewView: View {
 
     var body: some View {
         Form {
-            Section("Food") {
-                FoodNameFields(name: $name, brand: $brand, identifier: "labelFood")
-            }
             Section {
-                field("Calories", $kcal, "kcal")
-                field("Protein", $protein, "g")
-                field("Carbs", $carbs, "g")
-                field("Fat", $fat, "g")
+                FoodNameFields(name: $name, brand: $brand, identifier: "labelFood")
             } header: {
-                Text(servingTitle)
+                SectionEyebrow("Food from its label")
+            }
+            .inkRows()
+            Section {
+                NumberFieldRow(title: "Calories", text: $kcal, unit: "kcal")
+                NumberFieldRow(title: "Protein", text: $protein, unit: "g")
+                NumberFieldRow(title: "Carbs", text: $carbs, unit: "g")
+                NumberFieldRow(title: "Fat", text: $fat, unit: "g")
+            } header: {
+                SectionEyebrow(servingTitle)
             } footer: {
                 Text(checkNote)
             }
+            .inkRows()
         }
-        .navigationTitle("Label")
+        .inkForm()
         .safeAreaInset(edge: .bottom) {
             Button {
                 save()
@@ -281,15 +364,6 @@ struct LabelReviewView: View {
         if let g = reading.servingGrams { return "Per \(Format.number(g)) g" }
         if let ml = reading.servingMilliliters { return "Per \(Format.number(ml)) ml" }
         return "Per serving"
-    }
-
-    func field(_ title: String, _ text: Binding<String>, _ unit: String) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            TextField("0", text: text, prompt: Text("0")).labelsHidden().fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
-            Text(unit).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
-        }
     }
 
     func save() {
@@ -345,9 +419,89 @@ struct SupplementFoundView: View {
             }
             Button("Scan again", action: scanAgain)
         }
-        .navigationTitle("Supplement")
         .sheet(isPresented: $adding) {
             NavigationStack { SupplementEditor(supplement: supplement, isNew: !own) }.macSheetSize(width: 520, height: 640)
         }
+    }
+}
+
+/// A food a barcode found, at the amount its card's ruler is on.
+struct FoundFood: Equatable {
+    var food: Food
+    var count: Double
+    var unit: PortionUnit
+    /// The usual amount, the ruler's scale.
+    var usual: Double
+
+    init(food: Food, count: Double, unit: PortionUnit) {
+        self.food = food
+        self.count = count
+        self.unit = unit
+        usual = count
+    }
+}
+
+/// The design's found product, under the camera: the food with its calories and protein for the
+/// amount, a ruler to drag the amount, and Log. The food's row opens the full amount (units, the
+/// keypad, its numbers); the arrow scans on without it.
+struct FoundFoodCard: View {
+    @Environment(AppModel.self) private var model
+    @Binding var found: FoundFood
+    let open: () -> Void
+    let log: () -> Void
+    let scanAgain: () -> Void
+
+    var body: some View {
+        let n = FoodUnits.nutrients(found.food, count: found.count, unit: found.unit)
+        let step = FoodUnits.step(for: found.unit)
+        let amount = FoodUnits.label(count: found.count, unit: found.unit)
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: open) {
+                HStack(spacing: 12) {
+                    FoodTile(name: found.food.name, size: 40, fill: Ink.raised)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(found.food.name).font(.headline).foregroundStyle(Ink.text).lineLimit(1)
+                        Text(caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(Format.whole(n.kcal)).numeral(20).foregroundStyle(Ink.text).contentTransition(.numericText())
+                        Text("\(Format.whole(n.protein)) P").font(.caption.weight(.medium).monospacedDigit()).foregroundStyle(Ink.protein)
+                    }
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens its amount, units and nutrients")
+            .accessibilityIdentifier("scan.found")
+            AmountRuler(
+                value: found.count, most: max(found.usual * 2.5, step * 10), step: step, label: amount
+            ) { found.count = $0 }
+            HStack(spacing: 8) {
+                Button(action: scanAgain) {
+                    Image(systemName: "arrow.counterclockwise").frame(width: 24)
+                }
+                .buttonStyle(.ghost)
+                .controlSize(.large)
+                .accessibilityLabel("Scan something else")
+                .accessibilityIdentifier("scan.again")
+                Button(action: log) {
+                    Text("Log \(amount)\(LogTime.label(model) == "Now" ? "" : " at \(LogTime.time(model))")").lineLimit(1).frame(maxWidth: .infinity)
+                }
+                .primaryAction().controlSize(.large)
+                .accessibilityIdentifier("scan.log")
+            }
+        }
+        .padding(14)
+        .background(Color.cardBackground, in: .rect(cornerRadius: 26, style: .continuous))
+        .sensoryFeedback(.selection, trigger: found.count)
+    }
+
+    /// "Arla · 1 container (150 g) · logged before".
+    var caption: String {
+        let brand = found.food.brand.flatMap { $0.lowercased() == found.food.name.lowercased() ? nil : $0 }
+        let before = model.personalFood(found.food.id) != nil ? "logged before" : nil
+        return [brand, FoodUnits.label(count: FoodUnits.convert(found.usual, from: found.unit, to: found.unit), unit: found.unit), before]
+            .compactMap { $0 }.joined(separator: " · ")
     }
 }

@@ -26,7 +26,7 @@ struct MacroCommands: Commands {
                     .keyboardShortcut("d", modifiers: [.command, .shift])
                 Button("Log a Photo…") { log(Camera.isAvailable ? .camera : .photoLibrary) }
                     .keyboardShortcut("p", modifiers: [.command, .shift])
-                Button(LiveLabelScanner.isAvailable ? "Scan a Barcode…" : "Type a Barcode…") { log(.scan) }
+                Button(LiveScan.isAvailable ? "Scan a Barcode…" : "Type a Barcode…") { log(.scan) }
                     .keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Quick Add…") { log(.quickAdd) }
                     .keyboardShortcut("k", modifiers: [.command, .shift])

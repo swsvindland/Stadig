@@ -115,7 +115,7 @@ struct SupplementsTab: View {
 
     @ViewBuilder
     var addButtons: some View {
-        Button(LiveLabelScanner.isAvailable ? "Scan the Bottle" : "Type the Barcode", systemImage: "barcode.viewfinder") { add(.scan) }
+        Button(LiveScan.isAvailable ? "Scan the Bottle" : "Type the Barcode", systemImage: "barcode.viewfinder") { add(.scan) }
             .accessibilityIdentifier("supplements.menu.scan")
         Button("Search by Name", systemImage: "magnifyingglass") { add(.search) }
             .accessibilityIdentifier("supplements.menu.search")

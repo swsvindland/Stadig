@@ -28,27 +28,55 @@ struct MealTray: View {
         return Button {
             showing = true
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "fork.knife").font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+            HStack(spacing: 12) {
+                MealTile(size: 40)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.subheadline.weight(.semibold)).lineLimit(1)
-                    Text(names).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(1)
+                    Text(names).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
                 }
                 Spacer(minLength: 4)
-                Text(Format.kcal(moment.nutrients.kcal)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
-                Image(systemName: "chevron.up").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                Text(Format.kcal(moment.nutrients.kcal)).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
+                Image(systemName: "chevron.up").font(.caption.weight(.bold)).foregroundStyle(Ink.text3)
             }
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .contentShape(.rect)
+            .padding(.leading, 9)
+            .padding(.trailing, 14)
+            .frame(minHeight: 58)
+            // A tile of Today's (`.tile`): the card colour, opaque over the list it sits above.
+            .background(Color.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
+            .contentShape(.rect(cornerRadius: 18))
         }
         .buttonStyle(.plain)
-        // Two lines of text over a scrolling list: clear glass alone let the rows read through.
-        .background(Color.cardBackground.opacity(0.75), in: .rect(cornerRadius: 22))
-        .floatingGlass(in: .rect(cornerRadius: 22))
+        .hoverHighlight()
         .accessibilityLabel("\(title): \(moment.entries.map(\.name).joined(separator: ", ")), \(Format.kcal(moment.nutrients.kcal))")
         .accessibilityHint("Shows the foods, to change them or save them as a meal")
         .accessibilityIdentifier("logger.meal")
+    }
+}
+
+/// A food of a meal as Today's thread sets it, on a card: its marker on the raised grey, its name
+/// and amount, and its calories over the macro it's most of.
+struct MealEntryRow: View {
+    let entry: FoodEntry
+
+    var body: some View {
+        let lead = ThreadRow.lead(entry.nutrients)
+        HStack(spacing: 12) {
+            FoodTile(name: entry.name, size: 40, fill: Ink.raised)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(FoodLabel.short(entry.name)).font(.body.weight(.medium)).foregroundStyle(Ink.text).lineLimit(1)
+                Text(ThreadRow.caption(entry, estimate: false)).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))").font(.body.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Ink.text)
+                if let lead {
+                    Text("\(Format.whole(lead.grams)) \(lead.letter)").font(.caption.weight(.medium).monospacedDigit()).foregroundStyle(lead.color)
+                }
+            }
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -68,12 +96,13 @@ struct MealSheet: View {
                     Section {
                         NutrientSummary(nutrients: moment.nutrients)
                     }
+                    .inkRows()
                     Section {
                         ForEach(moment.entries) { entry in
                             Button {
                                 editing = entry
                             } label: {
-                                EntryRow(entry: entry)
+                                MealEntryRow(entry: entry)
                             }
                             .buttonStyle(.plain)
                             .hoverHighlight()
@@ -85,6 +114,7 @@ struct MealSheet: View {
                                 Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
                             }
                         }
+                        .inkRows()
                     } footer: {
                         Text("Tap a food to change its amount; swipe to take it out.")
                     }
@@ -113,6 +143,7 @@ struct MealSheet: View {
         // list, clear of the bar at the foot: a toast that's just come here would sit on Save as Meal.
         .toastOverlay(bottomPadding: 92, showing: editing == nil)
         .presentationDetents([.medium, .large])
+        .loggerGround()
         .macSheetSize(width: 440, height: 560)
     }
 
@@ -136,7 +167,7 @@ struct SaveMealBar: View {
             switch model.saveState(of: entries) {
             case .new where entries.count < 2:
                 Text("Add another food to save these as a meal.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Ink.text2)
                     .frame(maxWidth: .infinity).padding(.vertical, 10)
             case .new:
                 Button {
@@ -165,7 +196,7 @@ struct SaveMealBar: View {
                 }
             case .saved(let meal):
                 Label("Saved as \(meal.name)", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    .font(.subheadline.weight(.medium)).foregroundStyle(Ink.text2)
                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("mealSheet.saved")
@@ -211,28 +242,12 @@ struct SavedMealRow: View {
     let open: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: open) {
-                HStack(spacing: 10) {
-                    MealTile()
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(meal.name).lineLimit(1)
-                        Text(Self.detail(meal)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            .accessibilityIdentifier("logger.savedMeal")
-            Button(action: add) {
-                Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
-            }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            .accessibilityLabel("Log \(meal.name), \(meal.foods.count) foods, \(Format.kcal(meal.nutrients.kcal))")
-            .accessibilityIdentifier("logger.logMeal")
+        LoggerRow(
+            title: meal.name, caption: Self.detail(meal),
+            addLabel: "Log \(meal.name), \(meal.foods.count) foods, \(Format.kcal(meal.nutrients.kcal))", openIdentifier: "logger.savedMeal",
+            addIdentifier: "logger.logMeal", add: add, open: open
+        ) {
+            MealTile(size: 40)
         }
     }
 
@@ -265,12 +280,15 @@ struct SavedMealView: View {
     @State private var renaming = false
     @State private var name = ""
     @State private var deleting = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// Beside the foods (the Foods inspector) rather than pushed in a phone's logger.
+    var wide: Bool { sizeClass != .compact }
 
     var body: some View {
         if let meal = model.savedMeal(mealID) {
             form(meal)
-                .navigationTitle(meal.name)
-                .inlineTitle()
+                .detailPage(title: meal.name, wide: wide)
                 .navigationDestination(item: $editing) { food in
                     EntryEditor(
                         entry: food, close: { editing = nil },
@@ -302,22 +320,33 @@ struct SavedMealView: View {
         let kept = meal.foods.filter { !skipping.contains($0.id) }
         let total = Nutrients.sum(kept.map(\.nutrients))
         return Form {
+            if !wide {
+                DetailHeader(eyebrow: "Saved meal", title: meal.name)
+                    .padding(.top, 6)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
+            }
             Section {
                 NutrientSummary(nutrients: total)
             }
+            .inkRows()
             Section {
                 ForEach(meal.foods) { food in
                     row(meal, food)
                 }
+                .inkRows()
             } header: {
-                Text("Foods")
+                SectionEyebrow("Foods")
             } footer: {
                 Text("Untick a food to leave it out this time. Tap one to change its amount for good.")
             }
             if let eaten {
-                Section("Eaten") {
+                Section {
                     EatenPicker(eaten: eaten)
+                } header: {
+                    SectionEyebrow("Eaten")
                 }
+                .inkRows()
             }
             Section {
                 Button("Rename…", systemImage: "pencil") {
@@ -328,8 +357,11 @@ struct SavedMealView: View {
                 Button("Delete Meal", systemImage: "trash", role: .destructive) { deleting = true }
                     .accessibilityIdentifier("savedMeal.delete")
             }
+            .inkRows()
         }
         .formStyle(.grouped)
+        .inkForm()
+        .contentMargins(.top, wide ? nil : 0, for: .scrollContent)
         .safeAreaInset(edge: .bottom) {
             Button {
                 model.log(meal, skipping: skipping, at: eaten.map { $0.wrappedValue.date(model) })
@@ -342,6 +374,10 @@ struct SavedMealView: View {
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(kept.isEmpty)
             .padding()
+            // Opaque on a phone's ink, so the rows scrolling under it don't show through.
+            .background {
+                if !wide { Ink.ground.ignoresSafeArea(edges: .bottom) }
+            }
             .accessibilityIdentifier("savedMeal.log")
         }
     }
@@ -354,7 +390,7 @@ struct SavedMealView: View {
             } label: {
                 Image(systemName: included ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundStyle(included ? Color.accentColor : .secondary)
+                    .foregroundStyle(included ? Color.accentColor : Ink.text3)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(included ? "Leave out \(food.name)" : "Include \(food.name)")
@@ -362,7 +398,7 @@ struct SavedMealView: View {
             Button {
                 editing = food
             } label: {
-                EntryRow(entry: food, isLogged: false).opacity(included ? 1 : 0.45)
+                MealEntryRow(entry: food).opacity(included ? 1 : 0.45)
             }
             .buttonStyle(.plain)
             .hoverHighlight()

@@ -3,8 +3,10 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// The logger as a sheet: it holds the navigation and the search field around `LoggerContent`, and
-/// Done closes it. Logging keeps it open (with Undo) so a meal of several foods is a few taps.
+/// The logger as a sheet: it holds the navigation around `LoggerContent`, and Done closes it.
+/// Logging keeps it open (with Undo) so a meal of several foods is a few taps. It's the composer's
+/// screen opened bigger: the ink ground, its own header in place of a navigation bar, and the same
+/// rows and cards as Today.
 struct LoggerSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -20,32 +22,19 @@ struct LoggerSheet: View {
     var body: some View {
         @Bindable var session = session
         NavigationStack {
-            Group {
-                if session.mode == .search {
-                    content
-                        .searchable(text: $session.query, placement: .alwaysShown, prompt: "Search foods")
-                        // The search is active whenever the logger is (the keyboard stays up for the
-                        // next food), and by default an active search hides the bar with the title.
-                        .searchPresentationToolbarBehavior(.avoidHidingContent)
-                        .searchFocused($searchFocused)
-                        .autocorrectionDisabled()
-                        .noAutocapitalization()
-                        .onAppear { if session.portion == nil { searchFocused = true } }
-                } else {
-                    content
+            LoggerContent(session: session, covered: session.portion != nil, searchFocused: $searchFocused, done: { dismiss() })
+                .hidesNavigationBar()
+                .navigationDestination(item: $session.openMeal) { id in
+                    SavedMealView(mealID: id) {
+                        session.openMeal = nil
+                        session.query = ""
+                    }
                 }
-            }
-            .inlineTitle()
-            .navigationDestination(item: $session.openMeal) { id in
-                SavedMealView(mealID: id) {
-                    session.openMeal = nil
-                    session.query = ""
+                .sheet(item: $session.portion, onDismiss: { session.focusSearch() }) { request in
+                    LoggerAmount(session: session, request: request)
                 }
-            }
-            .sheet(item: $session.portion, onDismiss: { session.focusSearch() }) { request in
-                LoggerAmount(session: session, request: request)
-            }
         }
+        .loggerGround()
         .onAppear {
             model.ai.prewarm()
             // Words typed on Today that matched nothing: searched here (a description takes its own).
@@ -53,6 +42,7 @@ struct LoggerSheet: View {
             #if DEBUG
             SampleData.seedReview(session, model)
             #endif
+            if session.mode == .search, session.portion == nil { searchFocused = true }
         }
         // Done, or a swipe down: nobody's left to read for.
         .onDisappear { session.stopRead() }
@@ -64,8 +54,18 @@ struct LoggerSheet: View {
         .onChange(of: model.loggerRequest) { _, request in if request.mode == start { session.go(to: start) } }
         .onChange(of: model.foodsChanged) { _, _ in session.refreshFoods(model) }
     }
+}
 
-    var content: some View { LoggerContent(session: session, covered: session.portion != nil, done: { dismiss() }) }
+extension View {
+    /// The logger's sheet on the ink ground, as the screens it opens from are, rather than the
+    /// system's lighter grey. Vision Pro keeps its glass.
+    func loggerGround() -> some View {
+        #if os(visionOS)
+        return self
+        #else
+        return presentationBackground(Ink.ground)
+        #endif
+    }
 }
 
 /// The amount panel, as the logger opens it: an added food goes back to the search for the next
@@ -100,7 +100,7 @@ struct LoggerAmount: View {
 
 /// The logger as a pane beside the Log tab, where there's room: not over the day, so each food added
 /// lands in sight, and an hour's + aims it at that hour. The amount takes its place, and goes back
-/// to it. It has its own search field, since a pane isn't where a window's search field goes.
+/// to it.
 struct LoggerPane: View {
     @Environment(AppModel.self) private var model
     /// A food's being changed over it. It stays alive under there, out of sight and out of reach.
@@ -120,13 +120,11 @@ struct LoggerPane: View {
                 if let request = session.portion {
                     LoggerAmount(session: session, request: request).panel
                 } else {
-                    VStack(spacing: 0) {
-                        if session.mode == .search { searchField }
-                        LoggerContent(session: session, covered: covered, done: { model.logger = nil })
-                    }
+                    LoggerContent(session: session, covered: covered, searchFocused: $searchFocused, done: { model.logger = nil })
                 }
             }
-            .inlineTitle()
+            .inkGround()
+            .hidesNavigationBar()
             .navigationDestination(item: $session.openMeal) { id in
                 SavedMealView(mealID: id) {
                     session.openMeal = nil
@@ -152,50 +150,29 @@ struct LoggerPane: View {
         .onChange(of: model.loggerRequest) { _, request in if let mode = request.mode { session.go(to: mode) } }
         .onChange(of: model.foodsChanged) { _, _ in session.refreshFoods(model) }
     }
-
-    var searchField: some View {
-        @Bindable var session = session
-        return TextField("Search foods", text: $session.query)
-            .textFieldStyle(.roundedBorder)
-            .autocorrectionDisabled()
-            .noAutocapitalization()
-            .focused($searchFocused)
-            // Return logs the best match, as the Foods screen's does.
-            .onSubmit { session.pressedReturn(model) }
-            .accessibilityIdentifier("logger.search")
-            .overlay(alignment: .trailing) {
-                if !session.query.isEmpty {
-                    Button("Clear", systemImage: "xmark.circle.fill") {
-                        session.query = ""
-                        session.focusSearch()
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .padding(.trailing, 6)
-                    .accessibilityIdentifier("logger.clearSearch")
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-    }
 }
 
 /// Every way to log, in one place: search, scan, a photo, a description and quick add, each
-/// returning to the search. It holds no navigation, search field or toolbar of its own: a host gives
-/// it those, so a sheet and a pane can each show it. The meal so far, the time, the other ways to log
-/// and Done sit together at the bottom, in reach of a thumb and above the keyboard.
+/// returning to the search. It holds no navigation of its own: a host gives it that, so a sheet and
+/// a pane can each show it. Its header is the search field (or the way's name) and Done; the meal
+/// so far, the time and the other ways to log sit together at the bottom on the ink ground, in
+/// reach of a thumb and above the keyboard.
 struct LoggerContent: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
     /// An amount or a food is over it: a toast's few seconds would run out unseen.
     var covered = false
+    var searchFocused: FocusState<Bool>.Binding
     let done: () -> Void
 
     var body: some View {
-        method
-            .safeAreaInset(edge: .bottom) { bottom }
-            .task(id: session.query) { await session.search(model) }
+        VStack(spacing: 0) {
+            LoggerHeader(session: session, searchFocused: searchFocused, done: done)
+            method.frame(maxHeight: .infinity)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
+        .task(id: session.query) { await session.search(model) }
+        .inkGround()
     }
 
     @ViewBuilder
@@ -216,80 +193,163 @@ struct LoggerContent: View {
         VStack(spacing: 8) {
             // Over the meal it just changed, where the eye already is after a tap on +.
             if !covered, !model.toastCovered { ToastSlot() }
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 MealTray()
                 LogTimeBar()
                 methodsRow
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            // Solid ink under the bars, down to the screen's foot: nothing of the list or a form
+            // shows through between them. Not faded over what's above, which is often a way of
+            // logging's own button (Add, Log, Find foods).
+            .background(Color.pageBackground.ignoresSafeArea(edges: .bottom))
         }
-        .padding(.bottom, 8)
         .animation(.snappy, value: model.toast)
     }
 
+    @ViewBuilder
     var methodsRow: some View {
-        HStack(spacing: 8) {
-            if showsRibbon {
-                MethodRibbon(session: session)
-            } else if session.completions.isEmpty {
-                Spacer(minLength: 0)
-            } else {
-                // In the ribbon's place: over the keyboard, under the thumb that's typing.
-                SearchCompletionChips(options: session.completions, pick: session.complete)
-                    .padding(4)
-                    .background(Color.cardBackground.opacity(0.75), in: .capsule)
-                    .clipShape(.capsule)
-                    .floatingGlass(in: .capsule)
-            }
-            Button(action: done) {
-                Text("Done").font(.headline).padding(.horizontal, 18).frame(minHeight: 44).contentShape(.capsule)
-            }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            // Over a scrolling list, as the bars above it are: clear glass alone lets the rows read through.
-            .background(Color.cardBackground.opacity(0.75), in: .capsule)
-            .floatingGlass(in: .capsule)
-            .accessibilityIdentifier("logger.done")
+        if showsRibbon {
+            MethodRibbon(session: session)
+        } else if !session.completions.isEmpty {
+            // In the ribbon's place: over the keyboard, under the thumb that's typing.
+            SearchCompletionChips(options: session.completions, pick: session.complete)
         }
     }
 }
 
-/// The other ways to log.
+/// The logger's top: the search field while searching (Return logs the best match), else the way
+/// of logging's name under the day it logs to; Done beside them as a round button, as a page's
+/// header has its buttons.
+struct LoggerHeader: View {
+    @Environment(AppModel.self) private var model
+    let session: LoggerSession
+    var searchFocused: FocusState<Bool>.Binding
+    let done: () -> Void
+
+    var body: some View {
+        let searching = session.mode == .search
+        VStack(alignment: .leading, spacing: 6) {
+            if !searching || model.selectedDay != model.today {
+                Text(day).eyebrow().lineLimit(1).padding(.horizontal, 4)
+            }
+            HStack(spacing: 10) {
+                if searching {
+                    LoggerSearchField(session: session, focused: searchFocused)
+                } else {
+                    PageTitle(title, size: 28).frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 4)
+                }
+                CircleIconButton(symbol: "xmark", label: "Done", identifier: "logger.done", action: done)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
+    }
+
+    /// The day foods go to: "Today", or the day being caught up.
+    var day: String {
+        model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month(.abbreviated).day())
+    }
+
+    var title: String {
+        switch session.mode {
+        case .search: "Search"
+        case .scan: LiveScan.isAvailable ? "Scan" : "Barcode"
+        case .camera, .photoLibrary: "Photo"
+        case .describe: "Describe"
+        case .quickAdd: "Quick add"
+        }
+    }
+}
+
+/// The logger's search, as the composer's capsule: on the surface with a hairline, the accent's
+/// line while typing. Return logs the best match, as the composer's does, and the keyboard stays.
+struct LoggerSearchField: View {
+    @Environment(AppModel.self) private var model
+    @Bindable var session: LoggerSession
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").font(.body.weight(.medium)).foregroundStyle(Ink.text3).accessibilityHidden(true)
+            TextField("Search foods", text: $session.query, prompt: Text("Search foods").foregroundStyle(Ink.text3))
+                .font(.body)
+                .foregroundStyle(Ink.text)
+                .focused(focused)
+                .autocorrectionDisabled()
+                .noAutocapitalization()
+                .onSubmit {
+                    session.pressedReturn(model)
+                    focused.wrappedValue = true
+                }
+                .accessibilityIdentifier("logger.search")
+            if !session.query.isEmpty {
+                Button("Clear", systemImage: "xmark.circle.fill") {
+                    session.query = ""
+                    session.focusSearch()
+                }
+                .labelStyle(.iconOnly)
+                .font(.body)
+                .foregroundStyle(Ink.text3)
+                .frame(width: 40, height: 44)
+                .contentShape(.rect)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("logger.clearSearch")
+            }
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .frame(height: 50)
+        .composerCapsule(focused: focused.wrappedValue)
+    }
+}
+
+/// The other ways to log, as the design's segmented control (`.seg`): the one on lifted onto the
+/// card colour.
 struct MethodRibbon: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
 
     var body: some View {
-        HStack(spacing: 4) {
-            chip("Search", "magnifyingglass", .search)
-            chip("Scan", "barcode.viewfinder", .scan)
-            if model.ai.canSeePhotos || waiting(on: .camera, .photoLibrary) { chip("Photo", "camera", .camera) }
-            if model.ai.canDescribe || waiting(on: .describe) { chip("Describe", "text.bubble", .describe) }
-            chip("Quick add", "plus.forwardslash.minus", .quickAdd)
+        HStack(spacing: 0) {
+            segment("Search", .search)
+            segment("Scan", .scan)
+            if model.ai.canSeePhotos || waiting(on: .camera, .photoLibrary) { segment("Photo", .camera) }
+            if model.ai.canDescribe || waiting(on: .describe) { segment("Describe", .describe) }
+            segment("Quick add", .quickAdd)
         }
-        .padding(2)
-        .frame(maxWidth: .infinity)
-        .background(Color.cardBackground.opacity(0.75), in: .capsule)
-        .floatingGlass(in: .capsule)
+        .padding(3)
+        .background(Ink.raised, in: .rect(cornerRadius: 13, style: .continuous))
+        .animation(.snappy(duration: 0.2), value: session.mode)
     }
 
     /// A review left unlogged is reached through its way of logging, even if the model has gone.
     func waiting(on ways: LogMode...) -> Bool { session.review.map { ways.contains($0.mode) } ?? false }
 
-    func chip(_ title: String, _ symbol: String, _ target: LogMode) -> some View {
+    func segment(_ title: String, _ target: LogMode) -> some View {
         let current = session.mode == target || (target == .camera && session.mode == .photoLibrary)
         return Button {
             session.mode = target
         } label: {
-            Image(systemName: symbol)
-                .font(.title3)
-                .frame(maxWidth: .infinity, minHeight: 40)
-                .background(current ? Color.accentColor.opacity(0.2) : .clear, in: .capsule)
-                .contentShape(.capsule)
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(current ? Ink.text : Ink.text2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 36)
+                .background {
+                    if current {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Ink.surface)
+                            .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+                    }
+                }
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .hoverHighlight()
-        .accessibilityLabel(title)
         .accessibilityAddTraits(current ? .isSelected : [])
         .accessibilityIdentifier("logger.mode.\(target.rawValue)")
     }
@@ -336,6 +396,28 @@ enum LogTime {
     static func short(_ minutes: Int) -> String { minutes < 60 ? "\(minutes)m ago" : "\(minutes / 60)h ago" }
 }
 
+/// A choice as the design's chip (`.chip`): the raised grey, or the text's colour when it's the one.
+struct InkChip: View {
+    let title: String
+    var symbol: String?
+    var selected = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            if let symbol { Image(systemName: symbol) }
+            Text(title)
+        }
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(selected ? Ink.ground : Ink.text2)
+        .lineLimit(1)
+        .fixedSize()
+        .padding(.horizontal, 12)
+        .frame(height: 32)
+        .background(selected ? Ink.text : Ink.raised, in: .capsule)
+        .contentShape(.capsule)
+    }
+}
+
 /// The time choice under a search, where the thumb is.
 struct LogTimeBar: View {
     @Environment(AppModel.self) private var model
@@ -349,6 +431,7 @@ struct LogTimeBar: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 6) {
                         recentChips
+                        Spacer(minLength: 0)
                         clock
                     }
                     HStack(spacing: 6) {
@@ -366,8 +449,6 @@ struct LogTimeBar: View {
                 }
             }
         }
-        .padding(6)
-        .floatingGlass(in: Capsule(), interactive: false)
         .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
     }
 
@@ -386,7 +467,8 @@ struct LogTimeBar: View {
     @ViewBuilder
     var otherDayTimes: some View {
         if usual.isEmpty {
-            Text(Format.day(model.selectedDay, style: .dateTime.weekday(.wide))).font(.subheadline.weight(.medium)).padding(.leading, 8)
+            Text(Format.day(model.selectedDay, style: .dateTime.weekday(.wide))).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                .padding(.leading, 4)
             Spacer(minLength: 0)
         } else {
             // Catching up a day: the times this person usually eats, so "noon, then 3, then 7"
@@ -408,19 +490,12 @@ struct LogTimeBar: View {
         Button {
             picking = true
         } label: {
-            Group {
-                if let custom {
-                    Label(custom, systemImage: "clock").labelStyle(.titleAndIcon)
-                } else {
-                    Image(systemName: "clock")
-                }
+            if let custom {
+                InkChip(title: custom, symbol: "clock", selected: true)
+            } else {
+                Image(systemName: "clock").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text2)
+                    .frame(width: 32, height: 32).background(Ink.raised, in: .circle).contentShape(.circle)
             }
-            .font(.subheadline.weight(.medium))
-            .lineLimit(1)
-            .fixedSize()
-            .padding(.horizontal, 10)
-            .frame(height: 32)
-            .background(custom != nil ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
         }
         .buttonStyle(.plain)
         .hoverHighlight()
@@ -440,18 +515,10 @@ struct LogTimeBar: View {
     }
 
     func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(selected ? .semibold : .regular))
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 10)
-                .frame(height: 32)
-                .background(selected ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
-        }
-        .buttonStyle(.plain)
-        .hoverHighlight()
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        Button(action: action) { InkChip(title: title, selected: selected) }
+            .buttonStyle(.plain)
+            .hoverHighlight()
+            .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -471,12 +538,14 @@ struct TimePickerSheet: View {
                     ScrollView(.horizontal) {
                         HStack(spacing: 8) {
                             ForEach(usual, id: \.self) { time in
-                                Button(Format.time(time)) {
+                                Button {
                                     model.loggerTime = time
                                     dismiss()
+                                } label: {
+                                    InkChip(title: Format.time(time))
                                 }
-                                .buttonStyle(.bordered)
-                                .buttonBorderShape(.capsule)
+                                .buttonStyle(.plain)
+                                .hoverHighlight()
                                 .accessibilityIdentifier("timePicker.usual")
                             }
                         }
@@ -507,254 +576,6 @@ struct TimePickerSheet: View {
         }
         .presentationDetents([.height(usual.isEmpty ? 300 : 352)])
         .onAppear { time = model.logDate() }
-    }
-}
-
-/// Search as you type: saved meals and personal foods first, the last portion pre-filled, + logs in
-/// one tap. While the AI's review is finding a food, what's picked goes there instead.
-struct SearchLogView: View {
-    @Environment(AppModel.self) private var model
-    let session: LoggerSession
-
-    var query: String { session.query }
-    var results: [FoodMatch] { session.results }
-
-    var body: some View {
-        List {
-            if session.finding != nil {
-                Section {
-                    HStack {
-                        Text("Pick a food for your meal").font(.subheadline.weight(.medium))
-                        Spacer()
-                        Button("Back to the meal") { session.stopFinding() }
-                            .font(.subheadline)
-                            .accessibilityIdentifier("logger.backToReview")
-                    }
-                }
-            }
-            if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                // Saved meals and Log Again follow the time being logged at: lunch for noon, even
-                // when it's caught up at 9 PM. A usual moment that is a saved meal is in My Meals.
-                // Finding a food for a review, only what's one food can be its answer.
-                if session.finding == nil, let usual = model.loggerUsual, SavedMeals.meal(for: usual.entries, in: model.savedMeals) == nil {
-                    Section("Same as \(Format.relative(Day(usual.start), today: model.today))") {
-                        UsualMomentRow(moment: usual)
-                    }
-                }
-                let suggested = session.finding == nil ? model.loggerMeals : []
-                if !suggested.isEmpty {
-                    Section("My meals") {
-                        ForEach(suggested.prefix(20)) { suggestion in
-                            mealRow(suggestion.meal)
-                        }
-                    }
-                }
-                let again = session.again(model.loggerLogAgain)
-                if !again.isEmpty {
-                    Section(model.timedSuggestions == nil ? "Log again" : "Log again for \(LogTime.time(model))") {
-                        ForEach(again.prefix(12)) { item in
-                            RecentRow(item: item, add: { session.addAgain(item, model: model) }, open: { open(item) })
-                        }
-                    }
-                }
-                let favorites = model.personal.filter(\.favorite)
-                if !favorites.isEmpty {
-                    Section("Favorites") {
-                        ForEach(favorites.prefix(20), id: \.food.id) { p in
-                            FoodRow(food: p.food, personal: p, add: { quickAdd(p.food) }, open: { open(p.food) })
-                        }
-                    }
-                }
-                let mine = model.customFoods.map(\.food)
-                if !mine.isEmpty {
-                    Section("My foods") {
-                        ForEach(mine.prefix(30)) { food in
-                            FoodRow(food: food, personal: model.personalFood(food.id), add: { quickAdd(food) }, open: { open(food) })
-                        }
-                    }
-                }
-            } else if results.isEmpty && meals.isEmpty && !session.searching {
-                ContentUnavailableView {
-                    Label("No matches", systemImage: "magnifyingglass")
-                } description: {
-                    Text("Try fewer words, scan the barcode, or describe it.")
-                } actions: {
-                    Button("Describe “\(query)”") { session.mode = .describe }
-                    Button("Quick add calories") { session.mode = .quickAdd }.accessibilityIdentifier("logger.noMatchesQuickAdd")
-                }
-                .listRowBackground(Color.clear)
-            } else if meals.isEmpty {
-                foodResults
-            } else {
-                Section("My meals") {
-                    ForEach(meals) { mealRow($0) }
-                }
-                Section("Foods") { foodResults }
-            }
-        }
-        .insetGroupedList()
-        // The time bar's usual times take the weekday's place there on a day being caught up.
-        .navigationTitle(model.selectedDay == model.today ? "" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide)))
-    }
-
-    /// Saved meals with what's typed: the person's own handful, so no need to wait for the catalog,
-    /// and read afresh each time, so a meal changed or deleted on its screen isn't logged as it was.
-    var meals: [SavedMeal] {
-        let text = query.trimmingCharacters(in: .whitespaces)
-        return text.isEmpty || session.finding != nil ? [] : SavedMeals.matching(text, in: model.loggerMeals.map(\.meal))
-    }
-
-    var foodResults: some View {
-        ForEach(results) { match in
-            FoodRow(
-                food: match.food, personal: model.personalFood(match.food.id), add: { quickAdd(match.food) }, open: { open(match.food) })
-        }
-    }
-
-    func mealRow(_ meal: SavedMeal) -> some View {
-        SavedMealRow(
-            meal: meal,
-            add: {
-                model.log(meal)
-                session.query = ""
-                session.focusSearch()
-            },
-            open: {
-                session.blurSearch()
-                session.openMeal = meal.id
-            })
-    }
-
-    /// The + button.
-    func quickAdd(_ food: Food) { session.add(food, model) }
-
-    func open(_ food: Food) {
-        guard session.finding == nil else {
-            session.use(food)
-            return
-        }
-        session.blurSearch()
-        session.portion = .add(food, source: .search)
-    }
-
-    func open(_ item: LogAgainItem) {
-        if let id = item.template.foodID, let food = model.food(id: id) {
-            open(food)
-        } else if session.finding == nil {
-            model.logAgain(item)
-        }
-    }
-}
-
-/// A catalog food: name, the portion it would log, and a one-tap add.
-struct FoodRow: View {
-    let food: Food
-    let personal: PersonalFood?
-    let add: () -> Void
-    let open: () -> Void
-
-    var body: some View {
-        let suggestion = FoodUnits.suggested(
-            for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
-        let n = FoodUnits.nutrients(food, count: suggestion.count, unit: suggestion.unit)
-        HStack(spacing: 12) {
-            Button(action: open) {
-                HStack(spacing: 10) {
-                    FoodTile(name: food.name)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            Text(food.name).lineLimit(2)
-                            if personal?.favorite == true { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.yellow) }
-                        }
-                        Text(
-                            [
-                                food.brand.flatMap { $0.lowercased() == food.name.lowercased() ? nil : $0 },
-                                FoodUnits.label(count: suggestion.count, unit: suggestion.unit),
-                                "\(Format.whole(n.kcal)) kcal", "\(Format.grams(n.protein)) P",
-                            ].compactMap { $0 }.joined(separator: " · ")
-                        )
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            .accessibilityIdentifier("logger.food")
-            Button(action: add) {
-                Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
-            }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            .accessibilityLabel("Add \(FoodUnits.label(count: suggestion.count, unit: suggestion.unit)) of \(food.name)")
-            .accessibilityIdentifier("logger.addFood")
-        }
-    }
-}
-
-/// A recently logged food, re-logged as it was.
-struct RecentRow: View {
-    let item: LogAgainItem
-    let add: () -> Void
-    let open: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: open) {
-                HStack(spacing: 10) {
-                    FoodTile(name: item.template.name)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.template.name).lineLimit(1)
-                        Text(
-                            [item.template.brand, item.template.amountLabel, "\(Format.whole(item.template.nutrients.kcal)) kcal"]
-                                .compactMap { $0 }.joined(separator: " · ")
-                        )
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            Button(action: add) {
-                Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
-            }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            .accessibilityLabel("Log \(item.template.name) again")
-            .accessibilityIdentifier("logger.logAgain")
-        }
-    }
-}
-
-/// What was eaten around the logger's time on another recent day, logged again whole with a tap.
-struct UsualMomentRow: View {
-    @Environment(AppModel.self) private var model
-    let moment: Moment
-
-    var body: some View {
-        let name = model.name(of: moment)
-        Button {
-            model.logAgain(moment)
-        } label: {
-            HStack(spacing: 10) {
-                MealTile()
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name).lineLimit(1)
-                    Text("\(Format.time(moment.start)) · \(moment.entries.count) foods · \(Format.kcal(moment.nutrients.kcal))")
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
-            }
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .hoverHighlight()
-        .accessibilityLabel("Log \(name) again, \(moment.entries.count) foods, \(Format.kcal(moment.nutrients.kcal))")
-        .accessibilityIdentifier("logger.sameAsUsual")
     }
 }
 
@@ -844,16 +665,14 @@ struct AmountFields: View {
         if let current {
             HStack(spacing: 8) {
                 ForEach(AmountChoices.quick(base: amount.base, unit: current), id: \.self) { value in
-                    Button(AmountChoices.label(value, unit: current)) {
+                    Button {
                         amount.count = value
                         amount.text = FoodUnits.format(value, current)
+                    } label: {
+                        InkChip(title: AmountChoices.label(value, unit: current), selected: abs(amount.count - value) < 0.001)
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    // As the panel's own: on a line each, in a pane's width.
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .choiceTint(abs(amount.count - value) < 0.001)
+                    .buttonStyle(.plain)
+                    .hoverHighlight()
                     .accessibilityIdentifier("portion.quick")
                 }
             }
@@ -880,14 +699,14 @@ struct FoodHeader: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            FoodTile(name: food.name, size: TileSize.header)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(food.name).font(nameFont)
+            FoodTile(name: food.name, size: TileSize.header, fill: Ink.raised)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(food.name).font(nameFont).foregroundStyle(Ink.text)
                 if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
-                    Text(brand).font(.subheadline).foregroundStyle(.secondary)
+                    Text(brand).font(.subheadline).foregroundStyle(Ink.text2)
                 }
                 Text(corrected ? "Your numbers, corrected from \(Self.sourceLabel(food))" : Self.sourceLabel(food))
-                    .font(.caption).foregroundStyle(.tertiary)
+                    .font(.caption).foregroundStyle(Ink.text3)
                     .accessibilityIdentifier("food.source")
                 FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))
             }
@@ -904,7 +723,7 @@ struct FavoriteButton: View {
         Button {
             model.toggleFavorite(foodID)
         } label: {
-            HeaderIcon(symbol: model.isFavorite(foodID) ? "star.fill" : "star")
+            CircleIcon(symbol: model.isFavorite(foodID) ? "star.fill" : "star")
         }
         .accessibilityLabel(model.isFavorite(foodID) ? "Remove from favorites" : "Add to favorites")
         .accessibilityIdentifier("portion.favorite")
@@ -912,20 +731,17 @@ struct FavoriteButton: View {
     }
 }
 
-/// Calories big, macros beside.
+/// Calories big, macros beside: the calories as a numeral with its unit, and each macro's grams in
+/// its colour over its name, as Today's "g left" are.
 struct NutrientSummary: View {
     let nutrients: Nutrients
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading) {
-                // One line, whatever the room: a narrow inspector broke "1,155" over two.
-                Text(Format.whole(nutrients.kcal)).font(.title.weight(.bold).monospacedDigit())
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                Text("kcal").font(.caption).foregroundStyle(.secondary)
-            }
-            .layoutPriority(1)
-            Spacer()
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            // One line, whatever the room: a narrow inspector broke "1,155" over two.
+            Measure(value: Format.whole(nutrients.kcal), unit: "kcal", size: 30)
+                .layoutPriority(1)
+            Spacer(minLength: 4)
             macro("Protein", nutrients.protein, .protein)
             macro("Carbs", nutrients.carbs, .carbs)
             macro("Fat", nutrients.fat, .fat)
@@ -934,10 +750,10 @@ struct NutrientSummary: View {
     }
 
     func macro(_ label: String, _ value: Double, _ macro: Macro) -> some View {
-        VStack(alignment: .trailing) {
-            Text(Format.grams(value)).font(.headline.monospacedDigit()).foregroundStyle(macro.color)
-            Text(label).font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .trailing, spacing: 3) {
+            Text(Format.grams(value)).numeral(17, weight: .bold).foregroundStyle(macro.color)
+            Text(label).font(.caption).foregroundStyle(Ink.text3)
         }
-        .frame(minWidth: 58, alignment: .trailing)
+        .frame(minWidth: 52, alignment: .trailing)
     }
 }

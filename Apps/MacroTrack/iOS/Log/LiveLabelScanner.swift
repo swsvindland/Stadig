@@ -265,71 +265,44 @@ func withTimeout<T: Sendable>(seconds: Double, _ work: @escaping @Sendable () as
 #if os(iOS)
 /// Live scanning, like filming the package: the barcode, the front and the panel in one go, with
 /// each value filling in as it's read. A tall label is read a slice at a time; a value is trusted
-/// once two frames agree on it.
-struct LiveLabelScanner: View {
+/// once two frames agree on it. Laid out as the design's camera: what's been read as chips over
+/// the finder (the camera in a rounded frame, with a reticle until a panel's in view), the label's
+/// values on a card under it, and the host's foot (a found food, the shutter) below that.
+struct LiveLabelScanner<MenuItems: View, Foot: View>: View {
     @Environment(AppModel.self) private var model
     @State private var scan: LiveScan
     @State private var camera = LiveCamera()
     @State private var torch = false
     @State private var denied = false
     @State private var naming = false
+    private let menu: MenuItems
+    /// Under the card: given whether the label's card is up, so a host can keep out of its way.
+    private let foot: (Bool) -> Foot
 
-    init(kind: LiveScan.Kind, lookup: @escaping (String, Barcode.Symbology?) -> LiveScanOutcome?, finish: @escaping (LiveScanOutcome) -> Void) {
+    init(
+        kind: LiveScan.Kind, lookup: @escaping (String, Barcode.Symbology?) -> LiveScanOutcome?, finish: @escaping (LiveScanOutcome) -> Void,
+        @ViewBuilder menu: () -> MenuItems, @ViewBuilder foot: @escaping (_ reading: Bool) -> Foot
+    ) {
         _scan = State(initialValue: LiveScan(kind: kind, lookup: lookup, finish: finish))
+        self.menu = menu()
+        self.foot = foot
     }
 
-    static var isAvailable: Bool {
-        #if DEBUG
-        if LiveScanDemo.enabled { return true }
-        #endif
-        return LiveCamera.isAvailable
-    }
+    /// The label's card: once a panel or a new barcode is in view, until the scan has ended.
+    var reading: Bool { !scan.finished && (scan.panelSeen || scan.newBarcode != nil) }
 
     var body: some View {
-        ZStack {
-            preview.ignoresSafeArea()
-            ReadingOverlay(regions: scan.regions, aspect: scan.frameAspect).ignoresSafeArea().allowsHitTesting(false)
-            VStack(spacing: 10) {
-                Text(scan.hint)
-                    .font(.subheadline.weight(.medium))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .floatingGlass(in: Capsule(), interactive: false)
-                    .contentTransition(.opacity)
-                    .animation(.snappy, value: scan.hint)
-                if let code = scan.newBarcode {
-                    Label("Barcode \(code) · new", systemImage: "barcode").font(.caption.weight(.semibold))
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .floatingGlass(in: Capsule(), interactive: false)
-                }
-                Spacer()
-                card
-            }
-            .padding()
-            if denied {
-                ContentUnavailableView(
-                    "Camera access is off", systemImage: "camera",
-                    description: Text("Allow the camera for Stadig Macro in Settings to scan labels.")
-                )
-                .background(.background)
-            }
+        VStack(spacing: 12) {
+            chips
+            finder
+            if reading { card.transition(.move(edge: .bottom).combined(with: .opacity)) }
+            foot(reading)
         }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
+        .animation(.snappy, value: reading)
         .navigationTitle(scan.kind == .food ? "Scan" : "Scan a supplement")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if LiveCamera.isAvailable {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        torch.toggle()
-                        camera.setTorch(torch)
-                    } label: {
-                        Image(systemName: torch ? "flashlight.on.fill" : "flashlight.off.fill")
-                    }
-                    .accessibilityLabel(torch ? "Turn the light off" : "Turn the light on")
-                }
-            }
-        }
         .sensoryFeedback(.impact(weight: .light), trigger: scan.lockedCount)
         .sensoryFeedback(.success, trigger: scan.ready) { _, ready in ready }
         .task { await start() }
@@ -339,10 +312,99 @@ struct LiveLabelScanner: View {
         }
     }
 
+    /// What's been read, as the design's camera chips: the barcode, then the panel.
+    var chips: some View {
+        HStack(spacing: 6) {
+            InkChip(title: scan.newBarcode != nil ? "New barcode" : "Barcode", selected: scan.newBarcode != nil || (scan.finished && !scan.panelSeen))
+            InkChip(title: scan.kind == .food ? "Label" : "Supplement Facts", selected: scan.panelSeen)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The camera in its frame, with what it's reading outlined, the reticle while it's looking for
+    /// a barcode, the one thing to do next, and the light.
+    var finder: some View {
+        ZStack {
+            preview
+            ReadingOverlay(regions: scan.regions, aspect: scan.frameAspect).allowsHitTesting(false)
+            if !scan.panelSeen {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(scan.finished ? Color.accentColor : Color.white.opacity(0.6), lineWidth: scan.finished ? 3 : 2)
+                    .frame(width: 230, height: 136)
+                    .allowsHitTesting(false)
+            }
+            VStack(spacing: 8) {
+                HStack {
+                    if MenuItems.self != EmptyView.self {
+                        Menu {
+                            menu
+                        } label: {
+                            overCamera("ellipsis")
+                        }
+                        .menuStyle(.button)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Other ways")
+                    }
+                    Spacer()
+                    if LiveCamera.isAvailable {
+                        Button {
+                            torch.toggle()
+                            camera.setTorch(torch)
+                        } label: {
+                            overCamera(torch ? "flashlight.on.fill" : "flashlight.off.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(torch ? "Turn the light off" : "Turn the light on")
+                    }
+                }
+                Spacer()
+                if let code = scan.newBarcode {
+                    Label("Barcode \(code) · new", systemImage: "barcode").font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background(.black.opacity(0.55), in: .capsule)
+                }
+                Text(scan.hint)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.black.opacity(0.55), in: .capsule)
+                    .contentTransition(.opacity)
+                    .animation(.snappy, value: scan.hint)
+            }
+            .padding(12)
+            if denied {
+                ContentUnavailableView(
+                    "Camera access is off", systemImage: "camera",
+                    description: Text("Allow the camera for Stadig Macro in Settings to scan labels.")
+                )
+                .background(Ink.surface)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(white: 0.08))
+        .clipShape(.rect(cornerRadius: 30, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("scan.finder")
+    }
+
+    /// A round button over the camera, dark enough to read on whatever it's pointed at.
+    func overCamera(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(.white)
+            .frame(width: 44, height: 44)
+            .background(.black.opacity(0.45), in: .circle)
+            .contentShape(.circle)
+    }
+
     @ViewBuilder
     var preview: some View {
         if let still = scan.still {
-            // Filling the screen without widening the layout, centred like the camera's preview.
+            // Filling the frame without widening the layout, centred like the camera's preview.
             Color.black.overlay { Image(decorative: still, scale: 1).resizable().scaledToFill() }.clipped()
         } else if LiveCamera.isAvailable {
             CameraPreview(session: camera.session)
@@ -355,14 +417,15 @@ struct LiveLabelScanner: View {
 
     var card: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let name = scan.name {
-                HStack(spacing: 6) {
-                    Text(name).font(.headline).lineLimit(1)
-                    if scan.checking { ProgressView().controlSize(.mini) }
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(scan.name ?? (scan.kind == .food ? "Reading the label" : "Reading the panel"))
+                    .font(.headline).foregroundStyle(Ink.text).lineLimit(1)
+                if scan.checking { ProgressView().controlSize(.mini) }
+                Spacer(minLength: 4)
+                if scan.isChecked {
+                    Label("Checked by Apple Intelligence", systemImage: "sparkles").font(.caption2.weight(.medium)).foregroundStyle(Ink.text3)
+                        .lineLimit(1)
                 }
-            }
-            if scan.isChecked {
-                Label("Checked by Apple Intelligence", systemImage: "sparkles").font(.caption2).foregroundStyle(.secondary)
             }
             switch scan.kind {
             case .food: foodFields
@@ -373,19 +436,18 @@ struct LiveLabelScanner: View {
             } label: {
                 HStack {
                     if naming { ProgressView().controlSize(.small) }
-                    Text(naming ? "Checking…" : "Review").font(.headline)
+                    Text(naming ? "Checking…" : "Review")
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
             }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.capsule)
-            .tint(scan.ready ? .accentColor : .secondary)
+            .buttonStyle(InkButtonStyle(filled: scan.ready))
+            .controlSize(.large)
             .disabled(naming || !canReview)
+            .accessibilityIdentifier("scan.review")
         }
-        .padding(18)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 28))
+        .background(Color.cardBackground, in: .rect(cornerRadius: 26, style: .continuous))
     }
 
     var canReview: Bool {
@@ -400,7 +462,7 @@ struct LiveLabelScanner: View {
             Text(
                 "Per serving: \([serving.label, serving.grams.map { "\(Format.number($0)) g" } ?? serving.milliliters.map { "\(Format.number($0)) ml" }].compactMap { $0 }.joined(separator: ", "))"
             )
-            .font(.caption).foregroundStyle(.secondary)
+            .font(.caption).foregroundStyle(Ink.text3)
         }
         Grid(horizontalSpacing: 10, verticalSpacing: 10) {
             GridRow {
@@ -419,7 +481,7 @@ struct LiveLabelScanner: View {
         }
         let extras = label.keys.filter { !LiveLabel.core.contains($0) && !LiveLabel.secondary.contains($0) }.count
         if !others.isEmpty || extras > 0 {
-            Text((others + (extras > 0 ? ["+\(extras) more"] : [])).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+            Text((others + (extras > 0 ? ["+\(extras) more"] : [])).joined(separator: " · ")).font(.caption).foregroundStyle(Ink.text3)
         }
     }
 
@@ -427,20 +489,20 @@ struct LiveLabelScanner: View {
     var supplementLines: some View {
         let lines = scan.supplementLabel.readLines
         if lines.isEmpty {
-            Text("Each line appears here as it's read.").font(.subheadline).foregroundStyle(.secondary)
+            Text("Each line appears here as it's read.").font(.subheadline).foregroundStyle(Ink.text2)
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(lines.suffix(6).enumerated()), id: \.offset) { _, line in
                     HStack(spacing: 8) {
                         Image(systemName: line.locked ? "checkmark.circle.fill" : "circle.dotted")
-                            .foregroundStyle(line.locked ? Color.green : Color.secondary)
-                        Text(line.ingredient.name).font(.subheadline).lineLimit(1)
+                            .foregroundStyle(line.locked ? Ink.good : Ink.text3)
+                        Text(line.ingredient.name).font(.subheadline).foregroundStyle(Ink.text).lineLimit(1)
                         Spacer(minLength: 4)
-                        Text(line.ingredient.amountLabel ?? "").font(.subheadline.monospacedDigit())
-                            .foregroundStyle(line.locked ? .primary : .secondary)
+                        Text(line.ingredient.amountLabel ?? "").font(.subheadline.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(line.locked ? Ink.text : Ink.text2)
                     }
                 }
-                if lines.count > 6 { Text("+\(lines.count - 6) more above").font(.caption).foregroundStyle(.secondary) }
+                if lines.count > 6 { Text("+\(lines.count - 6) more above").font(.caption).foregroundStyle(Ink.text3) }
             }
         }
     }
@@ -499,14 +561,30 @@ struct LiveLabelScanner: View {
 #else
 /// The live scanner needs a camera the app can drive: iPhone and iPad. The Mac and Vision Pro type
 /// the barcode and read a label from a photo instead, so this is never shown there.
-struct LiveLabelScanner: View {
-    init(kind: LiveScan.Kind, lookup: @escaping (String, Barcode.Symbology?) -> LiveScanOutcome?, finish: @escaping (LiveScanOutcome) -> Void) {}
-
-    static var isAvailable: Bool { false }
+struct LiveLabelScanner<MenuItems: View, Foot: View>: View {
+    init(
+        kind: LiveScan.Kind, lookup: @escaping (String, Barcode.Symbology?) -> LiveScanOutcome?, finish: @escaping (LiveScanOutcome) -> Void,
+        @ViewBuilder menu: () -> MenuItems, @ViewBuilder foot: @escaping (_ reading: Bool) -> Foot
+    ) {}
 
     var body: some View { EmptyView() }
 }
 #endif
+
+extension LiveScan {
+    /// Whether the live scanner can run: a camera the app can drive (iPhone and iPad), or the
+    /// debug builds' stand-in for one.
+    static var isAvailable: Bool {
+        #if os(iOS)
+        #if DEBUG
+        if LiveScanDemo.enabled { return true }
+        #endif
+        return LiveCamera.isAvailable
+        #else
+        return false
+        #endif
+    }
+}
 
 #if os(iOS)
 /// One of the four core values: read, trusted, or not yet seen.
@@ -518,13 +596,14 @@ private struct FieldCell: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: value.isLocked ? "checkmark.circle.fill" : (value.value == nil ? "circle" : "circle.dotted"))
-                .foregroundStyle(value.isLocked ? Color.green : Color.secondary)
+                .foregroundStyle(value.isLocked ? Ink.good : Ink.text3)
                 .contentTransition(.symbolEffect(.replace))
-            VStack(alignment: .leading, spacing: 0) {
-                Text(title).font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.caption).foregroundStyle(Ink.text3)
                 Text(value.value.map { "\(Format.number($0))\(unit.isEmpty ? "" : " \(unit)")" } ?? "—")
-                    .font(.title3.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(value.isLocked ? .primary : .secondary)
+                    .numeral(20)
+                    .fixedSize()
+                    .foregroundStyle(value.isLocked ? Ink.text : Ink.text2)
                     .contentTransition(.numericText())
             }
             Spacer(minLength: 0)

@@ -84,7 +84,7 @@ struct SupplementsList: View {
 
     @ViewBuilder
     var menuItems: some View {
-        Button(LiveLabelScanner.isAvailable ? "Scan the bottle" : "Type the barcode", systemImage: "barcode.viewfinder") { adding = .scan }
+        Button(LiveScan.isAvailable ? "Scan the bottle" : "Type the barcode", systemImage: "barcode.viewfinder") { adding = .scan }
             .accessibilityIdentifier("supplements.menu.scan")
         Button("Search", systemImage: "magnifyingglass") { adding = .search }
             .accessibilityIdentifier("supplements.menu.search")
@@ -99,7 +99,7 @@ struct SupplementsList: View {
         Button {
             adding = .scan
         } label: {
-            Label(LiveLabelScanner.isAvailable ? "Scan the bottle: barcode or label" : "Type the bottle's barcode", systemImage: "barcode.viewfinder")
+            Label(LiveScan.isAvailable ? "Scan the bottle: barcode or label" : "Type the bottle's barcode", systemImage: "barcode.viewfinder")
         }
         .accessibilityIdentifier("supplements.addScan")
         Button {
@@ -254,33 +254,32 @@ struct AddSupplementView: View {
             } actions: {
                 photoButtons
                 Button("Type it in") { found = Supplement(facts: blank(barcode: missing)) }
-                Button(LiveLabelScanner.isAvailable ? "Scan again" : "Type another barcode") {
+                Button(LiveScan.isAvailable ? "Scan again" : "Type another barcode") {
                     self.missing = nil
                     scanning = true
                 }
                 if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
             }
             .overlay { if reading { ProgressView("Reading the label…").padding().background(.regularMaterial, in: .rect(cornerRadius: 12)) } }
-        } else if LiveLabelScanner.isAvailable && scanning {
-            LiveLabelScanner(kind: .supplement, lookup: lookup) { outcome in
-                switch outcome {
-                case .supplement(let supplement): found = supplement
-                case .supplementLabel(let facts, _): found = Supplement(facts: facts)
-                case .food, .label: break
-                }
-            }
-            .id(scanID)
-            .toolbar {
-                ToolbarItem(placement: .barTrailing) {
-                    Menu {
-                        Button("Type the barcode", systemImage: "keyboard") { scanning = false }
-                        Button("Choose a photo of the label", systemImage: "photo") { mode = .label }
-                    } label: {
-                        Image(systemName: "ellipsis")
+        } else if LiveScan.isAvailable && scanning {
+            LiveLabelScanner(
+                kind: .supplement, lookup: lookup,
+                finish: { outcome in
+                    switch outcome {
+                    case .supplement(let supplement): found = supplement
+                    case .supplementLabel(let facts, _): found = Supplement(facts: facts)
+                    case .food, .label: break
                     }
-                    .accessibilityLabel("Other ways")
-                }
-            }
+                },
+                menu: {
+                    // Over the camera, as the food scanner has it, beside its light.
+                    Button("Type the barcode", systemImage: "keyboard") { scanning = false }
+                    Button("Choose a photo of the label", systemImage: "photo") { mode = .label }
+                },
+                foot: { _ in EmptyView() }
+            )
+            .id(scanID)
+            .inkGround()
         } else {
             Form {
                 Section {
@@ -290,7 +289,7 @@ struct AddSupplementView: View {
                         .onSubmit { handle(manual) }
                     Button("Look up") { handle(manual) }.disabled(manual.count < 6)
                 } footer: {
-                    if !LiveLabelScanner.isAvailable { Text(ScanWords.typeTheBarcode) }
+                    if !LiveScan.isAvailable { Text(ScanWords.typeTheBarcode) }
                 }
             }
             .navigationTitle("Scan")

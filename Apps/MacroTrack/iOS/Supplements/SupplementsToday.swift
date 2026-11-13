@@ -208,7 +208,7 @@ struct SupplementsCard: View {
             }
             if model.activeSupplements.isEmpty {
                 Text(
-                    "\(LiveLabelScanner.isAvailable ? "Scan the bottle" : "Add a bottle by its barcode or a photo of the label"), say when you take it, and tick it off on Today. What you take counts toward your vitamins and minerals, and anything over a safe upper limit is flagged."
+                    "\(LiveScan.isAvailable ? "Scan the bottle" : "Add a bottle by its barcode or a photo of the label"), say when you take it, and tick it off on Today. What you take counts toward your vitamins and minerals, and anything over a safe upper limit is flagged."
                 )
                 .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Button("Add supplements") { model.showSupplements = true }.primaryAction()
