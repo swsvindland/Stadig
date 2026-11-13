@@ -91,7 +91,7 @@ private struct GapBands: View {
             HStack(spacing: 12) {
                 ForEach(GapBand.allCases, id: \.self) { band in
                     if let count = report.gapCounts[band], count > 0 {
-                        Text("\(band.label) \(count)").font(.caption).foregroundStyle(band.color)
+                        Text("\(band.label) \(count)").font(.caption).foregroundStyle(Ink.words(band.color))
                     }
                 }
             }

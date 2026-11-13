@@ -36,7 +36,7 @@ struct InlineAmount: View {
                 Spacer(minLength: 4)
                 Button("Done", action: finish)
                     .font(.headline)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Ink.words(.accentColor))
                     .buttonStyle(.plain)
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("today.amount.done")

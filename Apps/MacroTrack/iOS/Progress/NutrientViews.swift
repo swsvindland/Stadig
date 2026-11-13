@@ -169,7 +169,7 @@ private struct NutrientTableRow: View {
                 .monospacedDigit().foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 NutrientFill(reading: reading).frame(width: 90)
-                Text(status).font(.caption).foregroundStyle(reading.status.color)
+                Text(status).font(.caption).foregroundStyle(Ink.words(reading.status.color))
             }
             Text(reading.supplemented > 0 ? Format.nutrient(reading.supplemented, unit) : "—").monospacedDigit()
                 .foregroundStyle(reading.supplemented > 0 ? .primary : .tertiary)
@@ -262,7 +262,8 @@ private struct NutrientDetailRow: View {
             NutrientBar(reading: reading)
             Text(reading.nutrient.why).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
             if reading.overUpper, let upper = reading.upper {
-                Text("Over the safe upper limit of \(Format.nutrient(upper, unit)) a day").font(.caption.weight(.semibold)).foregroundStyle(Ink.bad)
+                Text("Over the safe upper limit of \(Format.nutrient(upper, unit)) a day").font(.caption.weight(.semibold)).foregroundStyle(
+                    Ink.words(Ink.bad))
             }
             if !notes.isEmpty {
                 Text(notes.joined(separator: " · ")).font(.caption2).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)

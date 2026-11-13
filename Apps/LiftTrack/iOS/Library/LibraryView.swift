@@ -166,7 +166,7 @@ struct LibraryView: View {
             if !filters.isEmpty {
                 Button("Clear") { filters = LibraryFilters() }
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Ink.words(.accentColor))
                     .buttonStyle(.plain)
                     .frame(minHeight: 30)
                     .accessibilityLabel("Clear the filters")
@@ -210,10 +210,11 @@ private struct FilterChip<Choices: View>: View {
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(value == nil ? Ink.text2 : Color.accentColor)
+            .foregroundStyle(value == nil ? Ink.text2 : Ink.words(.accentColor))
             .padding(.horizontal, 11)
             .frame(minHeight: 30)
-            .background(value == nil ? Ink.raised : Color.accentColor.opacity(0.18), in: .capsule)
+            // On glass a chosen filter fills with the accent under white words, as a `Pill` does there.
+            .background(value == nil ? Ink.raised : Color.accentColor.opacity(Platform.isVision ? 0.7 : 0.18), in: .capsule)
             .contentShape(.capsule)
         }
         .menuStyle(.button)
@@ -238,10 +239,10 @@ private struct ToggleChip: View {
                 Text(title).lineLimit(1)
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(on ? Color.accentColor : Ink.text2)
+            .foregroundStyle(on ? Ink.words(.accentColor) : Ink.text2)
             .padding(.horizontal, 11)
             .frame(minHeight: 30)
-            .background(on ? Color.accentColor.opacity(0.18) : Ink.raised, in: .capsule)
+            .background(on ? Color.accentColor.opacity(Platform.isVision ? 0.7 : 0.18) : Ink.raised, in: .capsule)
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)

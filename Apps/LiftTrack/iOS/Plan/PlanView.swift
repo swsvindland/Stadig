@@ -290,7 +290,7 @@ struct PlanView: View {
                             Button("Open Program", systemImage: "tablecells") { model.tab = .program }
                                 .font(.caption.weight(.semibold))
                                 .buttonStyle(.plain)
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(Ink.words(.accentColor))
                                 .help("Every lift, week by week, with swaps")
                                 .accessibilityIdentifier("plan.openProgram")
                         }
@@ -673,7 +673,7 @@ struct WeekSessionRow: View {
     var body: some View {
         let today = row.state == .today
         HStack(spacing: 12) {
-            Text(row.day.weekday.short).font(.caption.weight(.semibold)).foregroundStyle(today ? Color.accentColor : Ink.text3)
+            Text(row.day.weekday.short).font(.caption.weight(.semibold)).foregroundStyle(today ? Ink.words(.accentColor) : Ink.text3)
                 .frame(width: 34, alignment: .leading)
             Text(row.title).font(.callout.weight(.semibold)).foregroundStyle(row.state == .done ? Ink.text2 : Ink.text).lineLimit(1)
             Spacer(minLength: 4)
@@ -681,7 +681,7 @@ struct WeekSessionRow: View {
             HStack(spacing: 6) {
                 switch row.state {
                 case .done: Text("Done").font(.caption).foregroundStyle(Ink.text3)
-                case .today: Text("Today").font(.caption).foregroundStyle(Color.accentColor)
+                case .today: Text("Today").font(.caption).foregroundStyle(Ink.words(.accentColor))
                 case .planned: EmptyView()
                 }
                 Circle().fill(row.state == .done ? Ink.good : (today ? Color.accentColor : Ink.track)).frame(width: 8, height: 8)

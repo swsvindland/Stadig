@@ -186,7 +186,7 @@ struct SessionSummaryView: View {
                     HStack {
                         Text("\(strength.lower.name) \(strength.lower.score)")
                         Spacer()
-                        Text("+\(strength.after - strength.before) today").foregroundStyle(Ink.good)
+                        Text("+\(strength.after - strength.before) today").foregroundStyle(Ink.words(Ink.good))
                         Spacer()
                         Text("\(strength.upper.name) \(strength.upper.score)")
                     }

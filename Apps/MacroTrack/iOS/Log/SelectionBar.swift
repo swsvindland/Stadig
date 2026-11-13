@@ -41,7 +41,7 @@ struct SelectionBar: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Ink.words(.accentColor))
             .accessibilityHint("Switches between moving and copying")
             .accessibilityIdentifier("selection.intent")
             Spacer(minLength: 0)

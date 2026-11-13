@@ -62,6 +62,18 @@ enum Ink {
     static let macro = Color(light: 0x12804F, dark: 0x3ECF8E)
 
     static func app(_ app: AppID) -> Color { app == .macroTrack ? macro : lift }
+
+    /// A colour for words: the accent on a link, good on "+2", protein's red on "15 P". On Vision
+    /// Pro's glass a hue at text size is about as bright as the lit room through the glass and can't
+    /// be read, so there words are white and the colour stays in the marks beside them (a dot, a
+    /// ruler, a filled chip).
+    static func words(_ color: Color) -> Color {
+        #if os(visionOS)
+        return text
+        #else
+        return color
+        #endif
+    }
 }
 
 extension Color {
@@ -110,7 +122,11 @@ extension View {
 
     /// The small uppercase label over a number or a group: "SET 2 OF 3", "USUALLY AROUND NOW".
     func eyebrow(_ color: Color = Ink.text3) -> some View {
-        font(.caption2.weight(.semibold)).textCase(.uppercase).tracking(0.9).foregroundStyle(color)
+        #if os(visionOS)
+        // A coloured eyebrow is a lit one: on glass, full white over the usual grey (`Ink.words`).
+        let color = color == Ink.text3 || color == Ink.text2 ? color : Ink.text
+        #endif
+        return font(.caption2.weight(.semibold)).textCase(.uppercase).tracking(0.9).foregroundStyle(color)
     }
 }
 
@@ -525,7 +541,9 @@ extension View {
 
     func secondaryAction() -> some View {
         #if os(visionOS)
-        glassButtonStyle().buttonBorderShape(.capsule)
+        // Untinted: under the app's accent tint Vision Pro fills a bordered button with it, which
+        // made every secondary action (the rest's −15, +15 and Skip) as loud as the one that matters.
+        glassButtonStyle().buttonBorderShape(.capsule).tint(nil as Color?)
         #else
         buttonStyle(.ghost)
         #endif
@@ -1054,6 +1072,9 @@ extension ScoreChange {
         case .steady: Ink.text2
         }
     }
+
+    /// Its words: the colour, but white on Vision Pro's glass (`Ink.words`), where the sign says it.
+    var wordColor: Color { direction == .steady ? Ink.text2 : Ink.words(color) }
 }
 
 /// A score's change this month beside it, as the boards have it: "+2", "−1" or "steady".
@@ -1063,7 +1084,7 @@ struct ScoreChangeLabel: View {
     var body: some View {
         Text(change.short)
             .font(.caption.weight(.semibold).monospacedDigit())
-            .foregroundStyle(change.color)
+            .foregroundStyle(change.wordColor)
             .lineLimit(1)
             .fixedSize()
             .accessibilityLabel(change.spoken(calendar: .current))
@@ -1082,10 +1103,11 @@ struct ScoreChangeChip: View {
             Text(change.text(calendar: .current))
         }
         .font(.caption.weight(.semibold).monospacedDigit())
-        .foregroundStyle(change.color)
+        .foregroundStyle(change.wordColor)
         .padding(.horizontal, 11)
         .frame(minHeight: 28)
-        .background(change.color.opacity(0.14), in: .capsule)
+        // On glass the faint wash is lost: the colour fills the chip under white words, as a `Pill` does there.
+        .background(change.color.opacity(Platform.isVision && change.direction != .steady ? 0.7 : 0.14), in: .capsule)
         .lineLimit(1)
         .fixedSize()
         .accessibilityElement(children: .ignore)

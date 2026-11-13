@@ -42,7 +42,7 @@ struct EstimateRow: View {
             if failed {
                 Button("Logger", action: openLogger)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Ink.words(.accentColor))
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(.rect)
                     .accessibilityLabel("Find it in the logger")
@@ -86,7 +86,7 @@ struct EstimateConfirmRow: View {
             Spacer(minLength: 8)
             Button("Looks right", action: confirm)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Ink.words(.accentColor))
                 .frame(minHeight: 44)
                 .contentShape(.rect)
                 .accessibilityHint("Keeps the estimate as logged")

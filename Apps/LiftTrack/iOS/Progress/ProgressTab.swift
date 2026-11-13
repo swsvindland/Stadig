@@ -274,7 +274,7 @@ struct StrengthCard: View {
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(category.label).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(1).minimumScaleFactor(0.8)
-                if weakest { Text("Weakest").font(.caption.weight(.semibold)).foregroundStyle(Ink.ok) }
+                if weakest { Text("Weakest").font(.caption.weight(.semibold)).foregroundStyle(Ink.words(Ink.ok)) }
             }
             .frame(width: 112, alignment: .leading)
             Ruler(value: score.score / 100, color: weakest ? Ink.ok : .accentColor)
@@ -383,7 +383,7 @@ struct YourShape: View {
                 rowContent(stat, line: line)
                 Link("Get it", destination: Self.macroPage)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Ink.words(.accentColor))
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("progress.getMacro")
             }
