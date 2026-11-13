@@ -7,29 +7,9 @@ extension XCUIApplication {
         descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
-    /// Where Today logs: the phone's composer at the foot of Today, or an iPad's Log Food in the toolbar.
+    /// Where Today logs: the composer at the foot of Today's thread, on a phone and an iPad alike.
     @MainActor
-    var todayLogging: XCUIElement { Self.isPad ? logButton("search") : element("today.composer") }
-
-    /// The button that opens a way to log in Today's toolbar on an iPad ("search", "weighIn",
-    /// "quickAdd"). A phone has the composer at the foot of every tab instead (`today.composer`, and
-    /// `tab.composer` on the others), with the weigh-in at the top of Progress.
-    @MainActor
-    func logButton(_ way: String) -> XCUIElement {
-        let titles = ["search": "Log Food", "weighIn": "Weigh In", "quickAdd": "Quick Add"]
-        return toolbarItem(way == "search" ? "toolbar.logFood" : "toolbar.\(way)", title: titles[way] ?? way)
-    }
-
-    /// A button of the toolbar. With the tab bar along the top an iPad's toolbar has room for a few,
-    /// and folds the rest into its overflow menu, where they go by their titles rather than their
-    /// identifiers, so that's where `title` finds them.
-    @MainActor
-    func toolbarItem(_ identifier: String, title: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
-        let item = element(identifier)
-        if item.waitForExistence(timeout: 3) { return item }
-        buttons["More"].firstMatch.waitToAppear(file: file, line: line).tap()
-        return buttons[title].firstMatch.waitToAppear(file: file, line: line)
-    }
+    var todayLogging: XCUIElement { element("today.composer") }
 
     /// The food search's field. In portrait an iPad's Foods has no room for it beside the tab bar
     /// along the top, so the toolbar keeps it behind its search button, which opens it.

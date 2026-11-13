@@ -116,8 +116,11 @@ struct RootView: View {
         // Clear of the selection bar where it's at the foot of the screen. The logger shows its own,
         // in with the meal: one behind it would be a second Undo nobody can reach. It takes over when
         // the logger closes, with its few seconds starting again. On a phone each tab shows it over
-        // its composer, and Today an Undo in the meal just logged too.
-        .toastOverlay(bottomPadding: model.selection.isEmpty ? 24 : 92, showing: wide && model.logger == nil && !model.toastCovered)
+        // its composer, and Today an Undo in the meal just logged too. Today, wide as well, shows
+        // its own over its composer.
+        .toastOverlay(
+            bottomPadding: model.selection.isEmpty ? 24 : 92, showing: wide && model.logger == nil && !model.toastCovered && model.tab != .today
+        )
         // A meal photo dragged onto the window from Photos or Finder is read like one chosen.
         .dropDestination(for: DroppedImage.self) { images, _ in
             if let photo = images.first?.data { model.logDroppedPhoto(photo) }
