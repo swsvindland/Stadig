@@ -15,6 +15,10 @@ struct TodayView: View {
     @State private var logActivity: ActivityLogSheetItem?
     @State private var showCheckIn = false
     @State private var lifeMode: LifeModeKindChoice?
+    #if DEBUG
+    /// `-todayPage assessment|steps`: a page of Today's opened at launch.
+    @State private var debugPage: String?
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -40,6 +44,17 @@ struct TodayView: View {
             .sheet(item: $logActivity) { item in ActivityLogSheet(declared: item.declared) }
             .sheet(isPresented: $showCheckIn) { CheckInView() }
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
+            #if DEBUG
+            .onAppear { debugPage = LaunchOptions.current.value(after: "-todayPage") }
+            .navigationDestination(item: $debugPage) { page in
+                if page == "steps", let steps = model.analysis?.steps {
+                    StepsPage(steps: steps)
+                } else if let status = model.analysis?.assessment {
+                    let plan = model.plan()
+                    AssessmentPage(status: status, note: plan?.assessment == true ? plan?.notes.first : nil)
+                }
+            }
+            #endif
         }
     }
 
@@ -756,12 +771,22 @@ struct AssessmentCard: View {
             let layout =
                 dynamicType.isAccessibilitySize
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
-            layout {
-                if titled { Text("Assessment").font(.headline) }
-                if titled && !dynamicType.isAccessibilitySize { Spacer() }
-                Text(status.complete ? "Done" : "Week \(status.week) of \(status.totalWeeks)").eyebrow()
+            if titled {
+                layout {
+                    Text("Assessment").font(.headline)
+                    if !dynamicType.isAccessibilitySize { Spacer() }
+                    Text(status.complete ? "Done" : "Week \(status.week) of \(status.totalWeeks)").eyebrow()
+                }
+            } else {
+                // On its own page the week is the number the page answers with.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(status.complete ? "Done" : "This week").eyebrow()
+                    Measure(
+                        value: "\(status.complete ? status.totalWeeks : status.week)", unit: "of \(status.totalWeeks) weeks", size: 48,
+                        weight: .heavy)
+                }
             }
-            Ruler(value: status.complete ? 1 : status.progress, height: 10, divisions: max(1, status.totalWeeks))
+            Ruler(value: status.complete ? 1 : status.progress, height: titled ? 10 : 14, divisions: max(1, status.totalWeeks))
             if let note {
                 Text(note).font(.subheadline).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.assessmentNote")
