@@ -87,6 +87,8 @@ private struct OnThePage: ViewModifier {
 struct DayItemView: View {
     let item: DayItem
     let gaps: [UUID: MealGap]
+    /// On today, the time it is, which decides the hours offered first.
+    let now: Date?
     @Binding var editing: FoodEntry?
 
     var body: some View {
@@ -94,7 +96,7 @@ struct DayItemView: View {
         case .meal(let meal): MealCard(meal: meal, gap: meal.entries.first.flatMap { gaps[$0.id] }, editing: $editing).id(item.id)
         case .held(let group): HeldCards(group: group).id(item.id)
         case .now(let group): NowRow(group: group).id(item.id)
-        case .hours(let hours): HourSlots(hours: hours).modifier(OnThePage()).id(item.id)
+        case .hours(let hours): HourSlots(hours: hours, now: now).modifier(OnThePage()).id(item.id)
         }
     }
 }
@@ -254,19 +256,54 @@ struct MealFoodRow: View {
     }
 }
 
-/// Open hours, one tap each from logging at them. Those outside the hours set for the Log tab wait
-/// behind Earlier and Later, where a gap would otherwise be mostly hours nobody eats in.
+/// Open hours, one tap each from logging at them. Folded, a run of them is one quiet row: "Add at"
+/// and the few hours most likely wanted (`LogHours.offered`), with More for the rest, so a day with
+/// little logged reads as its meals rather than a wall of hours. Opened, every hour is there, those
+/// outside the hours set for the Log tab behind Earlier and Later.
 struct HourSlots: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let hours: [HourGroup]
+    let now: Date?
+    @State private var unfolded = false
     @State private var showsEarly = false
     @State private var showsLate = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
 
     var body: some View {
+        let offered = LogHours.offered(hours, window: model.logHours, now: now)
+        // At the accessibility sizes four to a row is all there's room for: the grid, open. A run
+        // outside the Log tab's hours is the grid too, which is only its Earlier or Later.
+        if unfolded || offered.isEmpty || typeSize.isAccessibilitySize {
+            grid
+        } else {
+            HStack(spacing: 6) {
+                Text("Add at").eyebrow().fixedSize()
+                    .accessibilityHidden(true)
+                ForEach(offered) { slot($0) }
+                if offered.count < hours.count {
+                    Button {
+                        withAnimation(.snappy) { unfolded = true }
+                    } label: {
+                        Text("More")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Ink.text2)
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .contentShape(.rect)
+                    }
+                    // Plain: borderless takes the tint, which turns grey text a pale green.
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("More hours")
+                    .accessibilityIdentifier("log.moreHours")
+                }
+            }
+        }
+    }
+
+    var grid: some View {
         let (earlier, shown, later) = LogHours.split(hours, window: model.logHours)
-        LazyVGrid(columns: columns, spacing: 6) {
+        return LazyVGrid(columns: columns, spacing: 6) {
             if showsEarly {
                 ForEach(earlier) { slot($0) }
             } else if !earlier.isEmpty {
@@ -384,7 +421,7 @@ struct PlanMealCard: View {
                 Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(Ink.good).accessibilityLabel("Logged")
             } else {
                 Button("Log") { model.logPlanned(meal, in: plan) }
-                    .buttonStyle(.solidSmall)
+                    .buttonStyle(.solid)
                     .frame(minWidth: 72)
                     .accessibilityLabel("Log \(recipe.title)")
                     .accessibilityIdentifier("mealPrep.logMeal")

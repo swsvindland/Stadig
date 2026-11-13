@@ -21,6 +21,8 @@ struct TodayLogger: View {
     @State private var footHeight = 0.0
     /// Counts what's been logged or removed, for the thread's second look at its end.
     @State private var changes = 0
+    /// The room over a day too short to fill the screen, so it sits at the foot.
+    @State private var roomAbove = 0.0
     /// Whether More today is open, kept for the scene.
     @SceneStorage("today.moreOpen") private var moreOpen = false
 
@@ -43,6 +45,22 @@ struct TodayLogger: View {
                 // The thread's end is a few points, not a row's 44: it's what sits between the
                 // newest food and the matches while typing.
                 .environment(\.defaultMinListRowHeight, 20)
+                // A short day sits at the foot, over the tiles, as the design's thread does: an
+                // empty one has its line and More today just above them rather than under the
+                // numbers with a gap below, and a food landing pushes the day up from there, so
+                // nothing jumps. A list has no bottom alignment of its own: the room it would leave
+                // goes over the day instead.
+                .contentMargins(.top, roomAbove, for: .scrollContent)
+                // More today's own inset is the room over the foot's fade: no list margin under it
+                // as well, which left a band of nothing between the day and the tiles.
+                .contentMargins(.bottom, 0, for: .scrollContent)
+                .onScrollGeometryChange(for: Double.self) { geometry in
+                    geometry.containerSize.height - geometry.contentInsets.top - geometry.contentInsets.bottom - geometry.contentSize.height
+                } action: { _, room in
+                    // Measured with the room already given in the insets: put it back.
+                    let next = max(0, (room + roomAbove).rounded())
+                    if abs(next - roomAbove) >= 1 { roomAbove = next }
+                }
                 .inkGround()
                 .sensoryFeedback(.impact(weight: .light), trigger: entries.count)
                 .dismissesKeyboardOnScroll()
@@ -176,12 +194,9 @@ struct TodayLogger: View {
                 HStack {
                     Text(eyebrow).eyebrow()
                     Spacer()
-                    SettingsButton(identifier: "today.settings")
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Ink.text2)
-                        .frame(width: 36, height: 36)
-                        .background(Ink.raised, in: .circle)
+                    if !Platform.isMac {
+                        CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "today.settings") { model.showSettings = true }
+                    }
                 }
                 LeftHeader(
                     targets: targets, eaten: eaten, showAllMacros: model.settings.showAllMacros,
@@ -610,12 +625,8 @@ private struct UsualTiles: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(composer.tilesTitle).eyebrow()
-                Spacer()
-                Text("One tap logs it").font(.caption).foregroundStyle(Ink.text3)
-            }
-            .padding(.horizontal, 4)
+            SectionEyebrow(composer.tilesTitle, detail: "One tap logs it")
+                .padding(.horizontal, 4)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                 ForEach(Array(composer.tiles.prefix(most).enumerated()), id: \.element.id) { index, item in
                     Button {
@@ -657,12 +668,8 @@ private struct WhatFitsRows: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("What fits tonight").eyebrow()
-                Spacer()
-                Text("One tap logs it").font(.caption).foregroundStyle(Ink.text3)
-            }
-            .padding(.horizontal, 4)
+            SectionEyebrow("What fits tonight", detail: "One tap logs it")
+                .padding(.horizontal, 4)
             ForEach(Array(composer.fits.enumerated()), id: \.element.id) { index, option in
                 Button {
                     composer.log(option)

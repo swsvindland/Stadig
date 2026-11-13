@@ -126,6 +126,44 @@ struct LogHoursTests {
         #expect(split.shown.map(\.hour) == Array(7...20))
         #expect(split.later.map(\.hour) == [21, 22, 23])
     }
+
+    let day = Day(year: 2027, month: 6, day: 15)
+    let calendar = Calendar.gregorian(.newYork)
+
+    func open(_ range: ClosedRange<Int>) -> [HourGroup] {
+        DayHours.groups(on: day, entries: [], calendar: calendar).filter { range.contains($0.hour) }
+    }
+
+    @Test func anEmptyDayOffersBreakfastLunchAndDinner() {
+        #expect(LogHours.offered(open(0...23), window: 7...20).map(\.hour) == [8, 12, 18])
+    }
+
+    @Test func aRunWithoutMealtimesOffersItsFirstHours() {
+        #expect(LogHours.offered(open(14...17), window: 7...20).map(\.hour) == [14, 15, 16])
+    }
+
+    @Test func aRunKeepsItsMealtimeAmongItsFirstHours() {
+        #expect(LogHours.offered(open(9...14), window: 7...20).map(\.hour) == [9, 10, 12])
+    }
+
+    @Test func aShortRunOffersEveryHour() {
+        #expect(LogHours.offered(open(10...11), window: 7...20).map(\.hour) == [10, 11])
+    }
+
+    @Test func todayOffersTheNextHoursAfterNow() {
+        let now = day.at(hour: 9, minute: 41, calendar: calendar)
+        #expect(LogHours.offered(open(10...23), window: 7...20, now: now).map(\.hour) == [10, 11, 12])
+    }
+
+    @Test func todayBeforeNowOffersTheLatestHours() {
+        let now = day.at(hour: 13, minute: 5, calendar: calendar)
+        #expect(LogHours.offered(open(0...12), window: 7...20, now: now).map(\.hour) == [10, 11, 12])
+    }
+
+    @Test func hoursOutsideTheWindowAreNeverOffered() {
+        #expect(LogHours.offered(open(21...23), window: 7...20).isEmpty)
+        #expect(LogHours.offered(open(0...7), window: 7...20).map(\.hour) == [7])
+    }
 }
 
 struct FoodLabelTests {

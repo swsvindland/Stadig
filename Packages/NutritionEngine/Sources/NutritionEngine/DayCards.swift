@@ -85,6 +85,26 @@ public enum LogHours {
         return min(start, end)...max(start, end)
     }
 
+    /// Where breakfast, lunch and dinner usually are: the hours an empty day offers first.
+    public static let mealHours = [8, 12, 18]
+
+    /// The few hours of a run of open ones that the Log tab offers in a single row, the rest a tap
+    /// away: on today (`now`), the soonest hours after it, or, before it, the latest (what's most
+    /// likely still to log); on another day, breakfast, lunch and dinner where the run has them,
+    /// then its first hours. Only hours in the window: a run outside it offers none, and stays
+    /// behind Earlier or Later. In time order.
+    public static func offered(_ hours: [HourGroup], window: ClosedRange<Int>, now: Date? = nil, count: Int = 3) -> [HourGroup] {
+        let candidates = hours.filter { window.contains($0.hour) }
+        guard candidates.count > count else { return candidates }
+        if let now {
+            let ahead = candidates.filter { $0.end > now }
+            return ahead.isEmpty ? Array(candidates.suffix(count)) : Array(ahead.prefix(count))
+        }
+        var picked = candidates.filter { mealHours.contains($0.hour) }.prefix(count).map(\.self)
+        for hour in candidates where picked.count < count && !picked.contains(hour) { picked.append(hour) }
+        return picked.sorted { $0.start < $1.start }
+    }
+
     /// Open hours by where they fall against the window.
     public static func split(_ hours: [HourGroup], window: ClosedRange<Int>) -> (earlier: [HourGroup], shown: [HourGroup], later: [HourGroup]) {
         (

@@ -105,9 +105,10 @@ struct LogTab: View {
     /// rather than in it: an inset list's section headers don't pin.
     var cardsList: some View {
         let gaps = model.gapsBefore(on: day)
+        let now = day == model.today ? Date() : nil
         return List {
             ForEach(model.dayItems(on: day)) { item in
-                DayItemView(item: item, gaps: gaps, editing: editingFood)
+                DayItemView(item: item, gaps: gaps, now: now, editing: editingFood)
             }
             foot
         }
@@ -129,7 +130,6 @@ struct LogTab: View {
                 LogHeader(wide: false)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 8)
             .padding(.bottom, 4)
             .background(.pageBackground)
         }

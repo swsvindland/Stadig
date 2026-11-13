@@ -96,7 +96,7 @@ struct SettingsView: View {
         } header: {
             Text("Logging").eyebrow()
         } footer: {
-            Text("Other hours stay a tap away under Earlier and Later, and food logged in them always shows.")
+            Text("Other hours stay a tap away under More, and food logged in them always shows.")
         }
 
         Section {
