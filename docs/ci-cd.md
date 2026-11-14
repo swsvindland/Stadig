@@ -10,11 +10,11 @@ Two systems share the work. **GitHub Actions** checks every push cheaply: format
 | `main` | the same | **Main** workflow: packages, unit plan and UI plan, then an archive to TestFlight (internal testers) |
 | `release/<app>-<version>` | the same | **Release** workflow: the same tests, then an archive to TestFlight (external testers), ready to submit for review |
 
-Xcode Cloud's column is the design, not what runs yet. On 2026-11-03 the checks on `main` showed each app's `Default` workflow with `Archive - iOS` and nothing else, so the unit and UI plans don't run there. Adding `Test <App>` and `Test <App>UI` to that workflow in App Store Connect would close the gap. Until then the app tests only run from `Scripts/build.sh unit` and `ui`, and the UI tests only before a release.
+Xcode Cloud's column is the design, not what runs yet. What runs (checked 2026-11-14) is one workflow per app, `Default`: it starts on a push to any branch, whatever files changed, or by hand on `main`, and it archives for iOS, macOS and visionOS, each prepared for App Store Connect, then gives the iOS build to the `default` TestFlight group. The macOS and visionOS archives were added on 2026-11-14. Until then there were no Mac or Vision Pro builds to submit. So every push to any branch archives three platforms of both apps, which costs Xcode Cloud hours; the Branch, Main and Release split below would cut that. No Test action runs, so the unit and UI plans don't run there. Adding `Test <App>` and `Test <App>UI` would close that gap. Until then the app tests only run from `Scripts/build.sh unit` and `ui`, and the UI tests only before a release.
 
 Also: on Mondays GitHub runs every package's tests under the thread and address sanitizers, and `CI` can be started by hand with **apps** ticked to build every app for every platform and run their unit (iPhone and Mac) and UI tests on GitHub (useful when Xcode Cloud's hours run low; about 25 macOS minutes per app, which a private repo on the free plan bills at ten times). `Site` tests the support form's function (`pnpm test`) and builds the marketing site on pushes that touch `Site/`.
 
-Until the Xcode Cloud workflows below exist, nothing compiles the apps on push: GitHub only lints and runs the package tests. Creating them is the one manual step left.
+Until the Xcode Cloud workflows below exist, the only thing that compiles the apps on a push is `Default`'s archives: GitHub only lints and runs the package tests. Creating them is the one manual step left.
 
 "Touches" comes from each Xcode Cloud workflow's file filter (below), so a Stadig Macro change doesn't rebuild Stadig Lift.
 
