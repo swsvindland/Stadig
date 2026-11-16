@@ -1,13 +1,41 @@
 import Foundation
 import Synchronization
 
-/// A typed search's ranked catalog foods, the corrections it searched for, the words that named a
-/// brand and the words the catalogs barely know.
+/// A typed search's ranked catalog foods, the search as it was read (see `Respelt`), the corrections
+/// it searched for, the words that named a brand and the words the catalogs barely know.
 struct CatalogSearch {
     var ranked: [Ranked] = []
+    var text: String
     var fixes: Fixes = [:]
     var brand: [String] = []
     var doubted: Set<String> = []
+    /// The other ways of writing the search's names, as one word or as two.
+    var also: Fixes = [:]
+
+    /// Everything a food's words may be read as: the corrections, then the other ways of writing.
+    var readings: Fixes { fixes.merging(also) { $0 + $1 } }
+    var respelt: Set<String> { Set(also.values.joined()) }
+}
+
+/// A name labels write as one word and as two, or that was typed as one and is written as two.
+struct Compound: Sendable {
+    /// More foods have it as one word ("popcorn", "kitkat") than as two ("red bull", "hot dog").
+    var joined: Bool
+    /// Both ways are the same kind of food: Redbull and Red Bull are both energy drinks, while
+    /// Butterball is turkey and "butter balls" are sweets.
+    var same: Bool
+    /// Some label has the one word, so it is searched for too.
+    var known = true
+}
+
+/// A search with each name labels write as one word or as two written the usual way, so "redbull"
+/// and "red bull" are one search, as "pop corn" and "popcorn" are.
+struct Respelt {
+    var text: String
+    /// The other way of writing it, for each word it stands for: "redbull" for "red" and for
+    /// "bull", "pop corn" for "popcorn". Unlike a correction, it matches as well as the words do.
+    var also: Fixes = [:]
+    var forms: Set<String> = []
 }
 
 /// What the catalogs make of a typed word: whether they barely know it as typed, and what it
@@ -27,6 +55,8 @@ struct MatchLimits {
     static let typed = MatchLimits(generic: 150, branded: 60)
     /// What AI matching reads per query.
     static let matching = MatchLimits(generic: 100, branded: 30)
+    /// Enough foods to say what a name's foods are usually like.
+    static let sample = MatchLimits(generic: 12, branded: 12)
 }
 
 /// Words with insertion order, counting foods.
@@ -60,10 +90,11 @@ struct QueryMatcher {
     private let numbers: [String]
     private let query: CoverageQuery
 
-    init(_ text: String, fixes: Fixes = [:], doubted: Set<String> = []) {
+    init(_ text: String, fixes: Fixes = [:], doubted: Set<String> = [], respelt: Set<String> = []) {
         target = searchedWords(readQuery(text).words)
         numbers = target.filter(isNumber)
-        query = CoverageQuery(seen: Named(name: text, brand: ""), target: target, prefix: true, fixes: fixes, doubted: doubted)
+        query = CoverageQuery(
+            seen: Named(name: text, brand: ""), target: target, prefix: true, fixes: fixes, doubted: doubted, respelt: respelt)
     }
 
     func matches(_ food: Food) -> Bool {
@@ -241,6 +272,136 @@ extension FoodCatalog {
         return spelling
     }
 
+    // MARK: One word or two
+
+    /// A name on fewer labels than this, written either way, isn't one labels write both ways.
+    private static let fewLabels = 20
+
+    /// How many foods have a word or its singular, whole: "peach" is one, "peache" on its way to
+    /// "peaches" isn't yet.
+    private func foods(named word: String) -> Int {
+        let forms = stem(word) == word ? [word] : [word, stem(word)]
+        let marks = Array(repeating: "?", count: forms.count).joined(separator: ",")
+        return count("SELECT term, foods FROM terms WHERE term IN (\(marks))", forms.map(SQLValue.text)).total
+    }
+
+    /// Two words in a row, in the catalogs' full-text syntax.
+    private func inARow(_ left: String, _ right: String) -> String { "\"\(left) \(stem(right))\"*" }
+
+    /// Whether the foods with a name as one word and the foods with it as two are the same kind of
+    /// food, by their usual energy and macros: a name written two ways, not two names.
+    private func alike(_ left: String, _ right: String) -> Bool {
+        let found = run([jobs(catalogs, "\"\(stem(left + right))\"*", .sample), jobs(catalogs, inARow(left, right), .sample)])
+        guard let one = profile(found[0].map(\.food)), let two = profile(found[1].map(\.food)) else { return false }
+        return one.distance(to: two) < 2.25
+    }
+
+    /// How labels write two words they also write as one ("red bull", "pop corn"). Nil when fewer
+    /// than 20 labels have the one word ("green tea" beside 15 of "greentea"), unless it was typed
+    /// as one (`asOne`), next to no label has it and labels write the two: "organicvalley" is
+    /// Organic Valley. A word a few labels have ("buttercup", on 19) is left as it is: it may be
+    /// a food of its own, with too few foods to tell. Remembered for the launch.
+    func compound(_ left: String, _ right: String, asOne: Bool = false) -> Compound? {
+        let key = "\(left) \(right)\(asOne ? " " : "")"
+        if let known = compounds.withLock({ $0[key] }) { return known }
+        let few = Self.fewLabels
+        var found: Compound?
+        let joined = foods(named: left + right)
+        if joined >= few || (asOne && joined < 4) {
+            let apart = catalogs.reduce(0) { $0 + $1.count(inARow(left, right), cap: 20_000) }
+            if joined >= few {
+                found = Compound(joined: joined > apart, same: apart >= few && alike(left, right))
+            } else if apart >= few {
+                found = Compound(joined: false, same: true, known: joined > 0)
+            }
+        }
+        compounds.withLock { remembered in
+            if remembered.count > 500 { remembered.removeAll() }
+            remembered[key] = .some(found)
+        }
+        return found
+    }
+
+    /// Where a word typed as one divides into two that labels also write for the same food
+    /// ("redbull", "hotdogs", "popcorn"), each half a word of 20 foods or more. The last word of a
+    /// search has to be one labels have (`whole`): unknown, it may only be half typed.
+    func halves(of word: String, whole: Bool) -> (left: String, right: String, compound: Compound)? {
+        let units = Array(word.utf16)
+        guard units.count >= 6 else { return nil }
+        let splits = (3...(units.count - 3)).map { i in
+            (String(decoding: units[..<i], as: UTF16.self), String(decoding: units[i...], as: UTF16.self))
+        }
+        var parts: [String] = []
+        for (left, right) in splits { for part in [left, right] where !parts.contains(part) { parts.append(part) } }
+        let marks = Array(repeating: "?", count: parts.count).joined(separator: ",")
+        let known = count("SELECT term, foods FROM terms WHERE term IN (\(marks))", parts.map(SQLValue.text)).values
+        // The halves in the most foods first, and no more than three ways of dividing the word.
+        let likely = splits.map { ($0.0, $0.1, min(known[$0.0] ?? 0, known[$0.1] ?? 0)) }.filter { $0.2 >= Self.fewLabels }
+            .sorted { $0.2 > $1.2 }.prefix(3)
+        for (left, right, _) in likely {
+            if let compound = compound(left, right, asOne: whole), compound.same { return (left, right, compound) }
+        }
+        return nil
+    }
+
+    /// The search with its names written the way most labels write them, and the other way kept to
+    /// search for as well: "redbull energy" becomes "red bull energy", also finding Redbull, and "pop
+    /// corn" becomes "popcorn", also finding Pop Corn. A word typed as one is only read as two when
+    /// labels write both for the same kind of food; two typed apart always find the one word too
+    /// ("butter ball turkey" finds Butterball's). Only the words that name the food are read, not
+    /// its amount, and the one word has to be a whole word of the catalogs': "pea che" is on its
+    /// way to pea cheese as much as to peaches.
+    func respell(_ query: String) -> Respelt {
+        let scalars = plainScalars(query)
+        let tokens = scanTokens(scalars)
+        let names = Set(searchedWords(readQuery(query).words))
+        let named = { (i: Int) in
+            names.contains(tokens[i].word) && !stopWords.contains(tokens[i].word) && !tokens[i].word.unicodeScalars.contains(where: isDigit)
+        }
+        var respelt = Respelt(text: "")
+        var text: [Unicode.Scalar] = []
+        var copied = 0
+        func write(_ words: String, over range: Range<Int>) {
+            text += scalars[copied..<range.lowerBound]
+            text += Array(words.unicodeScalars)
+            copied = range.upperBound
+        }
+        func also(_ form: String, for words: [String]) {
+            for word in words where respelt.also[word]?.contains(form) != true { respelt.also[word, default: []].append(form) }
+            respelt.forms.insert(form)
+        }
+        var i = 0
+        while i < tokens.count {
+            defer { i += 1 }
+            guard named(i) else { continue }
+            let word = tokens[i].word
+            if let (left, right, compound) = halves(of: word, whole: i < tokens.count - 1) {
+                if compound.joined {
+                    also("\(left) \(stem(right))", for: [word])
+                } else {
+                    write("\(left) \(right)", over: tokens[i].start..<tokens[i].end)
+                    if compound.known { also(stem(word), for: [left, right]) }
+                    continue
+                }
+            }
+            // Halves of three letters or more, as a word typed as one divides: "pea ch" isn't peach.
+            guard i + 1 < tokens.count, named(i + 1), length(word) > 2 else { continue }
+            let next = tokens[i + 1].word
+            guard length(next) > 2, scalars[tokens[i].end..<tokens[i + 1].start].allSatisfy({ isSpace($0) || $0 == "-" }) else { continue }
+            guard let compound = compound(word, next) else { continue }
+            if compound.joined && compound.same {
+                write(word + next, over: tokens[i].start..<tokens[i + 1].end)
+                also("\(word) \(stem(next))", for: [word + next])
+                i += 1
+            } else {
+                also(stem(word + next), for: [word, next])
+            }
+        }
+        text += scalars[copied...]
+        respelt.text = makeString(text[...])
+        return respelt
+    }
+
     /// Whether words name a brand: they are in the brand of at least 20 packaged foods and half
     /// again as many brands as names ("trader joes", "kirkland", "great value"). Brands that name
     /// their products ("oreo", "cheerios", "coke") are searched as names.
@@ -346,12 +507,16 @@ extension FoodCatalog {
     /// missing one of its words; and a search that finds nothing falls back to the word that names
     /// the food. The person's own foods in `known` rank higher, and packaged foods people scan more
     /// rank higher among themselves.
-    func searchCatalog(_ query: String, known: [String: Double]) -> CatalogSearch {
+    func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
+        guard !catalogs.isEmpty else { return CatalogSearch(text: typed) }
+        // A name labels write as one word or as two is searched the usual way, and the other too.
+        let respelt = respell(typed)
+        let query = respelt.text
         let reading = readQuery(query)
         // A single letter matches most of the catalog, so the search waits for a second one.
         let searched = searchedWords(reading.words)
         let foods = searched.filter { !isNumber($0) }
-        guard !foods.isEmpty, !catalogs.isEmpty else { return CatalogSearch() }
+        guard !foods.isEmpty else { return CatalogSearch(text: query) }
         var fixes: Fixes = [:]
         var doubted = Set<String>()
         for (i, word) in searched.enumerated() where !isNumber(word) && fixes[word] == nil {
@@ -361,6 +526,11 @@ extension FoodCatalog {
         }
         let term = { (word: String) in searchTerm(word, fixes) }
         let expression = searched.map(term).joined(separator: " AND ")
+        // Each search below is also made with every name written the other way, as one word or as
+        // two. It's a search of its own: among the alternatives of one expression, the rarer
+        // spelling's foods would take the places of the usual one's.
+        let other = { (word: String) in respelt.also[word].map { searchTerm(word, [word: $0], only: true) } ?? term(word) }
+        let ways = respelt.also.isEmpty ? [term] : [term, other]
         // USDA names lead with the food ("Chicken, broilers or fryers, breast…"), so those come first.
         let lead = { (word: String) in fixes[word]?.first ?? searchForms(word)[0] }
         // The words alone rank 12-grain bread too low to reach it for "12 grain bread", or a chain's
@@ -374,42 +544,50 @@ extension FoodCatalog {
         // With a brand, also the brand's foods with any of the other words (packaged foods by their
         // brand, a chain USDA names by its name), and those words' foods by any brand. A brand alone
         // is all of its foods, the most scanned first.
-        let brandTerms = "(\(brand.map(term).joined(separator: " AND ")))"
-        let anyWord = product.isEmpty ? "" : " AND (\(named.map(term).joined(separator: " OR ")))"
+        var any: [String] = []
+        for word in named { for way in ways where !any.contains(way(word)) { any.append(way(word)) } }
+        let anyWord = product.isEmpty ? "" : " AND (\(any.joined(separator: " OR ")))"
         let found = run([
-            product.isEmpty ? [] : jobs(catalogs, named.map(term).joined(separator: " AND "), .typed),
+            product.isEmpty ? [] : ways.flatMap { way in jobs(catalogs, named.map(way).joined(separator: " AND "), .typed) },
             phrases.isEmpty ? [] : jobs(catalogs, (phrases + [expression]).joined(separator: " AND ")),
             jobs(catalogs, expression, .typed, lead: lead(foods[0])),
             brand.isEmpty
                 ? []
-                : jobs(branded, "{brand}: \(brandTerms)\(anyWord)", .typed)
-                    + jobs(catalogs.filter { $0.kind == .generic }, "{name}: \(brandTerms)\(anyWord)", .typed),
+                : ways.flatMap { way in
+                    let brandTerms = "(\(brand.map(way).joined(separator: " AND ")))"
+                    return jobs(branded, "{brand}: \(brandTerms)\(anyWord)", .typed)
+                        + jobs(catalogs.filter { $0.kind == .generic }, "{name}: \(brandTerms)\(anyWord)", .typed)
+                },
+            ways.dropFirst().flatMap { way in jobs(catalogs, searched.map(way).joined(separator: " AND "), .typed) },
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[3] + anyBrand
+        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").
             let head = foods.last { !countWords.contains($0) } ?? foods[foods.count - 1]
-            var more = [jobs(catalogs, term(head), .typed, lead: lead(head))]
+            var more = ways.map { way in jobs(catalogs, way(head), .typed, lead: lead(head)) }
             if span == nil && foods.count > 2 {
-                let missing = searched.indices.map { i in
-                    "(" + searched.indices.filter { $0 != i }.map { term(searched[$0]) }.joined(separator: " AND ") + ")"
+                for way in ways {
+                    let missing = searched.indices.map { i in
+                        "(" + searched.indices.filter { $0 != i }.map { way(searched[$0]) }.joined(separator: " AND ") + ")"
+                    }
+                    more.append(jobs(catalogs, missing.joined(separator: " OR "), .typed))
                 }
-                more.append(jobs(catalogs, missing.joined(separator: " OR "), .typed))
             }
             pool += run(more).flatMap { $0 }
         }
+        var search = CatalogSearch(text: query, fixes: fixes, brand: brand, doubted: doubted, also: respelt.also)
         // What the words besides the brand usually name, from the foods they name by any brand.
-        let kind = product.isEmpty ? nil : profile(for: named, anyBrand.map(\.entry), fixes: fixes)
+        let kind = product.isEmpty ? nil : profile(for: named, anyBrand.map(\.entry), fixes: search.readings, respelt: respelt.forms)
         var seen = Set<String>()
         let unique = pool.lazy.map(\.entry).filter { seen.insert($0.food.id).inserted }
-        let ranked = rankSearch(
+        search.ranked = rankSearch(
             query, Array(unique), known: known,
             hints: RankHints(
-                fixes: fixes, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
-                brand: brand, profile: kind, doubted: doubted))
-        return CatalogSearch(ranked: ranked, fixes: fixes, brand: brand, doubted: doubted)
+                fixes: search.readings, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
+                brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms))
+        return search
     }
 
     /// Catalog searches for a food a model saw, from most to least specific: brand and name, brand

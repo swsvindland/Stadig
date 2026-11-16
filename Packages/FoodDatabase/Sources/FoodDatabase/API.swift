@@ -19,6 +19,9 @@ public final class FoodCatalog: Sendable {
     let spellings = Mutex<[String: Spelling]>([:])
     /// Whether words name a brand, by their full-text expression, remembered for the launch.
     let brandish = Mutex<[String: Bool]>([:])
+    /// How labels write two words they also write as one, by the two words; nil where few labels
+    /// have the one word. Remembered for the launch.
+    let compounds = Mutex<[String: Compound?]>([:])
     /// The chains and brands the generic catalog names, read on the first search that may name one.
     let chainNames = Mutex<[[String]]?>(nil)
 
@@ -74,10 +77,10 @@ public final class FoodCatalog: Sendable {
         let found = searchCatalog(query, known: known)
         // The person's own foods come first, ranked like the catalog below them, so rows already on
         // screen don't move when the catalog answers. A typo the catalog corrected finds them too.
-        let matcher = QueryMatcher(query, fixes: found.fixes, doubted: found.doubted)
+        let matcher = QueryMatcher(found.text, fixes: found.readings, doubted: found.doubted, respelt: found.respelt)
         let own = rankSearch(
-            query, personal.map(\.food).filter(matcher.matches), known: known,
-            hints: RankHints(fixes: found.fixes, brand: found.brand, doubted: found.doubted))
+            found.text, personal.map(\.food).filter(matcher.matches), known: known,
+            hints: RankHints(fixes: found.readings, brand: found.brand, doubted: found.doubted, respelt: found.respelt))
         var results = own.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: true) }
         var listed = Set(results.map(\.food.id))
         for row in found.ranked where results.count < limit && listed.insert(row.food.id).inserted {
@@ -131,6 +134,7 @@ public final class FoodCatalog: Sendable {
         for catalog in catalogs { catalog.releaseMemory() }
         spellings.withLock { $0.removeAll() }
         brandish.withLock { $0.removeAll() }
+        compounds.withLock { $0.removeAll() }
     }
 
     /// Reads that failed since the catalogs opened; each showed as nothing found.

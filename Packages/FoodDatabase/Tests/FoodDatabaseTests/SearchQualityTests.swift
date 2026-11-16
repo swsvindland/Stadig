@@ -130,7 +130,7 @@ struct SearchQualityTests {
     static let floors: [String: Double] = [
         "brand first": 0.94, "brand last": 0.92, "brand between the name's words": 0.93, "name backwards, brand last": 0.93,
         "every word shuffled": 0.92, "a typo in the name": 0.93, "a typo in the name, brand last": 0.92, "a typo in the brand": 0.93,
-        "the name's last word half typed": 0.94, "the brand last and half typed": 0.91, "the brand typed as one word": 0.78,
+        "the name's last word half typed": 0.94, "the brand last and half typed": 0.91, "the brand typed as one word": 0.85,
     ]
 
     @Test("a packaged food is found first however its name and brand are typed")

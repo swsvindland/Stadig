@@ -259,10 +259,11 @@ func term(_ word: String) -> String { either(forms(word).map { "\"\($0)\"*" }) }
 /// A typed word in the catalog's full-text syntax; a number, or a letter on its own, matches only
 /// itself. Its fixes are searched too, as prefixes or, for a word typed without its space, the two
 /// words together or a word apart: "membermark" is Member's Mark, whose "s" is a word to the index.
-func searchTerm(_ word: String, _ fixes: Fixes = [:]) -> String {
+/// With `only`, the fixes stand in for the word instead of beside it.
+func searchTerm(_ word: String, _ fixes: Fixes = [:], only: Bool = false) -> String {
     if isNumber(word) || length(word) == 1 { return "\"\(word)\"" }
     return either(
-        unique(searchForms(word) + (fixes[word] ?? [])).map { form in
+        unique((only ? [] : searchForms(word)) + (fixes[word] ?? [])).map { form in
             let parts = form.split(separator: " ")
             guard parts.count > 1 else { return "\"\(form)\"*" }
             return "NEAR(" + parts.map { "\"\($0)\"" }.joined(separator: " ") + "*, 1)"

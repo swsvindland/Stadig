@@ -91,6 +91,35 @@ struct OwnWordsTests {
         #expect(searchTerm("chiken", ["chiken": ["chicken"]]) == #"("chiken"* OR "chicken"*)"#)
     }
 
+    @Test("a name written as one word or as two matches as well either way")
+    func oneWordOrTwo() {
+        let drinks = [Self.food("Red Bull Energy Drink", brand: "Red Bull"), Self.food("Redbull Energy Drink", brand: "Redbull")]
+        let apart: Fixes = ["red": ["redbull"], "bull": ["redbull"]]
+        let both = rankSearch("red bull energy drink", drinks, hints: RankHints(fixes: apart, respelt: ["redbull"]))
+        #expect(both.count == 2 && both.allSatisfy { $0.name == 1 })
+        #expect(abs(both[0].score - both[1].score) < 0.01, "\(both.map(\.score))")
+        // Read as a correction instead, the one word is a guess and ranks below the words typed.
+        let guessed = rankSearch("red bull energy drink", drinks, hints: RankHints(fixes: apart))
+        #expect(guessed.first?.food.brand == "Red Bull" && guessed[0].score - guessed[1].score > 0.3, "\(guessed.map(\.score))")
+        let corn = [Self.food("Pop Corn", brand: "Jolly Time"), Self.food("Popcorn", brand: "Jolly Time")]
+        let joined = rankSearch("popcorn", corn, hints: RankHints(fixes: ["popcorn": ["pop corn"]], respelt: ["pop corn"]))
+        #expect(joined.count == 2 && abs(joined[0].score - joined[1].score) < 0.01, "\(joined.map(\.score))")
+        // A word that stands for two names a brand only when both are the brand's: "blackberries",
+        // also written "black berries", doesn't name Berry Fresh by its "berries".
+        let berries = [Self.food("Blackberries", brand: "Berry Fresh"), Self.food("Fresh Blackberries", brand: "Driscoll's")]
+        let fresh = rankSearch(
+            "fresh blackberries", berries, hints: RankHints(fixes: ["blackberries": ["black berr"]], respelt: ["black berr"]))
+        #expect(fresh.first?.food.brand == "Driscoll's", "\(fresh.map { $0.food.brand ?? "" })")
+        // The other way is searched in place of the word, not beside it.
+        #expect(searchTerm("popcorn", ["popcorn": ["pop corn"]], only: true) == #"NEAR("pop" "corn"*, 1)"#)
+        #expect(searchTerm("bull", ["bull": ["redbull"]], only: true) == #""redbull"*"#)
+        // Kinds of food are told apart by their usual energy and macros.
+        let drink = Profile(center: [log(55), 0, 11, 0], spread: [0.15, 3, 6, 3])
+        let sweet = Profile(center: [log(510), 9, 55, 30], spread: [0.15, 3, 6, 3])
+        #expect(drink.distance(to: drink) == 0 && drink.distance(to: sweet) > 2.25)
+        #expect(drink.distance(to: Profile(center: [log(50), 0, 12, 0], spread: [0.15, 3, 6, 3])) < 2.25)
+    }
+
     @Test("the asked brand's food named by exactly the words typed comes before its foods more like the usual")
     func exactlyNamed() {
         // Most chocolate bars are milk chocolate; this brand's "Chocolate Bar" is darker than its others.
@@ -171,8 +200,10 @@ struct BrandReadingTests {
         #expect(catalog.searchCatalog("perue chicken tenders", known: [:]).fixes["perue"]?.contains("perdue") == true)
         // One letter from "Triscuits", which few labels say, and so Triscuit.
         #expect(catalog.searchCatalog("triscuiits rosemary", known: [:]).fixes["triscuiits"] == ["triscuit"])
-        // Not "organically", two letters away.
-        #expect(catalog.searchCatalog("organicvalley milk", known: [:]).fixes["organicvalley"] == ["organic valle"])
+        // Not "organically", two letters away: labels write the two words, so they're searched as
+        // typed apart. Last in a search it may be half typed, and is a missing space to correct.
+        #expect(catalog.searchCatalog("organicvalley milk", known: [:]).text == "organic valley milk")
+        #expect(catalog.searchCatalog("milk organicvalley", known: [:]).fixes["organicvalley"] == ["organic valle"])
         // The last word may still be half typed: the start of chicken.
         #expect(catalog.searchCatalog("grilled chikc", known: [:]).fixes["chikc"] == ["chic"])
     }
@@ -190,5 +221,82 @@ struct BrandReadingTests {
         for query in ["chicken breast", "whole milk", "brown rice", "olive oil"] {
             #expect(catalog.search(query).first?.food.source == .usda, "\(query)")
         }
+    }
+}
+
+/// Names labels write as one word and as two: Red Bull and Redbull, popcorn and pop corn.
+@Suite("One word or two", .enabled(if: Catalogs.hasOFF, "needs Apps/MacroTrack/Catalogs/off.db or OFF_DB"))
+struct CompoundTests {
+    let catalog = Catalogs.both
+
+    @Test(
+        "a name typed as one word and typed as two is one search",
+        arguments: [
+            ("redbull", "red bull"), ("kitkat", "kit kat"), ("kit-kat", "kitkat"), ("hotdog", "hot dog"), ("hotdogs", "hot dogs"),
+            ("popcorn", "pop corn"), ("icecream", "ice cream"), ("peanutbutter", "peanut butter"), ("oatmilk", "oat milk"),
+            ("crispbread", "crisp bread"), ("lowfat cottage cheese", "low fat cottage cheese"),
+            ("redbull sugarfree", "red bull sugar free"), ("vanilla milkshake", "vanilla milk shake"),
+        ])
+    func oneSearch(joined: String, apart: String) {
+        let one = catalog.search(joined)
+        let two = catalog.search(apart)
+        #expect(
+            one.count > 5 && one.map(\.food.id) == two.map(\.food.id),
+            "\(joined): \(one.prefix(3).map(\.food.title)) | \(two.prefix(3).map(\.food.title))")
+    }
+
+    @Test(
+        "it's read the way most labels write it, and finds the foods written the other way too",
+        arguments: [
+            ("redbull", "red bull", "(?i)red bull", "(?i)redbull"),
+            ("red bull energy", "red bull energy", "(?i)red bull", "(?i)redbull"),
+            ("kit kat", "kitkat", "(?i)kitkat", "(?i)kit.kat"),
+            ("pop corn", "popcorn", "(?i)popcorn", "(?i)pop corn"),
+            ("hotdog buns", "hot dog buns", "(?i)hot dog", "(?i)hotdog"),
+            ("oatmilk", "oat milk", "(?i)oat.milk", "(?i)oatmilk"),
+        ])
+    func bothWays(typed: String, read: String, usual: String, other: String) {
+        #expect(catalog.searchCatalog(typed, known: [:]).text == read)
+        let titles = catalog.search(typed).map(\.food.title)
+        #expect(titles.contains { matches(usual, $0) }, "\(typed): none written the usual way in \(titles.prefix(5))")
+        #expect(titles.contains { matches(other, $0) }, "\(typed): none written the other way in \(titles.prefix(5))")
+    }
+
+    @Test("a word that is a food or a brand of its own stays one word")
+    func ownNames() {
+        // Butterball is turkey; "butter balls" are sweets. Buttercup, on 19 labels, is left alone.
+        for query in ["butterball", "buttercup squash", "strawberry", "chicken", "sandwich", "goldfish"] {
+            let found = catalog.searchCatalog(query, known: [:])
+            #expect(found.text == query && found.also.isEmpty, "\(query): \(found.text) \(found.also)")
+        }
+        for match in catalog.search("butterball").prefix(5) { #expect(matches("(?i)butterball", match.food.title), "\(match.food.title)") }
+        // Typed apart, the one word is still searched: it can only add the foods that have it.
+        #expect(catalog.searchCatalog("butter ball turkey", known: [:]).also["ball"] == ["butterball"])
+        #expect(catalog.search("butter ball turkey").first.map { matches("(?i)butterball", $0.food.title) } == true)
+        #expect(catalog.search("butter finger").prefix(3).contains { matches("(?i)butterfinger", $0.food.title) })
+    }
+
+    @Test("words still being typed, short halves and everyday pairs are searched as typed")
+    func asTyped() {
+        // "pea che" is on its way to pea cheese as much as to peaches, and "peache" is no word yet.
+        for query in ["pea ch", "pea che", "pop cor", "red bul", "chicken breast", "greek yogurt", "olive oil", "2% milk"] {
+            let found = catalog.searchCatalog(query, known: [:])
+            #expect(found.text == plain(query) && found.also.isEmpty, "\(query): \(found.text) \(found.also)")
+        }
+        // A brand half typed after the food isn't divided: "popcor" is on its way to PopCorners.
+        #expect(catalog.searchCatalog("sea salt popcor", known: [:]).text == "sea salt popcor")
+        // A word no label has is the two words labels write, unless it's last and may be half typed.
+        #expect(catalog.searchCatalog("wellsleyfarms purified water", known: [:]).text == "wellsley farms purified water")
+        #expect(catalog.searchCatalog("purified water wellsleyfarms", known: [:]).text == "purified water wellsleyfarms")
+        // Amounts and sizes around a name are kept as typed.
+        #expect(catalog.searchCatalog("2 hotdogs", known: [:]).text == "2 hot dogs")
+        #expect(catalog.searchCatalog("14\" pop corn", known: [:]).text == "14\" popcorn")
+    }
+
+    @Test("the person's own food is found written either way")
+    func personal() {
+        let own = Food(id: "custom:shake", name: "Morning Milk Shake", basis: .ml, nutrients: .zero, source: .custom)
+        let found = catalog.search("morning milkshake", personal: [PersonalFood(food: own, score: 1)])
+        #expect(found.first?.food.id == own.id && found.first?.personal == true)
     }
 }
