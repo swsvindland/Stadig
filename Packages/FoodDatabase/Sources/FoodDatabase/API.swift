@@ -16,7 +16,7 @@ public final class FoodCatalog: Sendable {
     let rare: Double
     let uncommon: Double
     /// What a typed word probably meant, remembered for the launch since each keystroke asks again.
-    let spellings = Mutex<[String: [String]]>([:])
+    let spellings = Mutex<[String: Spelling]>([:])
     /// Whether words name a brand, by their full-text expression, remembered for the launch.
     let brandish = Mutex<[String: Bool]>([:])
     /// The chains and brands the generic catalog names, read on the first search that may name one.
@@ -74,10 +74,10 @@ public final class FoodCatalog: Sendable {
         let found = searchCatalog(query, known: known)
         // The person's own foods come first, ranked like the catalog below them, so rows already on
         // screen don't move when the catalog answers. A typo the catalog corrected finds them too.
-        let matcher = QueryMatcher(query, fixes: found.fixes)
+        let matcher = QueryMatcher(query, fixes: found.fixes, doubted: found.doubted)
         let own = rankSearch(
             query, personal.map(\.food).filter(matcher.matches), known: known,
-            hints: RankHints(fixes: found.fixes, brand: found.brand))
+            hints: RankHints(fixes: found.fixes, brand: found.brand, doubted: found.doubted))
         var results = own.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: true) }
         var listed = Set(results.map(\.food.id))
         for row in found.ranked where results.count < limit && listed.insert(row.food.id).inserted {

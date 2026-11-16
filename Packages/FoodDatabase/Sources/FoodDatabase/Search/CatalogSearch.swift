@@ -1,12 +1,20 @@
 import Foundation
 import Synchronization
 
-/// A typed search's ranked catalog foods, the corrections it searched for and the words that named
-/// a brand.
+/// A typed search's ranked catalog foods, the corrections it searched for, the words that named a
+/// brand and the words the catalogs barely know.
 struct CatalogSearch {
     var ranked: [Ranked] = []
     var fixes: Fixes = [:]
     var brand: [String] = []
+    var doubted: Set<String> = []
+}
+
+/// What the catalogs make of a typed word: whether they barely know it as typed, and what it
+/// probably meant.
+struct Spelling: Sendable {
+    var doubted = false
+    var fixes: [String] = []
 }
 
 /// How many rows a full-text match keeps from each catalog.
@@ -52,10 +60,10 @@ struct QueryMatcher {
     private let numbers: [String]
     private let query: CoverageQuery
 
-    init(_ text: String, fixes: Fixes = [:]) {
+    init(_ text: String, fixes: Fixes = [:], doubted: Set<String> = []) {
         target = searchedWords(readQuery(text).words)
         numbers = target.filter(isNumber)
-        query = CoverageQuery(seen: Named(name: text, brand: ""), target: target, prefix: true, fixes: fixes)
+        query = CoverageQuery(seen: Named(name: text, brand: ""), target: target, prefix: true, fixes: fixes, doubted: doubted)
     }
 
     func matches(_ food: Food) -> Bool {
@@ -121,9 +129,13 @@ extension FoodCatalog {
 
     /// What a typed word probably meant when the catalogs barely know it: the far more common
     /// catalog words it is a typo or two from ("chiken" is chicken, "chikc" the start of chicken),
-    /// else the two words it joins ("peanutbutter"). Remembered for the launch.
-    func spell(_ word: String) -> [String] {
-        if let remembered = spellings.withLock({ $0[word] }) { return remembered }
+    /// or the two words it joins ("peanutbutter"). A word with others typed after it is `whole`,
+    /// not half typed, so only whole catalog words are read into it: "perue" before "chicken
+    /// tenders" is Perdue or Peru, not the start of "perfect". Remembered for the launch.
+    func spell(_ word: String, whole: Bool = false) -> Spelling {
+        // No word has a space, so a whole word is remembered apart from the same one half typed.
+        let remembering = whole ? "\(word) " : word
+        if let remembered = spellings.withLock({ $0[remembering] }) { return remembered }
         let form = stem(word)
         let size = length(word)
         let limit = allowedTypos(length: size)
@@ -133,7 +145,8 @@ extension FoodCatalog {
             known = Double(count(range, [.text(form), .text(form + "\u{FFFF}")]).total)
         }
         var fixes: [String] = []
-        if known < rare || (known < uncommon && size >= 6) {
+        let doubted = known < rare || (known < uncommon && size >= 6)
+        if doubted {
             let least = (known < rare ? 10 : 75) * (known + 1)
             // A half-typed word is the start of a catalog word; typos rarely touch both of the first
             // two letters, so words starting with either are read. A whole word may have a typo
@@ -166,20 +179,27 @@ extension FoodCatalog {
             for term in terms.keys {
                 let foods = terms.values[term]!
                 let letters = Array(term.utf16)
-                guard let found = meter.misread(units, letters), found.edits > 0 else { continue }
+                let found: (edits: Int, length: Int)?
+                if whole {
+                    let edits = meter.distance(units[...], letters[...], limit: limit)
+                    found = edits <= limit ? (edits, letters.count) : nil
+                } else {
+                    found = meter.misread(units, letters)
+                }
+                guard let found, found.edits > 0 else { continue }
                 let key = stem(String(decoding: letters[..<found.length], as: UTF16.self))
+                // A word and its plural are one reading, as near as the nearer of them and in the
+                // foods of both: "triscuiits" is one letter from Triscuits, the name on few labels,
+                // and so means Triscuit.
                 if let last = meant[key] {
-                    if found.edits < last.edits {
-                        meant[key] = (found.edits, foods)
-                    } else if found.edits == last.edits {
-                        meant[key] = (last.edits, last.foods + foods)
-                    }
+                    meant[key] = (min(found.edits, last.edits), last.foods + foods)
                 } else {
                     meantKeys.append(key)
                     meant[key] = (found.edits, foods)
                 }
             }
             let common = meantKeys.filter { Double(meant[$0]!.foods) >= least }
+            var nearest: (edits: Int, foods: Int)?
             if let fewest = common.map({ meant[$0]!.edits }).min() {
                 let likely = common.filter { meant[$0]!.edits == fewest }
                     .enumerated().sorted { a, b in
@@ -192,9 +212,12 @@ extension FoodCatalog {
                 let picked = likely.prefix(2).filter { Double(meant[$0]!.foods) >= top / 10 }
                 // "tortil" already searches for tortilla.
                 fixes = picked.filter { key in !picked.contains { $0 != key && starts(key, $0) } }
+                nearest = (fewest, meant[likely[0]]!.foods)
             }
-            if fixes.isEmpty && known < rare && size >= 6 {
-                // Two words typed without the space between them.
+            if (nearest?.edits ?? .max) > 1 && known < rare && size >= 6 {
+                // Two words typed without the space between them, which is likelier than two typos
+                // when both words are in more foods than the word two typos away: "organicvalley"
+                // is Organic Valley, not "organically".
                 let splits = (0..<(size - 5)).map { i in
                     (String(decoding: units[..<(i + 3)], as: UTF16.self), String(decoding: units[(i + 3)...], as: UTF16.self))
                 }
@@ -207,14 +230,15 @@ extension FoodCatalog {
                     let foods = min(found.values[left] ?? 0, found.values[right] ?? 0)
                     if best == nil || foods > best!.foods { best = (left, right, foods) }
                 }
-                if let best, Double(best.foods) >= least { fixes.append("\(best.left) \(stem(best.right))") }
+                if let best, Double(best.foods) >= least, best.foods > nearest?.foods ?? 0 { fixes = ["\(best.left) \(stem(best.right))"] }
             }
         }
+        let spelling = Spelling(doubted: doubted, fixes: fixes)
         spellings.withLock { remembered in
             if remembered.count > 500 { remembered.removeAll() }
-            remembered[word] = fixes
+            remembered[remembering] = spelling
         }
-        return fixes
+        return spelling
     }
 
     /// Whether words name a brand: they are in the brand of at least 20 packaged foods and half
@@ -261,11 +285,22 @@ extension FoodCatalog {
 
     /// Whether words name a chain or brand the generic catalog writes first ("little caesars", "papa
     /// johns", "wendys"), unless packaged foods use them in names far more often than as a brand.
-    private func isChain(_ words: ArraySlice<String>, _ catalog: Catalog?, _ fixes: Fixes) -> Bool {
+    /// Only the search's last word may be the start of the chain's, `halfTyped`, and not when it is
+    /// a word of its own: "mcdon" is on its way to McDonald's, but "apple" isn't Applebee's, before
+    /// "cinnamon oats" or after.
+    private func isChain(_ words: ArraySlice<String>, _ catalog: Catalog?, _ fixes: Fixes, halfTyped: Bool) -> Bool {
         let forms = words.map { searchForms($0) + (fixes[$0] ?? []) }
+        let started =
+            halfTyped
+            && words.last.map { word in
+                count("SELECT term, foods FROM terms WHERE term IN (?, ?)", [.text(word), .text(stem(word))]).total < 20
+            } == true
         guard
             let chain = chains.first(where: { chain in
-                chain.count == forms.count && zip(chain, forms).allSatisfy { word, options in options.contains { starts(word, $0) } }
+                chain.count == forms.count
+                    && zip(chain, forms).enumerated().allSatisfy { i, pair in
+                        pair.1.contains { started && i == forms.count - 1 ? starts(pair.0, $0) : same(pair.0, $0) }
+                    }
             })
         else { return false }
         guard let catalog else { return true }
@@ -297,7 +332,7 @@ extension FoodCatalog {
                 // A letter on its own is a size or a variety ("k cup"), whatever brands start with it.
                 guard span.contains(where: { length($0) > 1 }) else { continue }
                 if let catalog, isBrand(span, catalog, fixes) { return start..<(start + size) }
-                if isChain(span, catalog, fixes) { return start..<(start + size) }
+                if isChain(span, catalog, fixes, halfTyped: start + size == words.count) { return start..<(start + size) }
             }
         }
         return nil
@@ -318,9 +353,11 @@ extension FoodCatalog {
         let foods = searched.filter { !isNumber($0) }
         guard !foods.isEmpty, !catalogs.isEmpty else { return CatalogSearch() }
         var fixes: Fixes = [:]
-        for word in foods where fixes[word] == nil {
-            let meant = spell(word)
-            if !meant.isEmpty { fixes[word] = meant }
+        var doubted = Set<String>()
+        for (i, word) in searched.enumerated() where !isNumber(word) && fixes[word] == nil {
+            let spelling = spell(word, whole: i < searched.count - 1)
+            if !spelling.fixes.isEmpty { fixes[word] = spelling.fixes }
+            if spelling.doubted { doubted.insert(word) }
         }
         let term = { (word: String) in searchTerm(word, fixes) }
         let expression = searched.map(term).joined(separator: " AND ")
@@ -371,8 +408,8 @@ extension FoodCatalog {
             query, Array(unique), known: known,
             hints: RankHints(
                 fixes: fixes, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
-                brand: brand, profile: kind))
-        return CatalogSearch(ranked: ranked, fixes: fixes, brand: brand)
+                brand: brand, profile: kind, doubted: doubted))
+        return CatalogSearch(ranked: ranked, fixes: fixes, brand: brand, doubted: doubted)
     }
 
     /// Catalog searches for a food a model saw, from most to least specific: brand and name, brand

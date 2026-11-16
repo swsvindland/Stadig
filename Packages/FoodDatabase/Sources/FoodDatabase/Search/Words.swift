@@ -228,6 +228,12 @@ func stem(_ word: String) -> String {
     return n > 1 && starts(word, form) && length(word) - n <= 2
 }
 
+/// A word without the "s" of its plural or possessive, for telling a brand's word from a word that
+/// only shares its stem: "joes" and "joe" name the same brand, "wheats" doesn't name Wheaty.
+func bare(_ word: String) -> String {
+    length(word) > 3 && word.utf8.last == UInt8(ascii: "s") ? String(word.dropLast()) : word
+}
+
 /// The catalog's wordings of a word the model said, including looser ones.
 func forms(_ word: String) -> [String] { alternatives[word] ?? [stem(word)] }
 
@@ -251,10 +257,16 @@ private func unique(_ list: [String]) -> [String] {
 func term(_ word: String) -> String { either(forms(word).map { "\"\($0)\"*" }) }
 
 /// A typed word in the catalog's full-text syntax; a number, or a letter on its own, matches only
-/// itself. Its fixes are searched too, as prefixes or, for a word typed without its space, a phrase.
+/// itself. Its fixes are searched too, as prefixes or, for a word typed without its space, the two
+/// words together or a word apart: "membermark" is Member's Mark, whose "s" is a word to the index.
 func searchTerm(_ word: String, _ fixes: Fixes = [:]) -> String {
     if isNumber(word) || length(word) == 1 { return "\"\(word)\"" }
-    return either(unique(searchForms(word) + (fixes[word] ?? [])).map { "\"\($0)\"*" })
+    return either(
+        unique(searchForms(word) + (fixes[word] ?? [])).map { form in
+            let parts = form.split(separator: " ")
+            guard parts.count > 1 else { return "\"\(form)\"*" }
+            return "NEAR(" + parts.map { "\"\($0)\"" }.joined(separator: " ") + "*, 1)"
+        })
 }
 
 /// The catalog's full-text expression for a search: each word as a stemmed prefix.
@@ -463,6 +475,32 @@ struct TypoMeter {
             if edits <= limit && (found == nil || edits < found!.edits) { found = (edits, size) }
         }
         return found
+    }
+}
+
+/// A typed word the catalogs barely know, kept to compare with each food's own words: "gali" is
+/// the Galli of Galli's roasted chestnuts, though "gala" is on far more labels. The catalogs' words
+/// can only say what a typo usually means; the foods the other words found say what it means here.
+struct Misspelling: Sendable {
+    private let units: [UInt16]
+    private let limit: Int
+
+    /// Nil for a word too short to allow a typo, or with a digit in it.
+    init?(_ word: String) {
+        let limit = allowedTypos(word)
+        guard limit > 0, !word.unicodeScalars.contains(where: isDigit) else { return nil }
+        self.limit = limit
+        units = Array(stem(word).utf16)
+    }
+
+    /// Whether one of a food's words, stemmed, is the word typed with a typo or two.
+    func reads(_ words: [String]) -> Bool {
+        var meter = TypoMeter()
+        return words.contains { word in
+            let count = word.utf16.count
+            guard count > 3, abs(count - units.count) <= limit else { return false }
+            return meter.distance(units[...], Array(word.utf16)[...], limit: limit) <= limit
+        }
     }
 }
 

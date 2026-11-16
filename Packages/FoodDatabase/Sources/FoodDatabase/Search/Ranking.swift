@@ -17,6 +17,8 @@ struct RankHints {
     var brand: [String] = []
     /// What the food the other words name is usually like.
     var profile: Profile?
+    /// The search's words the catalogs barely know as typed, which may be a food's word misspelt.
+    var doubted: Set<String> = []
 }
 
 /// A ranked food.
@@ -399,12 +401,15 @@ private struct WordForms {
     let options: [String]
     let fixes: [String]
     let fixParts: [[String]]
+    /// For a word the catalogs barely know: the word, to compare with a food's own.
+    let misspelling: Misspelling?
 
-    init(_ word: String, prefix: Bool, fixes: Fixes) {
+    init(_ word: String, prefix: Bool, fixes: Fixes, doubted: Bool = false) {
         self.word = word
         options = prefix ? searchForms(word) : forms(word)
         self.fixes = fixes[word] ?? []
         fixParts = self.fixes.map { $0.split(separator: " ").map(String.init) }
+        misspelling = doubted ? Misspelling(word) : nil
     }
 }
 
@@ -446,10 +451,13 @@ struct CoverageQuery {
     fileprivate let brand: [WordForms]
     fileprivate let usual: Usual?
 
-    init(seen: Named, target words: [String], prefix: Bool = false, fixes: Fixes = [:], nameOnly: Bool = false) {
+    init(
+        seen: Named, target words: [String], prefix: Bool = false, fixes: Fixes = [:], nameOnly: Bool = false,
+        doubted: Set<String> = []
+    ) {
         self.prefix = prefix
         self.nameOnly = nameOnly
-        target = words.map { WordForms($0, prefix: prefix, fixes: fixes) }
+        target = words.map { WordForms($0, prefix: prefix, fixes: fixes, doubted: doubted.contains($0)) }
         var mentioned: [String] = []
         for word in target {
             for form in word.options + word.fixParts.flatMap({ $0 }) where !mentioned.contains(form) { mentioned.append(form) }
@@ -482,13 +490,14 @@ struct CoverageQuery {
         whole || (prefix && word.options.contains { form in found.contains { fits($0, form) } })
     }
 
-    /// A fix is a word's start ("chick") or, for a word typed without its space, a phrase.
+    /// A fix is a word's start ("chick") or, for a word typed without its space, a phrase. A word
+    /// the catalogs barely know is also one of the food's own words a typo or two from it.
     private func fixed(_ word: WordForms, _ found: [String]) -> Bool {
         word.fixParts.contains { parts in
             parts.indices.allSatisfy { i in
                 found.contains { i == parts.count - 1 ? starts($0, parts[i]) : same($0, parts[i]) }
             }
-        }
+        } || word.misspelling?.reads(found) == true
     }
 
     private func branded(_ word: WordForms, _ titled: [String]) -> Bool {
@@ -500,7 +509,9 @@ struct CoverageQuery {
         literal(word, found, whole: whole(word, found)) || fixed(word, found)
     }
 
-    func cover(_ text: FoodText) -> Coverage {
+    /// `own` is how many of the first words said name the food's own brand: found there, they count
+    /// in full.
+    func cover(_ text: FoodText, own: Int = 0) -> Coverage {
         let found = nameOnly ? text.titled : text.all
         var total = 0.0
         var hits = 0.0
@@ -516,7 +527,7 @@ struct CoverageQuery {
             let isLiteral = literal(word, found, whole: isWhole)
             let isFixed = !isLiteral && fixed(word, found)
             let has = isLiteral || isFixed
-            let inBrand = has && branded(word, text.titled)
+            let inBrand = has && i >= own && branded(word, text.titled)
             if has { hits += weight * (inBrand ? 0.5 : 1) } else { missing += 1 }
             if !isWhole && isLiteral { partial += 1 }
             if isFixed { fixedCount += 1 }
@@ -704,12 +715,71 @@ func scoreFoods(
     let query = CoverageQuery(
         seen: seen, target: named.isEmpty ? target : named, prefix: search, fixes: fixes,
         nameOnly: asked && !named.isEmpty)
+    // The same, also reading a word the catalogs barely know as a food's own word misspelt.
+    let lenient =
+        hints.doubted.isEmpty
+        ? nil
+        : CoverageQuery(
+            seen: seen, target: named.isEmpty ? target : named, prefix: search, fixes: fixes,
+            nameOnly: asked && !named.isEmpty, doubted: hints.doubted)
     // Each brand word's forms, a form being words in a row: "papajohns" is corrected to "papa john".
     let brandForms = brand.map { word in
         isNumber(word) ? [[word]] : (searchForms(word) + (fixes[word] ?? [])).map { $0.split(separator: " ").map(String.init) }
     }
     let brandParts = Array(brandForms.joined().joined())
     let mentionForms = target.map(searchForms)
+    // Each word as it would name a brand's word, and as corrected ("sracy" names Stacy's).
+    let typedBare = target.map { length($0) > 2 && !isNumber($0) ? bare($0) : "" }
+    let last = target.count - 1
+    let typedFixes = target.map { word in
+        (fixes[word] ?? []).flatMap { $0.split(separator: " ").map(String.init) }.filter { length($0) > 2 }
+    }
+    let typedMisspelt = target.map { hints.doubted.contains($0) ? Misspelling($0) : nil }
+    // The words said in another order, for a food whose brand some of them name (see `fit`),
+    // apart for reading a misspelt word.
+    var reordered: [[Int]: CoverageQuery] = [:]
+    var reorderedLenient: [[Int]: CoverageQuery] = [:]
+
+    /// How a food covers what was said, and whether a search with no brand of its own names the
+    /// food's brand. A food whose brand the search names word for word reads those words as its
+    /// brand wherever they were typed, so the word naming the food is the last of the others:
+    /// "cheese", not "cow", in "cottage cheese honest cow" for The Honest Cow's cottage cheese.
+    /// With `misspelt`, a word the catalogs barely know is also one of the food's own words a typo
+    /// or two from it, which names a brand too: "gali" for Galli's roasted chestnuts.
+    func fit(_ text: FoodText, misspelt: Bool) -> (match: Coverage, own: Bool) {
+        let whole = misspelt ? lenient ?? query : query
+        guard search, !asked, last >= 0, !text.own.isEmpty else { return (whole.cover(text), false) }
+        // Word for word, a plural or possessive apart: "wheats" isn't the brand Wheaty, though
+        // they share a stem. Each of the brand's words takes one word said, so the "eggs" of "egg
+        // land best brown eggs" still name the food; two said as one ("membermark") take it
+        // together, and after a food the last word may be as far as the brand is typed ("oats
+        // kas"; "pop" alone is on its way to popcorn as much as to Popchips).
+        var naming: [Int] = []
+        var halfTyped = false
+        for (j, written) in text.ownWords.enumerated() {
+            let word = bare(written)
+            var named = target.indices.first { i in
+                (!naming.contains(i) && typedBare[i] == word) || typedFixes[i].contains(text.own[j])
+            }
+            if named == nil, misspelt {
+                named = target.indices.first { !naming.contains($0) && typedMisspelt[$0]?.reads([text.own[j]]) == true }
+            }
+            if named == nil, !naming.contains(last), !typedBare[last].isEmpty, starts(written, target[last]) {
+                named = last
+                halfTyped = true
+            }
+            guard let named else { return (whole.cover(text), false) }
+            if !naming.contains(named) { naming.append(named) }
+        }
+        if naming.count == target.count { return (whole.cover(text), !halfTyped) }
+        naming.sort()
+        if let known = misspelt ? reorderedLenient[naming] : reordered[naming] { return (known.cover(text, own: naming.count), true) }
+        let order = naming + target.indices.filter { !naming.contains($0) }
+        let moved = CoverageQuery(
+            seen: seen, target: order.map { target[$0] }, prefix: true, fixes: fixes, doubted: misspelt ? hints.doubted : [])
+        if misspelt { reorderedLenient[naming] = moved } else { reordered[naming] = moved }
+        return (moved.cover(text, own: naming.count), true)
+    }
 
     struct Row {
         var food: Food
@@ -720,6 +790,8 @@ func scoreFoods(
         var mine: Bool
         /// The brand is the one asked for and no longer: Papa John's, not Papa John's Salads & Produce.
         var exact: Bool
+        /// With no brand read from the whole search, the search names this food's brand word for word.
+        var own: Bool
         var name: Double
         var like: Double
         var plausible: Bool
@@ -731,7 +803,7 @@ func scoreFoods(
         let entry = unique[key]!
         let food = entry.food
         let text = entry.text
-        var match = query.cover(text)
+        var (match, own) = fit(text, misspelt: false)
         // A food is also found by a chain's name for it ("mcnuggets" finds chicken nuggets from
         // fast food), when that name says more of what was asked than its own and names what was asked.
         var other: FoodText?
@@ -742,6 +814,15 @@ func scoreFoods(
                     match = named
                     other = name.text
                 }
+            }
+        }
+        // Only then a misspelling of the food's own words, which a typo's usual meaning or a
+        // chain's name for the food would otherwise explain: "mcmuffin" isn't a muffin misspelt.
+        if match.name < 1, lenient != nil {
+            let loose = fit(text, misspelt: true)
+            if loose.match.name > match.name {
+                (match, own) = loose
+                other = nil
             }
         }
         let mine: Bool
@@ -760,10 +841,14 @@ func scoreFoods(
         }
         // A search for a brand alone matches all of its foods.
         let name = alone && mine ? 1 : match.name
+        // The brand's food named by exactly the words said is the food asked for, whatever foods of
+        // that name are usually like: Trader Joe's "Chocolate Bar" for its chocolate bar, though it
+        // is darker than most.
+        let said = mine && name == 1 && match.others + match.variations == 0
         rows.append(
             Row(
-                food: food, text: text, match: match, other: other, mine: mine, exact: exact, name: name,
-                like: hints.profile.map { likeness(food, $0) } ?? 0, plausible: entry.plausible))
+                food: food, text: text, match: match, other: other, mine: mine, exact: exact, own: own, name: name,
+                like: hints.profile.map { said ? 1 : likeness(food, $0) } ?? 0, plausible: entry.plausible))
     }
     let sold = rows.contains { $0.mine && $0.name == 1 && $0.like > 0 }
     // A brand that makes nothing like what the other words usually name means its own food by
@@ -809,17 +894,9 @@ func scoreFoods(
             score -= 2.25
         }
         if let read {
-            let own = row.text.ownWords
             // Only when the food's own name has the word naming the food: Oreo's cookies for "oreo",
             // not the "Flat White" brand's coffee chocolate for "flat white".
-            if !asked && !own.isEmpty && match.head
-                && own.allSatisfy({ w in
-                    let s = stem(w)
-                    return mentionForms.contains { $0.contains { length($0) > 2 && $0 == s } }
-                })
-            {
-                score += 2
-            }
+            if row.own && match.head { score += 2 }
             if !read.counts.isEmpty || !read.sizes.isEmpty {
                 let list = tokens("\(row.food.name) \(row.food.brand ?? "")")
                 for (count, next) in read.counts where counted(list, count, next) { score += 2 }

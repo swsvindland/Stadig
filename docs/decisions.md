@@ -2,6 +2,7 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Food search by a food's own words.** On 2026-11-16 you asked whether Stadig Macro's search could work more like a search engine: indexes on brand and name, string comparisons against what's typed, a most likely food, the brand first or last, the words in any order. The search already had the index (full text over name and brand, a vocabulary with counts) and a ranker; what it lacked was measured first and is under "Calls made for food search by a food's own words" below, with what was left alone.
 - **The site's support form files GitHub issues in a private repository of its own.** 2026-11-13, you asked for a support page whose form opens GitHub issues. How it works is in `Site/README.md`. The calls, yours to check:
   - **A separate private repository**, named by `FEEDBACK_REPO`, not this one: reports carry people's email addresses, and this repository is meant to go public.
   - **What it asks:** the app (or the website), the kind (Something's broken, preselected; An idea; A question), device and version (both optional), a one-line summary, the details, and an email "only if you'd like a reply". No name and no screenshots (an upload needs somewhere to keep the file). The apps don't show their version anywhere, so the field rarely gets filled.
@@ -367,6 +368,33 @@ Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries)
   - velocity-based training
   - lifting-history import
   - Body Track migration (deferred, as the doc says)
+
+## Calls made for food search by a food's own words (2026-11-16)
+
+Stadig Macro's typed search, in FoodDatabase. Calls made without sign-off.
+
+- **Measured before changed.** 400 of the most scanned US packaged foods, each asked for about a dozen ways (5,052 searches), counting a search right when its first result is the food or the same food listed again. The search as it was put the food first for 95.5% with the brand typed first, but 84.5% with it last, 89.5% with the words shuffled, 83.8% with a typo in the brand, 79.6% with the brand last and half typed, and 69.2% with a brand of two words typed as one. Plain foods were already found in either order ("breast chicken", "rice brown"). The misses had three causes: the last word typed was taken as the word naming the food ("cottage cheese honest cow" found cowpeas); a brand was only read from the catalogs' counts at the start or end of a search, which a small brand or one that begins a common word never passed (The Honest Cow has one food, "wasa" begins wasabi, "mush" mushrooms); and a packaged food is marked down unless its brand is read.
+- **Each food is read by its own brand.** With no brand read from the whole search, a food whose brand's every word is typed, wherever, reads those words as its brand: they count in full, the word naming the food is the last of the others, and the food isn't marked down as packaged. Nothing about the rest of the results changes, so a wrong reading costs one food's place. Reading a brand for the whole search from a found food was tried and dropped: it helped a half-typed brand but took "organic" for O Organics and Minute Rice over Minute, and moved every other result with it.
+- **Word for word, not by stem.** A typed word names a brand's word when they're the same but for a plural or possessive "s" ("joes", "kelloggs"). Stems aren't enough: "wheats" and the brand Wheaty share one. Each of a brand's words takes one typed word, so "egg land best brown eggs" keeps "eggs" for the food.
+- **A brand half typed.** After a food, the last word may be the start of the brand's word from three letters ("berry fruitful kas"). Alone it isn't read that way: "pop" is on its way to popcorn as much as to Popchips.
+- **Exactly named beats usual.** With a brand read, its food named by exactly the words typed counts as the kind of food asked for, whatever foods of that name are usually like. Before, "trader joes chocolate bar" put Trader Joe's Chocolate Bar 25th, behind its bars closer to the usual chocolate bar's macros, and "strawberry kiwi chobani" put Chobani's Strawberry Kiwi 28th behind other brands' drinks.
+- **Spelling.**
+  - **Whole words before the last.** A word with others typed after it isn't half typed, so it's corrected only to whole catalog words. "perue chicken tenders" had been read as the start of "perfect" and "pere"; it's now Perdue or Peru.
+  - **A word and its plural are one reading**, as near as the nearer and in the foods of both: "triscuiits" is one letter from Triscuits, the name on four labels, and so means Triscuit, on 120.
+  - **A missing space before two typos**, when both words are in more foods than the word two letters away: "organicvalley" is Organic Valley, not "organically".
+  - **Joined words may be a word apart** in a name or brand: "membermark" is Member's Mark, whose "s" the index keeps as a word.
+  - **A misspelling is compared with each found food's own words.** The catalogs' counts say what a typo usually means ("gali" is gala or garlic); the foods the other words found say what it means here (Galli's roasted chestnuts). It's tried only for a word the catalogs barely know, one typo for four to six letters and two from seven, against words of four letters or more, and only after the word as typed, its corrections and a chain's name for the food ("mcmuffin" isn't a muffin misspelt).
+- **"Apple" isn't Applebee's.** A chain's name could be read from its first letters anywhere in a search, so "apple cinnamon oats" searched Applebee's. Now only the last word may be half of a chain's name, and not when it's a word in 20 or more foods.
+- **After the changes:** first for 97.5% brand first, 96.8% brand last, 93.8% shuffled, 96.9% with a typo in the brand, 96.1% with the brand last and half typed, 85.4% with the brand as one word; 91.2% of all 5,052, from 84.4%, and in the first three for 95.8%, from 91.2%. A keystroke takes as long as before (median about 11 ms in a debug build on the machine that ran these). `SearchQualityTests` keeps a smaller run (120 foods) with a floor for each way of typing.
+- **How it was checked.** On Linux with Swift 6.3, the package built against the system's SQLite and the catalog release of 2026-11-07; every FoodDatabase test but `LiveLabelTests` (which that compiler times out on) ran there. Not run: anything on a Mac or in the app, which GitHub Actions' package tests cover for the package only.
+- **Left alone, open:**
+  - **A plain food still comes before a packaged one when no brand is typed**, so a packaged food's name alone finds it first 52% of the time. That's the earlier call (a search for "chicken breast" wants USDA's), not a miss.
+  - **More scanned against exactly named.** With a brand read, a much more scanned food with one more word can still come before the food named exactly: "mission yellow corn tortillas" puts Street Tacos Yellow Corn Tortillas first.
+  - **One word or two.** "redbull" and "red bull", "kitkat" and "kit kat", "hotdog" and "hot dog" each find only the foods written their way, when the joined word is common enough not to be corrected. Searching both needs the joined and split forms looked up in the vocabulary for each search.
+  - **Three words as one** ("bobredmill"), and "drpepper", whose "dr" is too short to split on.
+  - **A complete match under a brand against a partial plain one.** A packaged food with every word, brand included, can still come after a plain food with two of five ("egg land best brown eggs" against USDA's fried egg) when it's rarely scanned; the constants weren't retuned.
+  - **No probabilities on screen.** Scores are still sums the ranking compares; nothing shows a likelihood, and Return still logs the first result.
+  - **The measure's bias.** Its foods are ones whose brand isn't in the name, its typos never touch a first letter, and it has no restaurant foods.
 
 ## Calls made for correcting foods and Today's order (2026-11-03)
 
