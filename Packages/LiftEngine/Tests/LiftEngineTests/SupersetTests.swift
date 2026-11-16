@@ -26,15 +26,16 @@ struct SupersetTests {
             slotID: nil, block: .main, exerciseID: "barbell-bench-press", role: .main,
             sets: warmups + Array(repeating: Self.set(.working, 80, 6), count: 3),
             repRange: RepRange(5, 8), rest: RestPlan(target: 150, minimum: 90, heartRateGuided: false), supersetGroup: 1)
-        let partner =
-            partnerWarmsUp
-            ? PlannedItem(
+        let rest = RestPlan(target: 120, minimum: 60, heartRateGuided: false)
+        var partner = PlannedItem(
+            slotID: nil, block: .main, exerciseID: "pull-up", role: .main, sets: Array(repeating: Self.set(.working, 0, 8), count: 3),
+            repRange: RepRange(6, 10), rest: rest, supersetGroup: 1)
+        if partnerWarmsUp {
+            partner = PlannedItem(
                 slotID: nil, block: .main, exerciseID: "cable-row", role: .main,
                 sets: [Self.set(.warmup, 30, 8)] + Array(repeating: Self.set(.working, 60, 10), count: 3),
-                repRange: RepRange(8, 12), rest: RestPlan(target: 120, minimum: 60, heartRateGuided: false), supersetGroup: 1)
-            : PlannedItem(
-                slotID: nil, block: .main, exerciseID: "pull-up", role: .main, sets: Array(repeating: Self.set(.working, 0, 8), count: 3),
-                repRange: RepRange(6, 10), rest: RestPlan(target: 120, minimum: 60, heartRateGuided: false), supersetGroup: 1)
+                repRange: RepRange(8, 12), rest: rest, supersetGroup: 1)
+        }
         let plan = SessionPlan(
             day: Fixture.start, title: "Full body A", mesocycleID: nil, dayID: nil, week: 1, deload: false, checkIn: false,
             assessment: false, minimumEffectiveDose: false, items: [bench, partner], notes: [], quests: [])
@@ -196,8 +197,8 @@ struct ExerciseStepTests {
     func olderGymsDecode() throws {
         let encoded = try JSONEncoder().encode(gym.setting(step: 20, for: legPress))
         var json = try #require(try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
-        #expect(json["exerciseSteps"] != nil)
-        json["exerciseSteps"] = nil
+        #expect(json.keys.contains("exerciseSteps"))
+        json.removeValue(forKey: "exerciseSteps")
         let older = try JSONDecoder().decode(Gym.self, from: JSONSerialization.data(withJSONObject: json))
         #expect(older.exerciseSteps.isEmpty)
         #expect(older.machineStep == gym.machineStep)
