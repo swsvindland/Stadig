@@ -58,7 +58,7 @@ struct SetLogger: View {
             }
         // The phone names the exercise above the dock: the dock says which set, and what it was last time.
         let last = set.prescription.kind == .warmup ? nil : model.lastTime(exercise, setNumber: position)
-        let increments = model.gymForToday.increments(for: exercise.equipment)
+        let increments = model.gymForToday.increments(for: exercise)
         let plates =
             exercise.equipment.platePaired && item.plan.isStrength
             ? Format.plates(increments.platesPerSide(draft.load), unit: increments.gym.unit) : nil
@@ -84,7 +84,7 @@ struct SetLogger: View {
 
     private func strengthControls(set: LiveSet, exercise: Exercise) -> some View {
         @Bindable var draft = draft
-        let increments = model.gymForToday.increments(for: exercise.equipment)
+        let increments = model.gymForToday.increments(for: exercise)
         let hasLoad = exercise.loadBasis != .none
         return VStack(spacing: 12) {
             HStack(spacing: 8) {
@@ -267,15 +267,17 @@ struct LoadControl: View {
             identifier: identifier, keys: keys, showsTitle: showsTitle)
     }
 
-    /// A typed load in kilograms, rounded to what the gym can make; nil for anything that isn't a
-    /// number, is negative, or is past `GymIncrements.maximumLoadKg` (a slip, a few extra digits). A
-    /// decimal comma reads as a point.
+    /// A typed load in kilograms, as typed (to a hundredth of the unit), not rounded to the gym's
+    /// steps: the person knows what they lifted, and a machine with finer steps, an add-on weight or
+    /// a fractional plate makes loads the steps don't. − and + carry on from it onto the steps. Nil
+    /// for anything that isn't a number, is negative, or is past `GymIncrements.maximumLoadKg` (a
+    /// slip, a few extra digits). A decimal comma reads as a point.
     static func typedLoad(_ text: String, increments: GymIncrements) -> Double? {
         let unit = increments.gym.unit
         guard let value = Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")), value >= 0,
             unit.toKilograms(value) <= GymIncrements.maximumLoadKg
         else { return nil }
-        return increments.round(unit.toKilograms(value), down: false)
+        return unit.toKilograms((value * 100).rounded() / 100)
     }
 }
 
@@ -547,7 +549,7 @@ struct EditSetSheet: View {
             {
                 // The exercise the set was done on, which a swap since may have replaced: its loads and steps.
                 let exercise = model.catalog.resolve(logged.exerciseID)
-                let increments = model.gymForToday.increments(for: exercise.equipment)
+                let increments = model.gymForToday.increments(for: exercise)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         SheetHeading(eyebrow: "Correct a set", title: exercise.name)
@@ -836,7 +838,7 @@ extension AppModel {
     /// press isn't fifty taps away; else a light default for the equipment.
     func startingLoad(for set: LiveSet, at setIndex: Int, of item: LiveItem, exercise: Exercise) -> Double {
         if let prescribed = set.prescription.loadKg { return prescribed }
-        let increments = gymForToday.increments(for: exercise.equipment)
+        let increments = gymForToday.increments(for: exercise)
         if let earlier = item.sets[..<min(setIndex, item.sets.count)].last(where: { $0.logged?.exerciseID == exercise.id })?.logged?.loadKg {
             return earlier
         }

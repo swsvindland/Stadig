@@ -29,7 +29,7 @@ public struct SessionEnvironment: Sendable {
         self.heartRateGuidedRest = heartRateGuidedRest
     }
 
-    public func increments(for exercise: Exercise) -> GymIncrements { gym.increments(for: exercise.equipment) }
+    public func increments(for exercise: Exercise) -> GymIncrements { gym.increments(for: exercise) }
 }
 
 public struct LiveSet: Codable, Hashable, Sendable, Identifiable {
@@ -283,15 +283,19 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
 
     // MARK: Where we are
 
-    /// The next thing to do: the first open item, alternating within a superset.
+    /// The next thing to do: the first open item, alternating within a superset. A superset pairs
+    /// work sets: each member's warm-ups run straight through first, in order, so the partner's work
+    /// never lands between a lift's warm-ups; then the member with the fewest work sets done goes
+    /// next, the first of them on a tie.
     public var current: (item: Int, set: Int)? {
         guard let first = items.firstIndex(where: { !$0.isDone }) else { return nil }
         if let group = items[first].plan.supersetGroup {
             let members = items.indices.filter { items[$0].plan.supersetGroup == group && !items[$0].isDone }
-            // The member with the fewest logged sets goes next.
-            if let pick = members.min(by: { items[$0].sets.filter { !$0.isOpen }.count < items[$1].sets.filter { !$0.isOpen }.count }),
-                let set = items[pick].nextSet
-            {
+            for member in members {
+                if let set = items[member].nextSet, items[member].sets[set].prescription.kind == .warmup { return (member, set) }
+            }
+            func workDone(_ index: Int) -> Int { items[index].sets.filter { !$0.isOpen && $0.prescription.kind != .warmup }.count }
+            if let pick = members.min(by: { workDone($0) < workDone($1) }), let set = items[pick].nextSet {
                 return (pick, set)
             }
         }
@@ -344,7 +348,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         if prescription.kind == .findingWeight { item.carryFindingWeight(of: logged, after: setIndex) }
         items[index] = item
         if !item.plan.isStrength, item.isDone, !mobilityDone.contains(item.exerciseID) { mobilityDone.append(item.exerciseID) }
-        startRest(after: index, environment: environment, now: now)
+        startRest(after: index, warmup: prescription.kind == .warmup, environment: environment, now: now)
         // Warm-ups need only a short breather. The last one, at or near the working weight, gets
         // half the work's rest, so the first work set doesn't start tired from it.
         if prescription.kind == .warmup, var state = rest {
@@ -444,6 +448,34 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         others.insert(contentsOf: moved, at: target)
         items = others
         if let rest, !items.contains(where: { $0.id == rest.itemID && !$0.isDone }) { self.rest = nil }
+        undo = nil
+        updatedAt = now
+    }
+
+    /// Whether an exercise is in a superset still under way: it and a partner both have sets to go.
+    public func canSplitSuperset(item index: Int) -> Bool {
+        guard items.indices.contains(index), let group = items[index].plan.supersetGroup, !items[index].isDone else { return false }
+        return items.indices.contains { $0 != index && items[$0].plan.supersetGroup == group && !items[$0].isDone }
+    }
+
+    /// Breaks a superset up for the rest of the session (the gym's busy, and the partner's bench or
+    /// bar won't stay free): its exercises are done one after the other, in the order they're in,
+    /// each with its own rests. A quick switch to the partner that's running becomes the exercise's
+    /// own rest, timed from the same set. The session runs longer than planned for it.
+    public mutating func splitSuperset(item index: Int, now: Date = Date()) {
+        guard items.indices.contains(index), let group = items[index].plan.supersetGroup else { return }
+        let members = items.indices.filter { items[$0].plan.supersetGroup == group }
+        for member in members { items[member].plan.supersetGroup = nil }
+        if var state = rest, let resting = item(state.itemID), members.contains(resting),
+            items[resting].sets.last(where: { $0.logged != nil })?.logged?.kind != .warmup,
+            state.plan.target < items[resting].plan.rest.target
+        {
+            state.plan = items[resting].plan.rest
+            state.endsAt = state.started.addingTimeInterval(TimeInterval(state.plan.target))
+            state.filler = items[resting].plan.restFiller
+            rest = state
+        }
+        // Undo would put back one half of the pair.
         undo = nil
         updatedAt = now
     }
@@ -579,12 +611,16 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
 
     // MARK: Rest
 
-    public mutating func startRest(after index: Int, environment: SessionEnvironment, now: Date = Date()) {
+    /// The rest after a set of the item at `index`; `warmup` when the set was a warm-up.
+    public mutating func startRest(after index: Int, warmup: Bool = false, environment: SessionEnvironment, now: Date = Date()) {
         let item = items[index]
-        // Within a superset, move straight to the partner.
+        // Within a superset, move straight to the partner: after a work set, or on to the partner's
+        // warm-ups. The last warm-up before the pairing starts keeps its breather (`log`), so the
+        // first work set isn't done straight off it.
         if let group = item.plan.supersetGroup,
             items.contains(where: { $0.id != item.id && $0.plan.supersetGroup == group && !$0.isDone }),
-            let current, items[current.item].id != item.id
+            let current, items[current.item].id != item.id,
+            !warmup || items[current.item].sets[current.set].prescription.kind == .warmup
         {
             rest = RestState(
                 started: now, plan: RestPlan(target: 20, minimum: 0, heartRateGuided: false), itemID: item.id,

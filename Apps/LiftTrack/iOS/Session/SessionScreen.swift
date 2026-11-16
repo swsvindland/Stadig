@@ -25,6 +25,8 @@ struct SessionScreen: View {
     @State private var editing: SetTarget?
     @State private var confirmDiscard = false
     @State private var about: ExerciseAbout?
+    /// The exercise whose steps at the gym are being set.
+    @State private var steps: String?
     /// Missed on the floor with the reps at the target: how many there were.
     @State private var floorMiss: SetTarget?
     @State private var askFloorMiss = false
@@ -56,7 +58,9 @@ struct SessionScreen: View {
                 .sheet(item: $swapping) { target in SwapSheet(index: target.index) }
                 .sheet(item: $editing) { target in EditSetSheet(itemIndex: target.item, setIndex: target.set) }
                 .sheet(item: $about) { target in ExerciseAboutSheet(exerciseID: target.id) }
+                .modifier(ExerciseStepsAlert(exerciseID: $steps))
                 .environment(\.showExercise, ShowExerciseAction { about = ExerciseAbout(id: $0) })
+                .environment(\.editSteps, EditStepsAction { steps = $0 })
                 .confirmationDialog("Discard this session?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                     Button("Discard", role: .destructive) { model.discardLive() }
                         .accessibilityIdentifier("session.confirmDiscard")
@@ -187,7 +191,7 @@ struct SessionScreen: View {
 
     /// A sheet or a question over the session.
     private var presenting: Bool {
-        showFeedback || swapping != nil || editing != nil || about != nil || confirmDiscard
+        showFeedback || swapping != nil || editing != nil || about != nil || steps != nil || confirmDiscard
     }
 
     /// The phone's layout: the exercise in front of you under the session's bar, and the dock at the
@@ -251,6 +255,14 @@ struct SessionScreen: View {
             }
             if item.takesMoreSets {
                 Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+            }
+            if item.plan.isStrength, GymIncrements.takesOwnStep(model.catalog.resolve(item.exerciseID)) {
+                Button("Weight steps", systemImage: "plusminus") { steps = item.exerciseID }
+                    .accessibilityIdentifier("session.weightSteps")
+            }
+            if live.canSplitSuperset(item: index) {
+                Button("Do separately", systemImage: "rectangle.split.1x2") { model.update { $0.splitSuperset(item: index) } }
+                    .accessibilityIdentifier("session.splitSuperset")
             }
             Button("Skip exercise", systemImage: "forward") { model.update { $0.skip(item: index) } }
             Divider()
@@ -391,6 +403,7 @@ struct SessionWorkspace: View {
 private struct SessionOutline: View {
     @Environment(AppModel.self) private var model
     @Environment(\.showExercise) private var showExercise
+    @Environment(\.editSteps) private var editSteps
     let live: LiveSession
     @Binding var picked: LiveItem.ID?
     let swap: (Int) -> Void
@@ -433,6 +446,12 @@ private struct SessionOutline: View {
         }
         if item.takesMoreSets {
             Button("Add a Set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+        }
+        if item.plan.isStrength, GymIncrements.takesOwnStep(model.catalog.resolve(item.exerciseID)) {
+            Button("Weight Steps…", systemImage: "plusminus") { editSteps?(item.exerciseID) }
+        }
+        if live.canSplitSuperset(item: index) {
+            Button("Do Separately", systemImage: "rectangle.split.1x2") { model.update { $0.splitSuperset(item: index) } }
         }
         if !item.isDone {
             Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } }
@@ -503,6 +522,7 @@ struct SetTarget: Identifiable {
 struct ItemCard: View {
     @Environment(AppModel.self) private var model
     @Environment(\.showExercise) private var showExercise
+    @Environment(\.editSteps) private var editSteps
     let index: Int
     let item: LiveItem
     let current: Bool
@@ -538,6 +558,12 @@ struct ItemCard: View {
                     }
                     if item.takesMoreSets {
                         Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+                    }
+                    if item.plan.isStrength, GymIncrements.takesOwnStep(exercise) {
+                        Button("Weight steps", systemImage: "plusminus") { editSteps?(item.exerciseID) }
+                    }
+                    if model.live?.canSplitSuperset(item: index) == true {
+                        Button("Do separately", systemImage: "rectangle.split.1x2") { model.update { $0.splitSuperset(item: index) } }
                     }
                     if !item.isDone { Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } } }
                     Button("About this exercise", systemImage: "info.circle") { showExercise?(item.exerciseID) }
@@ -915,7 +941,7 @@ extension AppModel {
         guard item.sets.indices.contains(position.set), item.plan.conditioning == nil else { return nil }
         let set = item.sets[position.set]
         let exercise = catalog.resolve(item.exerciseID)
-        let increments = gymForToday.increments(for: exercise.equipment)
+        let increments = gymForToday.increments(for: exercise)
         let work = item.sets.filter { $0.prescription.kind != .warmup }
         let number = item.sets[...position.set].filter { $0.prescription.kind != .warmup }.count
         return NextSet(

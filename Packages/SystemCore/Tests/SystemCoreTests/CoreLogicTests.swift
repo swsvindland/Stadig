@@ -499,6 +499,38 @@ struct ProgressionTests {
         #expect(Progression.prescribe(later, context(.bench, step: 2.5, history: history)).sets.allSatisfy { $0.loadKg == 97.5 })
     }
 
+    @Test("A weight done for the reps is never lighter next week, however close to failure it went")
+    func theRepsDoneHoldTheWeight() {
+        // Week one asked 3 in reserve; the lifter pushed past the plan to 100 × 8, 7, 7, all just right.
+        func session(_ reps: [Int]) -> [LoggedSet] {
+            reps.enumerated().map { index, done in
+                LoggedSet(
+                    exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(Double(index) * 180), kind: .working, loadKg: 100,
+                    reps: done, targetReps: 8, rating: .orange, restBeforeSeconds: index == 0 ? nil : 150)
+            }
+        }
+        // Week two aims for 8 with 2.5 in reserve. Just right at 100 × 8, read by trust, is about half a
+        // rep in hand, so the estimate says 95; but 8 was done at 100, so 100 it is.
+        let week = SlotTarget(sets: 3, repRange: RepRange(6, 10), targetRIR: 2.5)
+        let held = Progression.prescribe(week, context(.bench, step: 2.5, history: session([8, 7, 7])))
+        #expect(held.sets.allSatisfy { $0.loadKg == 100 && $0.targetReps == 8 })
+        #expect(held.reason.hasPrefix("Same weight"), "\(held.reason)")
+        // The assessment's second week asks 3 in reserve again: held all the same.
+        var assessment = week
+        assessment.targetRIR = 3
+        #expect(Progression.prescribe(assessment, context(.bench, step: 2.5, history: session([8, 7, 7]))).sets.allSatisfy { $0.loadKg == 100 })
+        // Short of the reps, an off day, it still slides back a step to land them.
+        let short = Progression.prescribe(week, context(.bench, step: 2.5, history: session([6, 6, 5])))
+        #expect(short.sets.allSatisfy { $0.loadKg == 97.5 })
+        // Past the reps and easy, the estimate moves it up as before.
+        let easy = session([10, 10, 10]).map { set in
+            var set = set
+            set.rating = .green
+            return set
+        }
+        #expect(Progression.prescribe(week, context(.bench, step: 2.5, history: easy)).sets.allSatisfy { ($0.loadKg ?? 0) > 100 })
+    }
+
     @Test func deloadHalvesSetsAndLightens() {
         let date = Date()
         let history = (0..<3).map { _ in

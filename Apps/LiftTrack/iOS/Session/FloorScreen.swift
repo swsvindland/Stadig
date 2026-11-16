@@ -172,7 +172,7 @@ private struct FloorSetView: View {
                 lines.append("Last time \(Format.logged(last, exercise: exercise, unit: model.gym.unit))")
             }
         }
-        let increments = model.gymForToday.increments(for: exercise.equipment)
+        let increments = model.gymForToday.increments(for: exercise)
         if item.plan.isStrength, exercise.equipment.platePaired,
             let side = Format.side(increments.platesPerSide(draft.load), unit: increments.gym.unit)
         {

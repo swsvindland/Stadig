@@ -262,11 +262,11 @@ public enum SessionPlanner {
                     sets: sets, repRange: slot.repRange, targetRIR: rir, deload: deload,
                     repOut: repOutSlots.contains(slot.id), firstWeek: firstWeek)
                 let progression = ProgressionContext(
-                    exercise: exercise, increments: gym.increments(for: exercise.equipment), trust: context.trust,
+                    exercise: exercise, increments: gym.increments(for: exercise), trust: context.trust,
                     phase: context.phase.effects, loadFactor: life.loadFactor(for: exercise) * (life.reentry ? 0.92 : 1),
                     bodyweightKg: context.bodyweightKg, history: context.history[exercise.id] ?? [])
                 let prescription = Progression.prescribe(target, progression)
-                let increments = gym.increments(for: exercise.equipment)
+                let increments = gym.increments(for: exercise)
                 var warmups: [SetPrescription] = []
                 if let first = prescription.sets.first, first.kind != .findingWeight, let load = first.loadKg {
                     warmups = Warmup.sets(

@@ -287,7 +287,7 @@ final class WatchModel {
     }
 
     func increments(for exercise: Exercise) -> GymIncrements? {
-        sessionContext?.gym.increments(for: exercise.equipment)
+        sessionContext?.gym.increments(for: exercise)
     }
 
     /// What an item's exercise could be swapped for here, closest first. It searches the whole
