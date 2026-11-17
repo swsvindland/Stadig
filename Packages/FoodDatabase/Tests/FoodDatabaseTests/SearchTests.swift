@@ -92,7 +92,7 @@ let firstResults: [(String, String)] = [
     ("fries", "(?i)fries"),
     ("pop tarts", "(?i)pop.?tarts"),
     ("burger", "(?i)burger"),
-    ("pop", "^Snacks, popcorn"),
+    ("pop", "(?i)^(Snacks, )?popcorn"),
     // A food named by its leading parts, as USDA inverts them, before a blend or dish with the words.
     ("olive oil", "^Oil, olive, salad or cooking$"),
     ("peanut butter", "^Peanut butter, (smooth|chunk)"),

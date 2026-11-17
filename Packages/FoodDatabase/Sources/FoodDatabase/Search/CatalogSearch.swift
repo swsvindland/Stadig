@@ -11,6 +11,11 @@ struct CatalogSearch {
     var doubted: Set<String> = []
     /// The other ways of writing the search's names, as one word or as two.
     var also: Fixes = [:]
+    /// The words that are a food's far more often than a brand's.
+    var plain: Set<String> = []
+    /// What was typed, where the reading added the catalogs' words for it ("ranch" is read as
+    /// "ranch salad dressing"): the person's own foods are found by this, so their Ranch Dip still is.
+    var typed: String?
 
     /// Everything a food's words may be read as: the corrections, then the other ways of writing.
     var readings: Fixes { fixes.merging(also) { $0 + $1 } }
@@ -36,6 +41,8 @@ struct Respelt {
     /// "bull", "pop corn" for "popcorn". Unlike a correction, it matches as well as the words do.
     var also: Fixes = [:]
     var forms: Set<String> = []
+    /// What was typed, when `text` has words added to it: "ranch" for "ranch salad dressing".
+    var typed: String?
 }
 
 /// What the catalogs make of a typed word: whether they barely know it as typed, and what it
@@ -172,7 +179,8 @@ extension FoodCatalog {
         let limit = allowedTypos(length: size)
         let range = "SELECT term, foods FROM terms WHERE term >= ? AND term < ?"
         var known = uncommon
-        if limit > 0 && !word.unicodeScalars.contains(where: isDigit) {
+        // A word with a catalog wording of its own is known: "coke" is cola, not a typo of "cake".
+        if limit > 0 && !word.unicodeScalars.contains(where: isDigit) && !typedAlternatives.contains(word) {
             known = Double(count(range, [.text(form), .text(form + "\u{FFFF}")]).total)
         }
         var fixes: [String] = []
@@ -370,16 +378,38 @@ extension FoodCatalog {
             for word in words where respelt.also[word]?.contains(form) != true { respelt.also[word, default: []].append(form) }
             respelt.forms.insert(form)
         }
+        // An everyday name the catalogs file under another: "hot dogs" also find frankfurters.
+        func everyday(_ typed: [String]) {
+            for name in everydayNames where typed.count >= name.said.count && typed.prefix(name.said.count).map(stem) == name.said {
+                for (at, catalog) in name.means { also(catalog, for: [typed[at]]) }
+            }
+        }
+        // Typed alone, "ranch" is the dressing and "spaghetti" is also USDA's pasta.
+        let only = tokens.indices.filter(named)
+        if only.count == 1 {
+            let alone = tokens[only[0]]
+            if let meant = aloneNames[stem(alone.word)] {
+                write(meant, over: alone.start..<alone.end)
+                text += scalars[copied...]
+                respelt.text = makeString(text[...])
+                respelt.typed = query
+                return respelt
+            }
+            if let filed = aloneFiled[stem(alone.word)] { also(filed, for: [alone.word]) }
+        }
         var i = 0
         while i < tokens.count {
             defer { i += 1 }
             guard named(i) else { continue }
             let word = tokens[i].word
+            everyday((i..<tokens.count).prefix(while: named).map { tokens[$0].word })
             if let (left, right, compound) = halves(of: word, whole: i < tokens.count - 1) {
                 if compound.joined {
                     also("\(left) \(stem(right))", for: [word])
                 } else {
                     write("\(left) \(right)", over: tokens[i].start..<tokens[i].end)
+                    // "Hotdogs" are frankfurters as "hot dogs" are.
+                    everyday([left, right])
                     if compound.known { also(stem(word), for: [left, right]) }
                     continue
                 }
@@ -400,6 +430,31 @@ extension FoodCatalog {
         text += scalars[copied...]
         respelt.text = makeString(text[...])
         return respelt
+    }
+
+    /// Whether a word is a food's far more often than a brand's, though some food may be listed
+    /// under it: of 200 foods or more with the word, no more than one in ten have it in their brand
+    /// ("seeds" one in 28, "milk" one in 29, "water" one in 44; "kind", "silk" and "oreo" more
+    /// than one in two, "boost" and "organic" one in seven).
+    private func isPlain(_ word: String) -> Bool {
+        guard let catalog = branded.first, length(word) > 2 else { return false }
+        let key = "plain \(word)"
+        if let remembered = brandish.withLock({ $0[key] }) { return remembered }
+        var forms = [word]
+        for form in [bare(word), stem(word)] where !forms.contains(form) { forms.append(form) }
+        let marks = Array(repeating: "?", count: forms.count).joined(separator: ",")
+        let foods = count("SELECT term, foods FROM terms WHERE term IN (\(marks))", forms.map(SQLValue.text)).total
+        var plain = false
+        if foods >= 200 {
+            // Counted as far as a tenth of the foods, which is as many as it takes to say no.
+            let tenth = foods / 10
+            plain = catalog.count("{brand}: (\(forms.map { "\"\($0)\"" }.joined(separator: " OR ")))", cap: tenth + 1) <= tenth
+        }
+        brandish.withLock { remembered in
+            if remembered.count > 500 { remembered.removeAll() }
+            remembered[key] = plain
+        }
+        return plain
     }
 
     /// Whether words name a brand: they are in the brand of at least 20 packaged foods and half
@@ -578,6 +633,8 @@ extension FoodCatalog {
             pool += run(more).flatMap { $0 }
         }
         var search = CatalogSearch(text: query, fixes: fixes, brand: brand, doubted: doubted, also: respelt.also)
+        search.plain = Set(foods.filter(isPlain))
+        search.typed = respelt.typed
         // What the words besides the brand usually name, from the foods they name by any brand.
         let kind = product.isEmpty ? nil : profile(for: named, anyBrand.map(\.entry), fixes: search.readings, respelt: respelt.forms)
         var seen = Set<String>()
@@ -586,7 +643,7 @@ extension FoodCatalog {
             query, Array(unique), known: known,
             hints: RankHints(
                 fixes: search.readings, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
-                brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms))
+                brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms, plain: search.plain))
         return search
     }
 

@@ -15,6 +15,9 @@ let alternatives: [String: [String]] = [
     "soda": ["soda", "carbonated"], "pop": ["carbonated"], "strip": ["strip", "slice"], "strips": ["strip", "slice"],
     "oatmeal": ["oatmeal", "oat"], "burger": ["burger", "hamburger"], "burgers": ["burger", "hamburger"],
     "donut": ["donut", "doughnut"], "donuts": ["donut", "doughnut"],
+    // USDA's skim milk is "Milk, nonfat", its Coke "cola". A model's "mayo" is mayonnaise; typed,
+    // it is already the start of the word.
+    "skim": ["skim", "nonfat"], "bbq": ["bbq", "barbecue"], "coke": ["coke", "cola"], "mayo": ["mayo", "mayonnaise"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -47,9 +50,27 @@ func catalogDish(_ name: String) -> String {
     return changed ? list.joined(separator: " ") : name
 }
 
+/// Everyday names of two words that the catalogs file under another: a hot dog is USDA's
+/// frankfurter and a bell pepper its sweet pepper. For each, the typed words (stemmed), and the
+/// catalogs' word for the one at each place.
+let everydayNames: [(said: [String], means: [(at: Int, word: String)])] = [
+    (["hot", "dog"], [(0, "frankfurter"), (1, "frankfurter")]),
+    (["bell", "pepper"], [(0, "sweet")]),
+]
+
+/// Names that, typed alone, mean the food named after them, in the words USDA files it under:
+/// "ranch" is its "Salad dressing, ranch dressing".
+let aloneNames: [String: String] = ["ranch": "ranch salad dressing"]
+
+/// Names that, typed alone, are also the word USDA files them under: "spaghetti" is its "Pasta,
+/// cooked". With another word they mean themselves: spaghetti squash, macaroni and cheese.
+let aloneFiled: [String: String] = ["spaghetti": "pasta", "macaroni": "pasta"]
+
 /// A typed word is searched as typed, plus the catalog's own wording for the same food. Looser
 /// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
-let typedAlternatives: Set<String> = ["bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts"]
+let typedAlternatives: Set<String> = [
+    "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers",
+]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
 let countWords: Set<String> = [
