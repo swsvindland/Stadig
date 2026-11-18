@@ -28,7 +28,7 @@ const apps = [
 ---
 <Base title="Privacy" description={`How ${brand.name}'s apps and website handle your data: no accounts, no analytics, no third-party SDKs, everything on your devices and in your iCloud.`}>
   <section class="wrap page" aria-labelledby="privacy-title">
-    <Rule label="Privacy" aside="Last updated 13 November 2026" />
+    <Rule label="Privacy" aside="Last updated 18 November 2026" />
     <div class="intro">
       <h1 class="h1" id="privacy-title">Your data stays yours.</h1>
       <p class="lede">The short version: there is no account, no analytics, and no third-party code in either app. Your data lives on your devices and in your private iCloud database. We never see it.</p>
@@ -54,7 +54,10 @@ const apps = [
           Ask and the issue is deleted.
         </p>
       </div>
-      <div><h3 class="h3">Contact</h3><p class="lede">Questions about your data: <a href={`mailto:${brand.email}`}>{brand.email}</a>.</p></div>
+      <div>
+        <h3 class="h3">Contact</h3>
+        <p class="lede">Questions about your data, or a report you'd like deleted: the <a href="/support">support page</a>.</p>
+      </div>
     </div>
   </section>
 </Base>

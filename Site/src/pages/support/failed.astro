@@ -1,9 +1,9 @@
 ---
 import Base from "../../layouts/Base.astro";
 import Rule from "../../components/Rule.astro";
-import { brand } from "../../content/site";
 // Where api/feedback.ts sends someone when their report couldn't be filed. The site has no script,
 // so the way back to what they wrote is the browser's own Back, which keeps a form's contents.
+// The form is the only way to write (there's no address to offer instead), so all this can say is try again.
 ---
 <Base title="Not sent" description="Your report couldn't be sent." noindex>
   <section class="wrap page" aria-labelledby="failed-title">
@@ -12,12 +12,11 @@ import { brand } from "../../content/site";
       <h1 class="h1" id="failed-title">That didn't go through.</h1>
       <div class="stack">
         <p class="lede">
-          Nothing was sent. Go back with your browser's Back button, which keeps what you wrote, and try again in a minute, or send the same thing
-          to <a class="inline-link" href={`mailto:${brand.email}`}>{brand.email}</a>.
+          Nothing was sent, and the fault is ours, not yours. Go back with your browser's Back button, which keeps what you wrote, and try again in
+          a minute. If it fails again, it's worth another try later.
         </p>
         <div class="cta">
-          <a class="btn" href={`mailto:${brand.email}`}>Write instead</a>
-          <a class="more" href="/support">Start again <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>
+          <a class="btn" href="/support">Start again</a>
         </div>
       </div>
     </div>
