@@ -62,6 +62,9 @@ private let variationWords = stems(
 /// meatless meatballs aren't meatballs the way frozen ones are.
 private let insteadWords = stems("meatless imitation substitute")
 
+/// Words a food is never just filed under.
+private let notFiled = insteadWords.union(stems("babyfood baby infant toddler"))
+
 /// Kinds of food named after what they're made with or taste of, which follow it in a packaged
 /// food's name: cake pretzels, peanut butter cups, cheese crackers, chocolate milk. Forms already
 /// in `variationWords` (oil, juice, powder) aren't repeated; words that also say what a food is like
@@ -662,7 +665,8 @@ struct CoverageQuery {
         let asked = said + fixValues(fixes, order: said) + (likely.map { [$0] } ?? [])
         // A two-word food's, else the first word's that the others don't rule out: "beef stew" is
         // a stew, not ground beef.
-        var read = said.map(stem)
+        // Read through a word's one correction: "tomao paste" is tomato paste.
+        var read = said.map { word in fixes[word].flatMap { $0.count == 1 && !$0[0].contains(" ") ? $0[0] : nil } ?? stem(word) }
         if let likely, !read.isEmpty { read[read.count - 1] = stem(likely) }
         let phrased = usualPhrases.first { phrase in
             read.indices.contains { $0 + phrase.words.count <= read.count && Array(read[$0..<($0 + phrase.words.count)]) == phrase.words }
@@ -682,6 +686,12 @@ struct CoverageQuery {
 
     @inline(__always) private func fits(_ w: String, _ form: String) -> Bool {
         isNumber(form) ? w == form : same(w, form) || (prefix && length(form) > 1 && starts(w, form))
+    }
+
+    /// Whether one of a food's words is this one, as said or as its correction: the "mayonnaise"
+    /// of "Salad dressing, mayonnaise" for "mayonnise".
+    @inline(__always) private func reads(_ w: String, as word: WordForms) -> Bool {
+        word.options.contains { fits(w, $0) } || word.fixParts.contains { $0.count == 1 && starts(w, $0[0]) }
     }
 
     /// Whether one of a food's words is one the search asked for.
@@ -762,7 +772,7 @@ struct CoverageQuery {
         var variations = 0.0
         var others = 0
         // Where the name last has the word naming the food, which is where it says what it is.
-        let named = target.last.flatMap { last in text.said.lastIndex { w in last.options.contains { fits(w, $0) } } }
+        let named = target.last.flatMap { last in text.said.lastIndex { reads($0, as: last) } }
         var filed: [String] = []
         var forms: [String] = []
         // USDA's "mature seeds" are dried beans and lentils as usually cooked, not the seeds of a plant.
@@ -796,7 +806,7 @@ struct CoverageQuery {
         // milk", where a coconut cream pudding "prepared with whole milk" has both and is neither.
         var together = false
         if target.count > 1, missing == 0 {
-            let places = target.map { word in text.said.indices.filter { i in word.options.contains { fits(text.said[i], $0) } } }
+            let places = target.map { word in text.said.indices.filter { reads(text.said[$0], as: word) } }
             if let first = places.first {
                 together = first.contains { at in places.allSatisfy { $0.contains { text.runs[$0] == text.runs[at] } } }
             }
@@ -1015,9 +1025,9 @@ func scoreFoods(
     var reorderedLenient: [[Int]: CoverageQuery] = [:]
     // Whether a plain food has every word said, worked out when a food's brand first asks. Not
     // by a brand USDA names in capitals inside a plain food's name ("Yogurt, Greek, plain, CHOBANI").
-    var plainlyNamed: Bool?
-    func isPlainlyNamed() -> Bool {
-        if let plainlyNamed { return plainlyNamed }
+    var plainlyNamed: [Bool: Bool] = [:]
+    func isPlainlyNamed(corrected: Bool = false) -> Bool {
+        if let known = plainlyNamed[corrected] { return known }
         let said = target.map(stem)
         let found = unique.values.contains { entry in
             guard !entry.text.branded, !said.contains(where: { word in entry.text.shouted.contains { starts($0, word) } }) else { return false }
@@ -1026,9 +1036,9 @@ func scoreFoods(
             else { return false }
             // As typed, not as a typo of it: "hers" isn't herring.
             let match = query.cover(entry.text)
-            return match.missing == 0 && match.fixed == 0
+            return match.missing == 0 && (corrected || match.fixed == 0)
         }
-        plainlyNamed = found
+        plainlyNamed[corrected] = found
         return found
     }
 
@@ -1084,7 +1094,7 @@ func scoreFoods(
         // "Edamame", which no plain food is.
         // A brand people scan is one, whatever plain food has its word (Goldfish, Post, Kraft),
         // and so is a chain USDA names: this is about what labels put in their brand field.
-        if text.ownWords.count == 1, !halfTyped, !text.chain, !popularBrands.contains(bare(text.ownWords[0])), isPlainlyNamed() {
+        if text.ownWords.count == 1, !halfTyped, !text.chain, !popularBrands.contains(bare(text.ownWords[0])), isPlainlyNamed(corrected: true) {
             return (whole.cover(text), false, 0)
         }
         // Nothing typed but the food's brand: it's one of that brand's foods, whatever it's called.
@@ -1217,8 +1227,11 @@ func scoreFoods(
             for row in family { for word in Set(row.match.forms) where keptWords.contains(word) { foods[word, default: 0] += 1 } }
             shelf.formUnion(foods.filter { 3 * $0.value >= 2 * family.count }.keys)
         }
-        // Never a kind the everyday variety isn't: most ribs USDA lists are beef, and ribs are still pork.
+        // Never a kind the everyday variety isn't: most ribs USDA lists are beef, and ribs are still
+        // pork. Nor a food made for babies or of something else, however many of those USDA lists:
+        // applesauce isn't filed under "Babyfood".
         shelf.subtract(query.unusual)
+        shelf.subtract(notFiled)
     }
     // Some food sold here has every word said, in its name or as its brand read whole: not a
     // word that only happens to be in a brand ("cottage cheese honest" isn't The Honest Cow's yet).

@@ -497,6 +497,31 @@ struct StaplesTests {
         #expect(share <= 0.56, "only once typed whole: \(slow.joined(separator: ", "))")
     }
 
+    @Test("an everyday food typed with a typo is still first")
+    func typos() {
+        // One typo in a word of five letters or more of every other staple and pantry food, never
+        // its first letter.
+        var random = SearchQualityTests.Seeded(state: 11)
+        var first = 0
+        var asked = 0
+        var missed: [String] = []
+        for (query, pattern) in (staples + pantry).enumerated().filter({ $0.offset % 2 == 0 }).map(\.element) {
+            var words = query.split(separator: " ").map(String.init)
+            guard let at = words.indices.filter({ words[$0].count >= 5 && words[$0].allSatisfy(\.isLetter) }).randomElement(using: &random) else {
+                continue
+            }
+            let wrong = SearchQualityTests.typo(words[at], &random)
+            guard wrong != words[at] else { continue }
+            words[at] = wrong
+            asked += 1
+            let typed = words.joined(separator: " ")
+            if catalog.top(typed, 1).first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append(typed) }
+        }
+        print("Everyday foods with a typo: \(first) of \(asked) first")
+        // 85% before a typo's word was read by the names and usual kind of the word it meant.
+        #expect(Double(first) >= 0.87 * Double(asked), "\(missed.joined(separator: ", "))")
+    }
+
     @Test("an everyday name finds the food the catalogs file under another")
     func everydayNames() {
         // Typed apart or as one word, hot dogs are USDA's frankfurters and a bell pepper its sweet pepper.

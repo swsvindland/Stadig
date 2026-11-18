@@ -94,6 +94,21 @@ struct CatalogTests {
             _ = catalog.search(query)
             _ = catalog.candidates(name: query, brand: "Mc'Test")
         }
+        // And every keystroke of the ways a search is read while it's typed: a letter after a food,
+        // a name as one word, a chain's item, marks and other scripts' letters.
+        let typed = [
+            "McDONALD'S, Egg McMUFFIN", "trader joe’s organic ketchup", "hotdog bun 2 oz", "peanutbutter & jelly", "chicken b", "2% milk 1 cup",
+            "ｍｉｌｋ ١٢ ß ǅ ﬁ", "a b c d", "s ' ’s & - ( ) % : {brand} NEAR OR AND", "e\u{0301}clair\t\n", "   ",
+        ]
+        for query in typed {
+            let letters = Array(query)
+            for count in 0...letters.count {
+                let text = String(letters[..<count])
+                let found = catalog.search(text, limit: 60)
+                _ = FoodCompletions.suggest(text, from: found)
+                _ = catalog.candidates(name: text, brand: nil)
+            }
+        }
         #expect(catalog.failures == 0)
         // A bad one shows up as a failure, not just as nothing found.
         #expect(catalog.catalogs[0].match(#""unclosed"#, limit: 1).isEmpty)

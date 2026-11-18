@@ -360,7 +360,7 @@ extension FoodCatalog {
     /// its amount, and the one word has to be a whole word of the catalogs': "pea che" is on its
     /// way to pea cheese as much as to peaches. A name a model gave isn't being typed (`typing`
     /// false), so its last word is whole too.
-    func respell(_ query: String, typing: Bool = true) -> Respelt {
+    func respell(_ query: String, typing: Bool = true, meant: [String: String] = [:]) -> Respelt {
         let scalars = plainScalars(query)
         let tokens = scanTokens(scalars)
         let names = Set(searchedWords(readQuery(query).words))
@@ -369,7 +369,7 @@ extension FoodCatalog {
         }
         // A name being typed as one word is read as its words: "hotd" is on its way to a hot dog.
         if typing, let last = tokens.last, last.end == scalars.count, named(tokens.count - 1), let apart = EverydayPhrases.apart(last.word) {
-            return respell(makeString(scalars[..<last.start]) + apart, typing: typing)
+            return respell(makeString(scalars[..<last.start]) + apart, typing: typing, meant: meant)
         }
         // One letter after a food's or a brand's first words is enough to say which: "chicken b"
         // is searched as chicken breast, where the letter alone would be left out.
@@ -412,7 +412,7 @@ extension FoodCatalog {
         let only = tokens.indices.filter(named)
         if only.count == 1 {
             let alone = tokens[only[0]]
-            let word = likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
+            let word = meant[alone.word] ?? likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
             if let meant = aloneNames[stem(word)] {
                 write(meant, over: alone.start..<alone.end)
                 text += scalars[copied...]
@@ -422,11 +422,16 @@ extension FoodCatalog {
             }
             if let filed = aloneFiled[stem(word)] { also(filed, for: [alone.word]) }
         }
+        // A word read as another, half typed or misspelt, is read by that word's own other wordings
+        // and spellings: "ketchu" and "ketchep" are on their way to catsup too, "milkshak" to
+        // "milk shake".
+        var others = meant
+        if let likely, let last = tokens.last, others[last.word] == nil { others[last.word] = likely }
+        for (typed, word) in others.sorted(by: { $0.key < $1.key }) {
+            if typedAlternatives.contains(word) { for form in forms(word) where form != stem(word) { also(form, for: [typed]) } }
+            if let (left, right, _) = halves(of: word, whole: true) { also("\(left) \(stem(right))", for: [typed]) }
+        }
         if let likely, let last = tokens.last {
-            // The catalogs' own wording for it: "ketchu" is on its way to catsup too.
-            if typedAlternatives.contains(likely) { for form in forms(likely) where form != stem(likely) { also(form, for: [last.word]) } }
-            // And the other way labels write it: "milkshak" to "milk shake", "soy mil" to soymilk.
-            if let (left, right, _) = halves(of: likely, whole: true) { also("\(left) \(stem(right))", for: [last.word]) }
             let before = tokens.count - 2
             if before >= 0, named(before), length(tokens[before].word) > 2, let compound = compound(tokens[before].word, likely),
                 compound.joined || compound.same
@@ -440,7 +445,9 @@ extension FoodCatalog {
             guard named(i) else { continue }
             let word = tokens[i].word
             let run = (i..<tokens.count).prefix(while: named).map { tokens[$0].word }
-            everyday(run, read: likely != nil && i + run.count == tokens.count ? run.dropLast() + [likely ?? ""] : nil)
+            var read = run.map { meant[$0] ?? $0 }
+            if let likely, i + run.count == tokens.count { read[read.count - 1] = likely }
+            everyday(run, read: read)
             if let (left, right, compound) = halves(of: word, whole: !typing || i < tokens.count - 1) {
                 if compound.joined {
                     also("\(left) \(stem(right))", for: [word])
@@ -577,10 +584,32 @@ extension FoodCatalog {
     /// missing one of its words; and a search that finds nothing falls back to the word that names
     /// the food. The person's own foods in `known` rank higher, and packaged foods people scan more
     /// rank higher among themselves.
+    /// The words of a search the catalogs barely know that can each have meant only one other
+    /// word, by that word: "ketchep" is ketchup and "spagheti" spaghetti. The search still looks
+    /// for the word as typed, which may be a small brand's; this is for reading the word's
+    /// everyday names and spellings as if it had been typed right. Not a word with two readings
+    /// ("gali" is gala or garlic), one that is only cut short, or one the generic catalog has.
+    func typos(in typed: String) -> [String: String] {
+        let scalars = plainScalars(typed)
+        let tokens = scanTokens(scalars)
+        let names = Set(searchedWords(readQuery(typed).words))
+        var meant: [String: String] = [:]
+        for (i, token) in tokens.enumerated() where names.contains(token.word) && length(token.word) >= 4 && !stopWords.contains(token.word) {
+            let spelling = spell(token.word, whole: i < tokens.count - 1 || token.end < scalars.count)
+            guard spelling.doubted, spelling.fixes.count == 1, let fix = spelling.fixes.first, !fix.contains(" "), !token.word.hasPrefix(fix),
+                catalogs.first(where: { $0.kind == .generic })?.terms("SELECT term, foods FROM terms WHERE term = ?", [.text(stem(token.word))])
+                    .isEmpty != false
+            else { continue }
+            meant[token.word] = fix
+        }
+        return meant
+    }
+
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
         guard !catalogs.isEmpty else { return CatalogSearch(text: typed) }
-        // A name labels write as one word or as two is searched the usual way, and the other too.
-        let respelt = respell(typed)
+        // A name labels write as one word or as two is searched the usual way, and the other too;
+        // a word that can only have been a typo is read by the names of the word it meant.
+        let respelt = respell(typed, meant: typos(in: typed))
         let query = respelt.text
         let reading = readQuery(query)
         // A single letter matches most of the catalog, so the search waits for a second one.
