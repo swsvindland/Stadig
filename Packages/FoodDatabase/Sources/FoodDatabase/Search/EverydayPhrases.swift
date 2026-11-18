@@ -141,7 +141,7 @@ enum EverydayPhrases {
     /// word that is already one of a food's ("milk" isn't on its way to milkshake, nor "pepper"
     /// to pepperoni).
     static func likely(_ typed: [String]) -> String? {
-        guard let last = typed.last, !known.contains(stem(last)) else { return nil }
+        guard let last = typed.last, !known.contains(stem(last)), !isAlone(last) else { return nil }
         if let word = completing(typed) { return word }
         guard last.utf8.count >= 2, !last.utf8.contains(where: { $0 >= 0x30 && $0 <= 0x39 }) else { return nil }
         // The foods that start as typed come before the ones that have the word later.
@@ -176,6 +176,14 @@ enum EverydayPhrases {
 
     /// Whether a word, as searched, is one of an everyday food's: "bar", "bread", "water".
     static func isWord(_ stem: String) -> Bool { known.contains(stem) }
+
+    /// Whether a word is one of an everyday food's as it's written, whole: "curry", where "curr"
+    /// is searched the same and may still be on its way to currants.
+    static func isWritten(_ word: String) -> Bool { written.contains(word) || isAlone(word) }
+
+    /// Whether a word typed alone has a meaning of its own: "meat" is beef, not meatballs begun.
+    private static func isAlone(_ word: String) -> Bool { aloneNames[stem(word)] != nil || aloneFiled[stem(word)] != nil }
+    private static let written: Set<String> = Set(all.flatMap(\.words))
     private static let stemmed: [(words: [String], stems: [String])] = all.map { ($0.words, $0.words.map(stem)) }
     private static let brands: [(words: [String], stems: [String])] = PopularBrands.names.map { $0.split(separator: " ").map(String.init) }
         .filter { $0.count > 1 }.map { ($0, $0.map(stem)) }

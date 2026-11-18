@@ -186,7 +186,7 @@ let staples: [(String, String)] = [
     ("tortilla chips", "^(Snacks, )?[Tt]ortilla chips"),
     ("popcorn", "^Snacks, popcorn, (air-popped|oil-popped|home-prepared)"),
     ("pretzels", "^(Snacks, pretzels|Pretzels)"),
-    ("cookie", "^Cookies, "),
+    ("cookie", "^Cookies?, "),
     ("chocolate", "^(Chocolate|Candies, milk chocolate)"),
     ("dark chocolate", "^Chocolate, dark"),
     ("brownie", "^Cookies, brownies"),
@@ -656,6 +656,20 @@ struct EverydayFormTests {
         #expect(nameWords("Bowl of rice") == ["rice"])
     }
 
+    @Test("a kind of food typed alone is the one of its kind most logged")
+    func kinds() {
+        #expect(first("juice", ["Lemon juice, raw", "Orange juice, raw"]) == "Orange juice, raw")
+        #expect(first("oil", ["Oil, palm", "Oil, olive, salad or cooking"]) == "Oil, olive, salad or cooking")
+        #expect(first("cream", ["Cream, sour, cultured", "Cream, fluid, heavy whipping"]) == "Cream, fluid, heavy whipping")
+        // Not once another word says which.
+        #expect(first("lemon juice", ["Orange juice, raw", "Lemon juice, raw"]) == "Lemon juice, raw")
+        #expect(first("sour cream", ["Cream, fluid, heavy whipping", "Cream, sour, cultured"]) == "Cream, sour, cultured")
+        // A whole word typed alone isn't the start of a longer one; after other words the
+        // last may still be half typed.
+        #expect(first("curry", ["Currants, red and white, raw", "Spices, curry powder"]) == "Spices, curry powder")
+        #expect(rankSearch("creamy oat", [OwnWordsTests.food("Extra Creamy Oatmilk", brand: "Chobani")]).count == 1)
+    }
+
     @Test("another spelling of a food, or its British name, is the food")
     func spellings() {
         #expect(first("omelette", ["Eggplant, raw", "Egg, whole, cooked, omelet"]) == "Egg, whole, cooked, omelet")
@@ -826,6 +840,12 @@ struct StaplesTests {
         #expect(catalog.respell("2 percent milk").text == "2% milk")
         #expect(catalog.respell("one percent milk").text == "1% milk")
         #expect(catalog.top("monterey jack", 1).first == "Cheese, monterey")
+        // A kind of food typed alone, where the usual one is far down the foods with the word,
+        // and the words that mean a food of their own alone.
+        #expect(catalog.top("juice", 1).first.map { matches("^Orange juice", $0) } == true)
+        #expect(catalog.top("meat", 1).first.map { matches("^Beef, ground", $0) } == true)
+        #expect(catalog.top("protein", 1).first.map { matches("(?i)protein powder", $0) } == true)
+        #expect(catalog.top("salad", 1).first.map { matches("^Lettuce, salad", $0) } == true)
         // A few letters aren't the start of a brand that isn't sold here.
         #expect(catalog.top("dal", 1).first.map { matches("(?i)^dal\\b", $0) } == true)
     }

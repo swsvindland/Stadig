@@ -736,9 +736,12 @@ extension FoodCatalog {
             // may read as the food asked for (see `Ease`): cooked salmon for "baked salmon",
             // salmon for "salmon fillet". The words together only find the labels that say so.
             span == nil ? easedJobs(searched, term, lead) : [],
+            // And the usual kind of what was typed, which the first rows found needn't hold:
+            // orange juice among every food with "juice" in its name.
+            span == nil ? everydayQueries(Named(name: query, brand: "")).flatMap { jobs(catalogs.filter { $0.kind == .generic }, $0, .typed) } : [],
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6]
+        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7]
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").

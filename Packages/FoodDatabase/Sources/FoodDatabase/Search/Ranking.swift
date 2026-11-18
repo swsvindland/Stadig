@@ -226,6 +226,51 @@ private let everydayVarieties: [String: Usual] = [
     "cornbread": Usual(["recipe"], ["mix", "stuffing"]),
     // Goat cheese is the soft kind; goat's milk and meat are themselves.
     "goat": Usual(["soft"], ["milk", "meat", "roasted", "raw"]),
+    // A kind of food typed alone is the one of its kind most logged: orange juice, olive oil,
+    // heavy cream, maple syrup, a white fish, a green salad, a turkey sandwich, mixed
+    // vegetables, apple pie, chocolate chip cookies, saltines, ranch dressing, pasta sauce.
+    "juice": Usual(
+        ["orange"],
+        "apple grape cranberry lemon lime tomato carrot pineapple grapefruit prune vegetable pomegranate cherry clam pickle".split(separator: " ")
+            .map(String.init)),
+    "oil": Usual(
+        ["olive"],
+        "canola vegetable coconut corn peanut sesame avocado sunflower safflower soybean palm fish cod flaxseed mct".split(separator: " ").map(
+            String.init)),
+    "cream": Usual(["heavy"], "ice sour whipped cheese light half coffee table coconut soup pie puff soda".split(separator: " ").map(String.init)),
+    "syrup": Usual(["maple"], "chocolate corn pancake agave simple cane sorghum malt rice date fruit".split(separator: " ").map(String.init)),
+    "fish": Usual(
+        ["tilapia"],
+        "tuna salmon cod oil sauce stick sticks taco tacos fillet sandwich cake cakes fried chips gefilte roe".split(separator: " ").map(String.init)),
+    "salad": Usual(
+        ["lettuce"],
+        "tuna chicken egg potato pasta macaroni fruit caesar greek cobb taco bean dressing seafood crab shrimp ham turkey kit".split(separator: " ")
+            .map(String.init)),
+    "sandwich": Usual(
+        ["turkey"],
+        "ham chicken club tuna egg cheese ice cream cookie cookies breakfast fish steak beef pork peanut butter bread spread cracker crackers".split(
+            separator: " "
+        ).map(String.init)),
+    "vegetable": Usual(
+        ["mixed"], "oil juice soup broth stock shortening spread burger burgers chips beef protein".split(separator: " ").map(String.init)),
+    "pie": Usual(
+        ["apple"],
+        "pumpkin cherry pecan chicken pot shepherd shepherds crust filling blueberry lemon peach cream chocolate lime pizza".split(separator: " ")
+            .map(String.init)),
+    "cookie": Usual(
+        ["chocolate"],
+        "sandwich oatmeal sugar peanut butter fortune ginger gingersnap shortbread wafer dough mix".split(separator: " ").map(String.init)),
+    "cracker": Usual(
+        ["saltine"], "cheese graham animal rice wheat whole rye oyster sandwich peanut butter matzo".split(separator: " ").map(String.init)),
+    "dressing": Usual(
+        ["ranch"],
+        "italian caesar french thousand island blue cheese vinaigrette honey mustard russian sesame mayonnaise mayo balsamic oil vinegar bacon".split(
+            separator: " "
+        ).map(String.init)),
+    "sauce": Usual(
+        ["pasta"],
+        "soy hot bbq barbecue tomato alfredo cheese fish oyster teriyaki worcestershire tartar cocktail hoisin chili pepper cranberry apple steak pizza enchilada taco sweet sour duck plum peanut hollandaise white brown meat buffalo"
+            .split(separator: " ").map(String.init)),
 ]
 
 /// The same for foods of two words, read before either word's own: tomato sauce, tomato paste
@@ -792,7 +837,11 @@ struct CoverageQuery {
                 // "baby" of "baby spinach" isn't babyfood begun, nor the "egg" of "egg salad"
                 // eggplant, the "grape" of "grape juice" grapefruit or the "ham" of "ham
                 // sandwich" a hamburger. Not "mac", which people type for macaroni.
-                finished: prefix && i < words.count - 1 && word != "mac" && EverydayPhrases.isWord(stem(word)))
+                // So is one typed alone, once it's whole: "curry" isn't currants begun. After
+                // other words the last may still be half of one: the "oat" of "chobani extra
+                // creamy oat" is on its way to Oatmilk.
+                finished: prefix && word != "mac"
+                    && (i < words.count - 1 ? EverydayPhrases.isWord(stem(word)) : words.count == 1 && EverydayPhrases.isWritten(word)))
         }
         var mentioned: [String] = []
         var entire: [String] = []
