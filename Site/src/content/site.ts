@@ -11,7 +11,6 @@ export const brand = {
   pronunciation: "STAH-dig",
   meaning: "Norwegian for steady.",
   publisher: "Sam Svindland",
-  email: "hello@stadig.dev",
   platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro", "Apple Watch"],
   // The line under every App Store button.
   // Open source: once the repository is public and has a licence, this line becomes

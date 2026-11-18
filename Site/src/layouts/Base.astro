@@ -28,7 +28,8 @@ const organization = {
   name: brand.name,
   url: brand.domain,
   logo: `${brand.domain}/icon-512.png`,
-  email: brand.email,
+  // There's no address to write to: the support form is the contact.
+  contactPoint: { "@type": "ContactPoint", contactType: "customer support", url: `${brand.domain}/support` },
   founder: { "@type": "Person", name: brand.publisher },
   description: brand.description,
 };
