@@ -1,9 +1,9 @@
 import Foundation
 
 /// What a search might be heading for: "chick" could go on to "chicken breast" or "chicken soup".
-/// The person's own foods come first, then the everyday foods and the most scanned brands that
-/// read as typed (`EverydayPhrases`, `PopularBrands`), then what the search's rows say: products
-/// and the foods those lists don't have. The rows are the ones the search already found, so a
+/// The person's own foods come first, then the everyday foods, the ways they're said ("grilled
+/// salmon", "fat free milk") and the most scanned brands that read as typed (`EverydayPhrases`,
+/// `PopularBrands`), then what the search's rows say: products and the foods those lists don't have. The rows are the ones the search already found, so a
 /// typo it corrected carries through and nothing more is asked of the catalogs per keystroke.
 public enum FoodCompletions {
     /// How many are offered at a time.
@@ -33,13 +33,25 @@ public enum FoodCompletions {
     /// Words a phrase doesn't end on.
     private static let connectors: Set<String> = ["a", "an", "and", "for", "from", "in", "of", "on", "or", "the", "to", "with", "without", "&"]
 
-    /// The everyday foods and the brands, each with its words as compared and its weight.
-    private static let listed: [(words: [String], compared: [String], weight: Double, brand: Bool)] = {
+    /// A way a food is said ("grilled salmon") found by the food's word counts this much: after
+    /// "oni", onion rings come before sauteed onions.
+    private static let laterWay = 0.4
+    /// How many ways of one kind ("whole wheat …") are offered while anything else is.
+    private static let waysOfAKind = 2
+
+    /// The everyday foods, the ways they're said and the brands, each with its words as compared,
+    /// its weight, and for a way the word it starts with.
+    private static let listed: [(words: [String], compared: [String], weight: Double, brand: Bool, way: String?)] = {
         let brands = PopularBrands.names.enumerated().map { rank, name in
             let share = Double(rank) / Double(max(1, PopularBrands.names.count - 1))
             return (name.split(separator: " ").map(String.init), brandWeights.most - (brandWeights.most - brandWeights.least) * share, true)
         }
-        return (EverydayPhrases.all.map { ($0.words, $0.weight, false) } + brands).map { ($0.0, $0.0.map(plain), $0.1, $0.2) }
+        // The ways the everyday foods are said, where the list doesn't have them already, in
+        // the singular or the plural: "fried eggs" is its "fried egg".
+        let foods = Set(EverydayPhrases.all.map { Tally.key($0.words) })
+        let said = EverydayPhrases.said.filter { !foods.contains(Tally.key($0.words)) }
+        return (EverydayPhrases.all.map { ($0.words, $0.weight, false) } + brands).map { ($0.0, $0.0.map(plain), $0.1, $0.2, nil) }
+            + said.map { ($0.words, $0.words.map(plain), $0.weight, false, $0.words.first) }
     }()
 
     /// Phrases for what's typed, the likeliest first, in lower case. `label` is a food's name as a
@@ -56,7 +68,10 @@ public enum FoodCompletions {
         for phrase in listed {
             if let found = place(of: wanted, in: phrase.compared) {
                 // A brand found by a later word is a longer reach than a food: "ban" isn't La Banderita.
-                tally.add(listed: phrase.words, weight: phrase.weight * (phrase.brand && found.fit < 1 ? found.fit * laterBrand : found.fit))
+                // And a way is only offered by words typed in its order: "chicken b" isn't baked chicken.
+                guard phrase.way == nil || found.ordered else { continue }
+                let reach = found.fit == 1 ? 1 : phrase.brand ? found.fit * laterBrand : phrase.way != nil ? laterWay : found.fit
+                tally.add(listed: phrase.words, weight: phrase.weight * reach, way: phrase.way)
             } else if wanted.count == 1, phrase.compared.count > 1, wanted[0].count > phrase.compared[0].count,
                 phrase.compared.joined().hasPrefix(wanted[0])
             {
@@ -184,7 +199,7 @@ public enum FoodCompletions {
     /// Where the typed words fall among `words` (both as compared), when each starts one of them:
     /// the place of the last, and how well they sit. A phrase that starts as typed, with the
     /// words side by side, fits in full.
-    private static func place(of typed: [String], in words: [String]) -> (last: Int, fit: Double, leads: Bool)? {
+    private static func place(of typed: [String], in words: [String]) -> (last: Int, fit: Double, leads: Bool, ordered: Bool)? {
         var places: [Int] = []
         for word in typed {
             guard let index = words.indices.first(where: { !places.contains($0) && reads(words[$0], as: word) }) else { return nil }
@@ -192,12 +207,12 @@ public enum FoodCompletions {
         }
         guard let first = places.first, let last = places.max() else { return nil }
         var fit = first == 0 ? 1 : laterWord
+        let ordered = zip(places, places.dropFirst()).allSatisfy { $0 < $1 }
         if places.count > 1 {
-            let ordered = zip(places, places.dropFirst()).allSatisfy { $0 < $1 }
             let beside = zip(places, places.dropFirst()).allSatisfy { $1 == $0 + 1 }
             fit *= beside ? 1 : ordered ? apart : outOfOrder
         }
-        return (last, fit, first == 0)
+        return (last, fit, first == 0, ordered)
     }
 
     /// "apples" typed reads as "apple" too, which a catalog's singular name wouldn't otherwise start.
@@ -215,7 +230,11 @@ public enum FoodCompletions {
         return String(String.UnicodeScalarView(folded.unicodeScalars.filter(isWordScalar)))
     }
 
-    private static func singular(_ word: String) -> String { word.count > 3 && word.hasSuffix("s") ? String(word.dropLast()) : word }
+    /// "Potatoes" is "potato" as "eggs" is "egg".
+    private static func singular(_ word: String) -> String {
+        if word.count > 5, word.hasSuffix("oes") { return String(word.dropLast(2)) }
+        return word.count > 3 && word.hasSuffix("s") ? String(word.dropLast()) : word
+    }
 
     /// Lower-case words, up to any note in brackets, without a trademark's sign.
     static func phraseWords(_ text: String) -> [String] {
@@ -242,6 +261,8 @@ public enum FoodCompletions {
             var own = false
             /// An everyday food or a brand people scan.
             var listed = false
+            /// For a way a food is said, the word it starts with: "grilled".
+            var way: String?
             /// How many foods say it, and whether it's the whole of one's name.
             var foods = 0
             var whole = false
@@ -275,12 +296,13 @@ public enum FoodCompletions {
             rows[Self.key(cut.words)] = row
         }
 
-        mutating func add(listed words: [String], weight: Double) {
+        mutating func add(listed words: [String], weight: Double, way: String? = nil) {
             var row = rows[Self.key(words)] ?? Row(words: words)
             // As the list says it ("hot dog"), not as one label happens to ("hot dogs nature").
             row.words = words
             row.weight += weight
             row.listed = true
+            row.way = way
             rows[Self.key(words)] = row
         }
 
@@ -313,7 +335,22 @@ public enum FoodCompletions {
                 if a.words.count != b.words.count { return a.words.count < b.words.count }
                 return a.words.lexicographicallyPrecedes(b.words)
             }
-            return order.prefix(limit).map { $0.words.joined(separator: " ") }
+            // A few ways of one kind, then whatever else there is, then the rest of them: "who"
+            // is whole milk, whole wheat bread and pasta, and still a Whopper.
+            var kinds: [String: Int] = [:]
+            var first: [Row] = []
+            var held: [Row] = []
+            for row in order {
+                if let way = row.way {
+                    kinds[way, default: 0] += 1
+                    if kinds[way, default: 0] > waysOfAKind {
+                        held.append(row)
+                        continue
+                    }
+                }
+                first.append(row)
+            }
+            return (first + held).prefix(limit).map { $0.words.joined(separator: " ") }
         }
     }
 }

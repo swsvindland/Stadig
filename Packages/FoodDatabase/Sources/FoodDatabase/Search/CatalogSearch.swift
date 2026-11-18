@@ -753,13 +753,17 @@ extension FoodCatalog {
         return search
     }
 
-    /// A search of the generic foods for the words that say what a food is, without the ones
-    /// that say how it's cooked or cut; with a way of cooking among those, only for cooked foods.
+    /// Searches of the generic foods for the words that say what a food is, without the ones that
+    /// say how it's cooked or cut: the foods a search for those words alone would find, which
+    /// show what the food is filed under, and with a way of cooking among the words left out,
+    /// its cooked ones, however many others there are.
     private func easedJobs(_ words: [String], _ term: (String) -> String, _ lead: (String) -> String) -> [MatchJob] {
         let rest = words.filter { !isEasable($0) }
         guard rest.count < words.count, let first = rest.first(where: { !isNumber($0) }) else { return [] }
-        let cooked = words.contains(where: isHeat) ? " AND \(heatedTerm)" : ""
-        return jobs(catalogs.filter { $0.kind == .generic }, rest.map(term).joined(separator: " AND ") + cooked, .typed, lead: lead(first))
+        let generic = catalogs.filter { $0.kind == .generic }
+        let food = rest.map(term).joined(separator: " AND ")
+        return jobs(generic, food, .typed, lead: lead(first))
+            + (words.contains(where: isHeat) ? jobs(generic, "\(food) AND \(heatedTerm)", .typed, lead: lead(first)) : [])
     }
 
     /// Catalog searches for a food a model saw, from most to least specific: brand and name, brand

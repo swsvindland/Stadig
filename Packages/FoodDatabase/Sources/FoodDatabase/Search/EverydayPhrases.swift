@@ -65,6 +65,68 @@ enum EverydayPhrases {
         "breakfast sandwich", "breakfast burrito",
     ]
 
+    /// Everyday foods as they're said with how they're cooked, kept, trimmed or made: what
+    /// "grilled", "fat free" or "baby" most often goes on to, the likeliest first. Each is a
+    /// search that finds its food, mostly the plain one the ranking reads it as (see `Ease`):
+    /// "grilled salmon" is USDA's salmon cooked in dry heat. Only suggestions use them.
+    static let ways: [(how: String, foods: [String])] = [
+        (
+            "grilled",
+            [
+                "chicken", "chicken breast", "salmon", "shrimp", "steak", "cheese", "vegetables", "chicken thigh", "asparagus", "zucchini",
+                "pork chop", "tilapia", "corn", "onions",
+            ]
+        ),
+        ("baked", ["potato", "chicken", "chicken breast", "salmon", "beans", "sweet potato", "cod", "chicken thigh", "tilapia", "ziti"]),
+        (
+            "roasted",
+            [
+                "chicken", "vegetables", "potatoes", "broccoli", "sweet potato", "turkey", "almonds", "cauliflower", "brussels sprouts",
+                "carrots", "turkey breast", "chicken breast", "salmon", "peanuts", "red peppers", "asparagus", "zucchini",
+            ]
+        ),
+        ("steamed", ["broccoli", "rice", "vegetables", "white rice", "cauliflower", "carrots", "spinach", "green beans", "shrimp", "dumplings"]),
+        ("boiled", ["eggs", "potatoes", "chicken", "rice", "chicken breast", "peanuts"]),
+        ("fried", ["chicken", "rice", "eggs", "fish", "shrimp", "tofu", "potatoes", "onions", "plantains"]),
+        ("sauteed", ["spinach", "mushrooms", "onions", "vegetables", "kale", "shrimp", "peppers"]),
+        ("poached", ["eggs", "chicken"]),
+        ("smoked", ["salmon", "sausage", "ham"]),
+        ("raw", ["almonds", "spinach", "broccoli", "carrots", "honey", "salmon", "cashews", "tuna", "onion", "kale"]),
+        ("fresh", ["strawberries", "spinach", "blueberries", "mozzarella", "salsa", "pineapple", "tomato"]),
+        ("frozen", ["blueberries", "broccoli", "strawberries", "peas", "vegetables", "spinach", "yogurt", "corn", "pizza"]),
+        ("canned", ["tuna", "chicken", "corn", "black beans", "salmon", "green beans", "pumpkin", "peaches"]),
+        ("dried", ["mango", "cranberries", "apricots", "figs"]),
+        ("cooked", ["rice", "chicken", "pasta", "quinoa", "chicken breast", "white rice", "oatmeal", "lentils", "spinach", "ground beef"]),
+        ("lean", ["ground beef", "ground turkey"]),
+        ("extra lean", ["ground beef"]),
+        ("fat free", ["milk", "greek yogurt", "yogurt", "cottage cheese", "cream cheese", "cheese", "sour cream", "half and half"]),
+        ("low fat", ["milk", "yogurt", "cottage cheese", "greek yogurt", "cheese"]),
+        ("nonfat", ["greek yogurt", "milk", "yogurt"]),
+        ("unsalted", ["butter", "almonds", "peanuts", "cashews", "mixed nuts"]),
+        ("salted", ["butter", "peanuts", "almonds"]),
+        ("boneless skinless", ["chicken breast", "chicken thigh"]),
+        ("boneless", ["chicken breast", "chicken thigh", "pork chop", "chicken wings"]),
+        ("skinless", ["chicken breast", "chicken thigh", "salmon"]),
+        ("baby", ["spinach", "potatoes", "kale", "back ribs", "bella mushrooms"]),
+        ("whole wheat", ["bread", "pasta", "tortilla", "bagel", "english muffin"]),
+        ("shredded", ["cheese", "chicken", "mozzarella", "lettuce", "wheat"]),
+        ("sliced", ["turkey", "almonds", "ham", "cheese"]),
+        ("plain", ["greek yogurt", "yogurt", "bagel"]),
+        ("vanilla", ["greek yogurt", "ice cream", "yogurt", "protein powder", "almond milk"]),
+        ("unsweetened", ["almond milk", "applesauce", "iced tea", "coconut milk"]),
+        ("hard boiled", ["eggs"]),
+        ("crunchy", ["peanut butter"]),
+        ("creamy", ["peanut butter"]),
+    ]
+
+    /// Those as phrases. They count less than any everyday food, the first a word goes on to
+    /// the most, so "gr" is still Greek yogurt and "grilled s" is grilled salmon.
+    static let said: [Phrase] = ways.flatMap { way in
+        way.foods.enumerated().map { place, food in
+            Phrase(words: "\(way.how) \(food)".split(separator: " ").map(String.init), weight: max(2.5, 4.5 - 0.2 * Double(place)))
+        }
+    }
+
     /// A phrase with its words, and how much it counts beside what the search's rows suggest: a
     /// row counts one at most, so the first foods outweigh a handful of rows and the rest a few.
     struct Phrase {

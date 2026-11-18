@@ -106,7 +106,28 @@ struct CompletionTests {
         #expect(yogurts.first == "yogurt" && yogurts.contains("greek yogurt"))
         // And the next word narrows them: side by side, in the order typed.
         #expect(FoodCompletions.suggest("protein b", from: [label("Protein+ Penne", brand: "Barilla", popularity: 3)]).first == "protein bar")
-        #expect(FoodCompletions.suggest("chicken b", from: []) == ["chicken breast"])
+        #expect(FoodCompletions.suggest("chicken b", from: []).first == "chicken breast")
+    }
+
+    @Test func theWaysFoodsAreSaidAreOffered() {
+        // What a way of cooking or keeping a food most often goes on to, the likeliest first.
+        #expect(Array(FoodCompletions.suggest("grilled s", from: []).prefix(3)) == ["grilled salmon", "grilled shrimp", "grilled steak"])
+        #expect(FoodCompletions.suggest("raw", from: []).first == "raw almonds")
+        #expect(FoodCompletions.suggest("fat f", from: []).first == "fat free milk")
+        #expect(FoodCompletions.suggest("uns", from: []).first == "unsalted butter")
+        // After the foods themselves: "gr" is still Greek yogurt, "ste" steak.
+        #expect(FoodCompletions.suggest("gr", from: []).first == "greek yogurt")
+        #expect(FoodCompletions.suggest("ste", from: []).first == "steak")
+        // A food typed out goes on to the ways it comes, each said once: "fried eggs" is the list's "fried egg".
+        let salmon = FoodCompletions.suggest("salmon", from: [])
+        #expect(salmon.contains("grilled salmon") && salmon.contains("smoked salmon"))
+        let eggs = FoodCompletions.suggest("fried e", from: [])
+        #expect(eggs.first == "fried egg" && !eggs.contains("fried eggs"))
+        // Only by words typed in its order: "chicken b" isn't baked chicken.
+        #expect(!FoodCompletions.suggest("chicken b", from: []).contains("baked chicken"))
+        // And a few of one kind leave room for whatever else is being typed.
+        let whole = FoodCompletions.suggest("who", from: [], limit: 5)
+        #expect(whole.first == "whole milk" && whole.filter { $0.hasPrefix("whole wheat") } == ["whole wheat bread", "whole wheat pasta"])
     }
 
     @Test func theBrandsPeopleScanAreOffered() {

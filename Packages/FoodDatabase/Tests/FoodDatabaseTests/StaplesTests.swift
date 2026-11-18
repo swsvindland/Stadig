@@ -595,10 +595,8 @@ struct EverydayFormTests {
             "Chicken, broilers or fryers, thigh, meat and skin, cooked, roasted", "Chicken, broilers or fryers, thigh, meat only, cooked, roasted",
         ]
         #expect(first("skinless chicken thigh", thighs) == "Chicken, broilers or fryers, thigh, meat only, cooked, roasted")
-        // A cut some plain food lists is that food.
-        #expect(
-            first("turkey slices", ["Turkey, whole, meat only, roasted", "Turkey breast, sliced, prepackaged"])
-                == "Turkey breast, sliced, prepackaged")
+        // A cut only a less common form of the food lists isn't that form.
+        #expect(first("apple slices", ["Apples, canned, sweetened, sliced, drained, heated", "Apples, raw, with skin"]) == "Apples, raw, with skin")
     }
 
     @Test("an everyday word with another typed after it is that word, and the last names the food")
