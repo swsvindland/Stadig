@@ -294,6 +294,9 @@ struct FoodText {
         var parts: [[String]] = [[], [], []]
         for (i, token) in found.enumerated() where !stems[i].isEmpty {
             titled.append(stems[i])
+            // "With skin" and "without skin" say how a fruit or a potato comes, not that the food
+            // is its skin, as "Chicken, skin only" is.
+            if stems[i] == "skin", i > 0, found[i - 1].word == "with" || found[i - 1].word == "without" { continue }
             if placed[i].bracket == 0 {
                 said.append(stems[i])
                 runs.append(placed[i].run)

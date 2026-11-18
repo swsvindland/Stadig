@@ -94,6 +94,19 @@ struct QueryTests {
         #expect(stem("pie") == "pie")
     }
 
+    @Test("a word is another only by an ending words take on")
+    func sameWord() {
+        // A plural the stem leaves, and a participle: "toast" finds toasted bread.
+        #expect(same("pies", "pie") && same("boxes", "box"))
+        #expect(same("toasted", "toast") && same("smoked", "smoke") && same("mixed", "mix"))
+        // Not any letter or two more.
+        for (word, form) in [("pear", "pea"), ("peach", "pea"), ("bunch", "bun"), ("mace", "mac"), ("tartar", "tart"), ("creamer", "cream")] {
+            #expect(!same(word, form), "\(form) isn't \(word)")
+        }
+        // Nor a "d" after a word that doesn't end in "e", nor anything after two letters.
+        #expect(!same("brand", "bran") && !same("cod", "co") && !same("loin", "lo"))
+    }
+
     @Test("typos count a swapped pair as one and read the start of a word")
     func typoDistance() {
         #expect(typos("protien", "protein", limit: 2) == 1)

@@ -254,6 +254,20 @@ struct EverydayFormTests {
         #expect(first("whiskey", whiskey) == "Alcoholic beverage, distilled, whiskey, 86 proof")
     }
 
+    @Test("with or without its skin, a food is still the food")
+    func skin() {
+        let first = { (name: String, foods: [String]) in
+            scoreFoods(Named(name: name, brand: ""), foods.map { OwnWordsTests.food($0) }).first?.food.name ?? ""
+        }
+        #expect(first("apple", ["Rose-apples, raw", "Apples, raw, with skin"]) == "Apples, raw, with skin")
+        #expect(
+            first("sweet potato", ["Sweet potato leaves, cooked", "Sweet potato, cooked, boiled, without skin"])
+                == "Sweet potato, cooked, boiled, without skin")
+        // The skin alone is still a part of its own.
+        let chicken = ["Chicken, broilers or fryers, skin only, cooked, roasted", "Chicken, broilers or fryers, meat only, cooked, roasted"]
+        #expect(first("chicken", chicken) == "Chicken, broilers or fryers, meat only, cooked, roasted")
+    }
+
     @Test("a brand that is an everyday word of foods isn't a brand the search names")
     func plainBrand() {
         let listed = OwnWordsTests.food("Chia Seeds", brand: "Seeds")

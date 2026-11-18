@@ -524,6 +524,11 @@ struct CandidateTests {
             ("chicken", "^Chicken", "(?i)feet|giblets|liver|skin"),
             ("white rice", "long-grain", ""),
             ("cheese", "(?i)cheddar|american", ""),
+            // A word is the food's own, not one a letter or two longer: peas aren't pears.
+            ("peas", "^Peas, green", "(?i)pear|peach"),
+            // With or without its skin, the fruit is still the fruit.
+            ("apple", "^Apples, raw", "(?i)rose|mammy"),
+            ("sweet potato", "^Sweet potato, cooked", "(?i)leaves"),
         ])
     func everyday(name: String, pattern: String, not: String) throws {
         let found = catalog.candidates(name: name, brand: nil)

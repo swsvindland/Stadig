@@ -246,11 +246,18 @@ func stem(_ word: String) -> String {
     return drop == 0 ? word : String(decoding: word.utf8.dropLast(drop), as: UTF8.self)
 }
 
-/// Both sides are stemmed, so a match may only differ by a plural-length ending; a letter can't.
+/// Both sides are stemmed, so a match may only differ by an ending a word takes on: a plural's
+/// ("pie" is "pies") or a participle's ("toast" is "toasted", "smoke" is "smoked"). Any two letters
+/// more made "pea" a pear, a peach and a pearl, "bun" a bunch, "mac" mace and "bran" brandy.
 @inline(__always) func same(_ word: String, _ form: String) -> Bool {
     if word == form { return true }
-    let n = length(form)
-    return n > 1 && starts(word, form) && length(word) - n <= 2
+    guard length(form) > 2, starts(word, form) else { return false }
+    let ending = word.utf8.dropFirst(form.utf8.count)
+    switch ending.count {
+    case 1: return ending.first == UInt8(ascii: "s") || (ending.first == UInt8(ascii: "d") && form.utf8.last == UInt8(ascii: "e"))
+    case 2: return ending.elementsEqual("es".utf8) || ending.elementsEqual("ed".utf8)
+    default: return false
+    }
 }
 
 /// A word without the "s" of its plural or possessive, for telling a brand's word from a word that
