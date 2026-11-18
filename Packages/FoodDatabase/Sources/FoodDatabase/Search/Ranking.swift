@@ -56,12 +56,13 @@ private let variationWords = stems(
     "powder dehydrated dried canned frozen unprepared imitation meatless substitute low reduced nonfat free fortified mix "
         + "flake concentrate baby infant toddler stick oil seed juice paste puree soup dry lite light diet sugar sweetened "
         + "blend spread flavored feet giblets liver gizzard heart neck back skin kidney tongue tripe glutinous "
-        + "sprouted instant parboiled precooked turkey stewed babyfood product brain evaporated condensed melba rusk candied")
+        + "sprouted instant parboiled precooked turkey stewed babyfood product brain evaporated condensed melba rusk candied "
+        + "vegetarian vegan veggie")
 
 /// Words for a food made of something else or for a baby, a further step from the food than a
-/// form of it: meatless meatballs aren't meatballs the way frozen ones are, nor is strained
-/// banana with mixed berries a bowl of mixed berries.
-private let insteadWords = stems("meatless imitation substitute babyfood")
+/// form of it: meatless meatballs aren't meatballs the way frozen ones are, nor a vegetarian
+/// meatloaf a meatloaf, nor strained banana with mixed berries a bowl of mixed berries.
+private let insteadWords = stems("meatless imitation substitute babyfood vegetarian vegan veggie")
 
 /// Words a food is never just filed under.
 private let notFiled = insteadWords.union(stems("baby infant toddler"))
@@ -93,8 +94,15 @@ private let packings = stems("oil water brine")
 /// Words in a name's first part that say nothing of another food.
 private let leadFillers = stems("made from ready eat")
 
+/// The groups USDA files foods under, as words: no word a food of the group lacks, but one a
+/// search can ask for.
+private let groupWords = stems("fish nuts beverages crustaceans mollusks spices")
+
 /// The most scanned brands of one word, as a typed word is compared with a brand's.
 private let popularBrands = Set(PopularBrands.names.filter { !$0.contains(" ") }.map { bare(String($0.unicodeScalars.filter(isWordScalar))) })
+
+/// And of more than one, as their words.
+private let popularNames = Set(PopularBrands.names.filter { $0.contains(" ") }.map { words($0).map(bare).joined(separator: " ") })
 
 /// What a label says of how a food was grown or made, which a plain food needn't say to be it.
 private let fluffWords = stems("organic natural homemade fresh")
@@ -216,6 +224,8 @@ private let everydayVarieties: [String: Usual] = [
     "taco": Usual(["beef"], "shell shells salad seasoning sauce kit chip chips flavor".split(separator: " ").map(String.init)),
     "nacho": Usual(["fast"], "chip chips flavor tortilla sauce dip".split(separator: " ").map(String.init)),
     "cornbread": Usual(["recipe"], ["mix", "stuffing"]),
+    // Goat cheese is the soft kind; goat's milk and meat are themselves.
+    "goat": Usual(["soft"], ["milk", "meat", "roasted", "raw"]),
 ]
 
 /// The same for foods of two words, read before either word's own: tomato sauce, tomato paste
@@ -808,7 +818,8 @@ struct CoverageQuery {
         level = words.contains(where: isNumber)
         brand = FoodDatabase.words(seen.brand).map { WordForms($0, prefix: prefix, fixes: fixes) }
         // A corrected word asks for the same everyday variety as the word it corrects.
-        let asked = said + fixValues(fixes, order: said) + (likely.map { [$0] } ?? [])
+        // And a word with another spelling for the same as that one: "yoghurt" is yogurt.
+        let asked = said + said.flatMap { alternatives[$0] ?? [] } + fixValues(fixes, order: said) + (likely.map { [$0] } ?? [])
         // A two-word food's, else the first word's that the others don't rule out: "beef stew" is
         // a stew, not ground beef.
         // Read through a word's one correction: "tomao paste" is tomato paste.
@@ -938,8 +949,11 @@ struct CoverageQuery {
                 hits += weight * (inBrand || aside ? 0.5 : 1)
             } else {
                 missing += 1
-                // A word that says what the food is, not how it comes ("fresh", "organic").
-                if !neutral.contains(stem(word.word)) && !fluffWords.contains(stem(word.word)) { lacking += 1 }
+                // A word that says what the food is, not how it comes ("fresh", "organic"). A
+                // group USDA files foods under says what it is when it's said: fish and chips
+                // aren't potato chips.
+                let said = stem(word.word)
+                if (!neutral.contains(said) && !fluffWords.contains(said)) || groupWords.contains(said) { lacking += 1 }
             }
             if !isWhole && isLiteral { partial += 1 }
             if isFixed { fixedCount += 1 }
@@ -966,7 +980,8 @@ struct CoverageQuery {
             // The usual kind's own word isn't one that wasn't asked for: tuna is canned, nuts are mixed.
             if let usual = self.usual, usual.markStems.contains(w) { continue }
             if variationWords.contains(w) {
-                variations += insteadWords.contains(w) ? 1.5 : 1
+                // As far off as a label's food is from a plain one: the real thing by any brand comes first.
+                variations += insteadWords.contains(w) ? 3 : 1
                 forms.append(w)
             } else if !neutral.contains(w) {
                 others += 1
@@ -1194,7 +1209,7 @@ func scoreFoods(
     let namedAfter = (likely ?? target.last).map { formWords.contains(stem($0)) && !eatenCooked.contains(stem($0)) } ?? false
     let cooked =
         !target.contains("raw") && !namedAfter
-        && (target + fixValues(fixes, order: target) + (likely.map { [$0] } ?? [])).contains { word in
+        && (target + target.flatMap { alternatives[$0] ?? [] } + fixValues(fixes, order: target) + (likely.map { [$0] } ?? [])).contains { word in
             let s = stem(word)
             return eatenCooked.contains(s) || (search && length(s) >= 4 && eatenCooked.contains { starts($0, s) })
         }
@@ -1353,6 +1368,13 @@ func scoreFoods(
         // isn't the oat milk of a label that gives "milk" as its brand.
         if text.ownWords.count == 1, !halfTyped, !text.chain, !popularBrands.contains(bare(text.ownWords[0])),
             EverydayPhrases.isWord(text.own[0]) || isPlainlyNamed(corrected: true)
+        {
+            return (whole.cover(text), false, 0)
+        }
+        // The same for a brand of several words, where a plain food has them all: chow mein
+        // isn't the one a label lists under "Chow Mein".
+        if text.ownWords.count > 1, !halfTyped, !text.chain, !popularNames.contains(text.ownWords.map(bare).joined(separator: " ")),
+            isPlainlyNamed(corrected: true)
         {
             return (whole.cover(text), false, 0)
         }
@@ -1519,7 +1541,9 @@ func scoreFoods(
         guard !text.shouted.isEmpty, let brand = text.said.lastIndex(where: text.shouted.contains) else { return false }
         let wasSaid = { (word: String) in saidStems.contains { starts(word, $0) } }
         if text.shouted.contains(where: wasSaid) { return false }
-        return brand + 1 == text.said.count || !wasSaid(text.said[brand + 1])
+        // One word names a kind of food, which a brand's is only one of: "smoothie" isn't
+        // "Beverages, V8 SPLASH Smoothies, Peach Mango".
+        return saidStems.count == 1 || brand + 1 == text.said.count || !wasSaid(text.said[brand + 1])
     }
     var ranked: [Ranked] = []
     for (index, row) in rows.enumerated() where row.name > 0 {
@@ -1549,7 +1573,12 @@ func scoreFoods(
             // so (Great Value's "Cottage Cheese Small Curd" beside its lowfat one), and "typical"
             // is USDA's word for its own entries: a label's "Original" is another product.
             // Among foods with every word said, that is: plain white rice isn't the usual fried rice.
-            + (match.missing > 0 ? 0 : (match.usual || (row.said && query.asksUsual) ? 0.6 : 0) + (match.typical && !row.text.branded ? 0.3 : 0))
+            // Nor a brand's that USDA names in capitals: "Sauce, barbecue" before "Sauce, barbecue,
+            // KRAFT, original".
+            + (match.missing > 0
+                ? 0
+                : (match.usual || (row.said && query.asksUsual) ? 0.6 : 0)
+                    + (match.typical && !row.text.branded && row.text.shouted.isEmpty ? 0.3 : 0))
             // A longer word than the one being typed is likely on its way to counts a little more
             // against a food: "sal" is salmon before salsify.
             - (likely == nil ? 0.5 : 0.75) * Double(match.partial) - 0.4 * Double(match.fixed) - 0.8 * match.variations
@@ -1567,7 +1596,8 @@ func scoreFoods(
         if !row.text.branded, !leads, match.garnish || match.added.contains(where: { !shelf.contains($0) }) { score -= 1.5 }
         // Every food of a brand searched for alone answers it as well as any other.
         if alone && row.mine { score = 3 }
-        if row.only > 0 {
+        // Not half typed for a brand that isn't sold here: "dal" isn't Dallmayr's coffee begun.
+        if row.only == 2 || (row.only == 1 && !hints.away.contains(row.food.id)) {
             // The same for a brand of one word, read from the food itself: "chobani" is Chobani's
             // foods, the most scanned first, not the ones that repeat the brand in their name.
             // Half typed, they come after a plain food that starts as typed: "her" is herring,

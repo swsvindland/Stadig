@@ -634,6 +634,39 @@ struct EverydayFormTests {
         #expect(rankSearch("peanut butter cups", cups).first?.food.name == "Candies, REESE'S Peanut Butter Cups")
     }
 
+    @Test("a dish is the dish, not a food with its words in it")
+    func dishes() {
+        // One made of something else is as far off as a label's: the real thing by any brand first.
+        let loaves = [OwnWordsTests.food("Vegetarian meatloaf or patties"), OwnWordsTests.food("Meatloaf", brand: "Stouffer's")]
+        #expect(rankSearch("meatloaf", loaves).first?.food.brand == "Stouffer's")
+        // One word names a kind of food, which a brand's flavour of it is only one of.
+        let smoothies = [OwnWordsTests.food("Beverages, V8 SPLASH Smoothies, Peach Mango"), OwnWordsTests.food("Smoothie", brand: "Naked")]
+        #expect(rankSearch("smoothie", smoothies).first?.food.brand == "Naked")
+        // A group USDA files foods under says what the food is when it's said.
+        let chips = [OwnWordsTests.food("Snacks, potato chips, plain, salted"), OwnWordsTests.food("Fish & Chips", brand: "Smart Ones")]
+        #expect(scoreFoods(Named(name: "fish and chips", brand: ""), chips).first?.food.brand == "Smart Ones")
+        // A label that lists a dish under its own name as a brand is no brand's.
+        let noodles = [OwnWordsTests.food("Chow Mein Chicken", brand: "Chow Mein"), OwnWordsTests.food("Noodles, chinese, chow mein")]
+        #expect(rankSearch("chow mein", noodles).first?.food.name == "Noodles, chinese, chow mein")
+        // USDA's own entry before a brand's "original" that it names in capitals.
+        #expect(first("barbecue sauce", ["Sauce, barbecue, KRAFT, original", "Sauce, barbecue"]) == "Sauce, barbecue")
+        #expect(first("goat cheese", ["Cheese, goat, hard type", "Cheese, goat, soft type"]) == "Cheese, goat, soft type")
+        // A bowl named last is a dish; a bowl of something is how much of it.
+        #expect(nameWords("Poke bowl") == ["poke", "bowl"])
+        #expect(nameWords("Bowl of rice") == ["rice"])
+    }
+
+    @Test("another spelling of a food, or its British name, is the food")
+    func spellings() {
+        #expect(first("omelette", ["Eggplant, raw", "Egg, whole, cooked, omelet"]) == "Egg, whole, cooked, omelet")
+        // With the usual kind and the cooked form of the word it's a spelling of.
+        #expect(
+            first("yoghurt", ["Yogurt, fruit, low fat", "Yogurt, plain, whole milk"])
+                == first("yogurt", ["Yogurt, fruit, low fat", "Yogurt, plain, whole milk"]))
+        #expect(first("prawns", ["Crustaceans, shrimp, raw", "Crustaceans, shrimp, cooked"]) == "Crustaceans, shrimp, cooked")
+        #expect(first("aubergine", ["Eggplant, raw"]) == "Eggplant, raw")
+    }
+
     @Test("a group typed alone by its name leads its foods, and a raw food's cooked form is a kind of its own")
     func groups() {
         let nuts = ["Spices, nutmeg, ground", "Nuts, cashew nuts, raw", "Nuts, mixed nuts, dry roasted, with peanuts, with salt added"]
@@ -789,6 +822,12 @@ struct StaplesTests {
         #expect(catalog.respell("water chestnuts").also["water"]?.contains("waterchestnut") == true)
         // Of a typo's two readings, the one that makes one word with the word before it.
         #expect(catalog.typos(in: "flax sends")["sends"] == "seed")
+        // A percentage in words is the number labels write.
+        #expect(catalog.respell("2 percent milk").text == "2% milk")
+        #expect(catalog.respell("one percent milk").text == "1% milk")
+        #expect(catalog.top("monterey jack", 1).first == "Cheese, monterey")
+        // A few letters aren't the start of a brand that isn't sold here.
+        #expect(catalog.top("dal", 1).first.map { matches("(?i)^dal\\b", $0) } == true)
     }
 
     @Test("pantry foods, dishes and forms come first typed and named as a model would")

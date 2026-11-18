@@ -24,6 +24,12 @@ let alternatives: [String: [String]] = [
     "rib": ["rib", "sparerib", "backrib"], "ribs": ["rib", "sparerib", "backrib"],
     // Unsalted butter and unsalted nuts are its "without salt".
     "unsalted": ["unsalted", "without"],
+    // Other spellings, and what the same food is called in Britain.
+    "omelette": ["omelette", "omelet"], "omelettes": ["omelette", "omelet"], "yoghurt": ["yoghurt", "yogurt"], "yoghurts": ["yoghurt", "yogurt"],
+    "chilli": ["chilli", "chili"], "barbeque": ["barbeque", "barbecue"], "whisky": ["whisky", "whiskey"], "houmous": ["houmous", "hummus"],
+    "soya": ["soya", "soy"], "skimmed": ["skimmed", "skim", "nonfat"], "prawn": ["prawn", "shrimp"], "prawns": ["prawn", "shrimp"],
+    "courgette": ["courgette", "zucchini"], "courgettes": ["courgette", "zucchini"], "aubergine": ["aubergine", "eggplant"],
+    "aubergines": ["aubergine", "eggplant"], "beetroot": ["beetroot", "beet"], "sweetcorn": ["sweetcorn", "corn"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -59,25 +65,28 @@ func catalogDish(_ name: String) -> String {
 }
 
 /// Everyday names of two words that the catalogs file under another: a hot dog is USDA's
-/// frankfurter and a bell pepper its sweet pepper. For each, the typed words (stemmed), and the
-/// catalogs' word for the one at each place.
-let everydayNames: [(said: [String], means: [(at: Int, word: String)])] = [
-    (["hot", "dog"], [(0, "frankfurter"), (1, "frankfurter")]),
-    (["bell", "pepper"], [(0, "sweet")]),
-    // Black coffee is USDA's brewed coffee, black olives its ripe ones, pumpkin puree its canned
-    // pumpkin, and a sports drink is Gatorade, the only kind it lists.
-    (["black", "coffee"], [(0, "brewed")]),
-    (["black", "olive"], [(0, "ripe")]),
-    (["pumpkin", "puree"], [(1, "canned")]),
-    (["sport", "drink"], [(0, "gatorade"), (1, "gatorade")]),
-    // "Fat free" is USDA's "nonfat", crunchy peanut butter its "chunk style" and creamy its
-    // "smooth style".
-    (["fat", "free"], [(0, "nonfat"), (1, "nonfat")]),
-    (["crunch", "peanut"], [(0, "chunk")]),
-    (["cream", "peanut"], [(0, "smooth")]),
-    // Extra lean ground meat is its 95% lean.
-    (["extra", "lean"], [(0, "95")]),
-]
+/// frankfurter and a bell pepper its sweet pepper. For each, the words as typed, and the
+/// catalogs' word for the one at each place; both are compared by their stems.
+let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
+    ([
+        (["hot", "dog"], [(0, "frankfurter"), (1, "frankfurter")]),
+        (["bell", "pepper"], [(0, "sweet")]),
+        // Black coffee is USDA's brewed coffee, black olives its ripe ones, pumpkin puree its canned
+        // pumpkin, and a sports drink is Gatorade, the only kind it lists.
+        (["black", "coffee"], [(0, "brewed")]),
+        (["black", "olive"], [(0, "ripe")]),
+        (["pumpkin", "puree"], [(1, "canned")]),
+        (["sport", "drink"], [(0, "gatorade"), (1, "gatorade")]),
+        // "Fat free" is USDA's "nonfat", crunchy peanut butter its "chunk style" and creamy its
+        // "smooth style".
+        (["fat", "free"], [(0, "nonfat"), (1, "nonfat")]),
+        (["crunchy", "peanut"], [(0, "chunk")]),
+        (["creamy", "peanut"], [(0, "smooth")]),
+        // Extra lean ground meat is its 95% lean.
+        (["extra", "lean"], [(0, "95")]),
+        // Monterey Jack is its "Cheese, monterey".
+        (["monterey", "jack"], [(1, "monterey")]),
+    ] as [([String], [(Int, String)])]).map { (said: $0.0.map(stem), means: $0.1.map { (at: $0.0, word: stem($0.1)) }) }
 
 /// Names that, typed alone, mean the food named after them, in the words USDA files it under:
 /// "ranch" is its "Salad dressing, ranch dressing".
@@ -99,6 +108,8 @@ let aloneFiled: [String: String] = ["spaghetti": "pasta", "macaroni": "pasta"]
 /// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
 let typedAlternatives: Set<String> = [
     "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
+    "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
+    "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
@@ -232,7 +243,9 @@ func words(_ value: String) -> [String] { tokens(value).filter { !stopWords.cont
 /// often than a size: Mini-Wheats, mini pretzels, mini peppers.
 func nameWords(_ name: String) -> [String] {
     let list = words(name)
-    let food = list.filter { $0 == "mini" || !countWords.contains($0) }
+    // A bowl named last is a dish: a poke bowl, a burrito bowl.
+    let dish = list.count > 1 && (list.last == "bowl" || list.last == "bowls") ? list.count - 1 : -1
+    let food = list.indices.filter { $0 == dish || list[$0] == "mini" || !countWords.contains(list[$0]) }.map { list[$0] }
     return Array((food.isEmpty ? list : food).prefix(6))
 }
 

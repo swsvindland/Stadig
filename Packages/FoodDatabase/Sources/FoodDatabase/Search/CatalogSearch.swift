@@ -374,6 +374,12 @@ extension FoodCatalog {
         let named = { (i: Int) in
             names.contains(tokens[i].word) && !stopWords.contains(tokens[i].word) && !tokens[i].word.unicodeScalars.contains(where: isDigit)
         }
+        // A percentage in words is the number labels and USDA write: "2 percent milk" is 2% milk.
+        if let written = percentWritten(query) {
+            var read = respell(written, typing: typing, meant: meant)
+            read.typed = read.typed ?? query
+            return read
+        }
         // What people type for a food instead of its name: "pb&j".
         if let name = shortNames[tokens.map(\.word).joined(separator: " ")] {
             var read = respell(name, typing: false)
@@ -510,6 +516,16 @@ extension FoodCatalog {
             remembered[expression] = brand
         }
         return brand
+    }
+
+    /// A search with "2 percent" or "one percent" in it, written "2%" and "1%"; nil without one.
+    private func percentWritten(_ query: String) -> String? {
+        let parts = query.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+        guard let at = parts.firstIndex(where: { $0.lowercased() == "percent" }), at > 0 else { return nil }
+        let numbers = ["one": "1", "two": "2", "three": "3", "four": "4", "five": "5"]
+        let before = parts[at - 1].lowercased()
+        guard let number = numbers[before] ?? (isNumber(before) ? before : nil) else { return nil }
+        return (parts[..<(at - 1)] + ["\(number)%"] + parts[(at + 1)...]).joined(separator: " ")
     }
 
     /// Whether the words together name a food far more often than the one at `brand` is the
@@ -817,9 +833,13 @@ extension FoodCatalog {
         }
         var away = Set<String>()
         var searched: [String: [Entry]] = [:]
+        // The foods whose names start as the name said come first of what each search keeps:
+        // "Fish & Chips" among everything with fish and chips in its name. Not with a brand,
+        // whose own name for the food may start any way: "Shredded Bite Size Wheats".
+        let lead = brand.isEmpty ? nameWords(name).first.map(stem) ?? "" : ""
         func search(_ expression: String) -> [Entry] {
             if let found = searched[expression] { return found }
-            let hits = match(catalogs, expression, .matching)
+            let hits = match(catalogs, expression, .matching, lead: lead)
             for hit in hits {
                 if hit.away { away.insert(hit.food.id) }
                 if ids[hit.food.id] == nil {
