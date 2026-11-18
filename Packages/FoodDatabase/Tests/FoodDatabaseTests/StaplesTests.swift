@@ -204,6 +204,112 @@ let staples: [(String, String)] = [
     ("fried rice", "(?i)fried rice"),
 ]
 
+/// Foods from the pantry, dishes and the forms foods come in, measured after the staples: what a
+/// suggestion leads to when it's tapped.
+let pantry: [(String, String)] = [
+    ("beef", "^Beef, ground, .*cooked"),
+    ("pork", "^Pork, fresh, .*cooked"),
+    ("ribs", "^Pork, fresh, .*ribs.*cooked"),
+    ("cereal", "^Cereals ready-to-eat"),
+    ("nuts", "^Nuts, mixed nuts"),
+    ("coconut milk", "^(Nuts|Beverages), coconut milk"),
+    ("tomato sauce", "^Tomato (sauce|products), canned"),
+    ("tomato paste", "^Tomato products, canned, paste"),
+    ("taco", "(?i)^(TACO BELL, Original Taco|Fast foods, taco|Taco)"),
+    ("nachos", "^Fast foods, nachos"),
+    ("chili", "^Chili"),
+    ("egg roll", "^(Egg rolls|Restaurant, Chinese, egg rolls)"),
+    ("enchiladas", "(?i)cheese enchilada"),
+    ("beef stew", "^Beef stew"),
+    ("tomato soup", "^Soup, tomato, canned, prepared"),
+    ("chicken noodle soup", "^Soup, chicken noodle, canned, prepared"),
+    ("pickles", "^Pickles, cucumber, dill"),
+    ("sardines", "^Fish, sardine"),
+    ("tuna", "^Fish, tuna, (light|white), canned"),
+    ("canned tuna", "^Fish, tuna, (light|white), canned"),
+    ("anchovies", "^Fish, anchovy, european, canned"),
+    ("sourdough bread", "^Bread, french or vienna"),
+    ("cornbread", "^Bread, cornbread, (prepared|dry mix, prepared)"),
+    ("sports drink", "(?i)(gatorade|powerade|sports? drink)"),
+    ("american cheese", "^Cheese, pasteurized process, American"),
+    ("black coffee", "^Beverages, coffee, brewed"),
+    ("lasagna", "(?i)lasagna with meat"),
+    ("spam", "(?i)spam"),
+    ("canned corn", "^Corn, sweet, (yellow|white), canned, (whole kernel|vacuum pack|brine pack)"),
+    ("pumpkin puree", "^Pumpkin, canned"),
+    ("condensed milk", "^Milk, canned, condensed, sweetened"),
+    ("evaporated milk", "^Milk, (canned, )?evaporated"),
+    ("refried beans", "^(Refried beans|Beans, refried)"),
+    ("olives", "^Olives, ripe, canned"),
+    ("black olives", "^Olives, ripe"),
+    ("applesauce", "^Applesauce, canned, unsweetened"),
+    ("baked beans", "^Beans, baked"),
+    ("chicken broth", "^Soup, chicken broth"),
+    ("oat milk", "(?i)^oat.?milk"),
+    ("eggs", "^Egg, whole, cooked"),
+    ("water", "^Water, (bottled|tap)"),
+    ("white rice", "^Rice, white, long-grain, .*cooked"),
+    ("carrots", "^Carrots, raw"),
+    ("beans", "^Beans, (black|pinto), mature seeds, cooked"),
+    ("fried egg", "^Egg, whole, cooked, fried"),
+    ("scrambled eggs", "^Egg, whole, cooked, scrambled"),
+    ("hard boiled egg", "^Egg, whole, cooked, hard-boiled"),
+    ("grilled chicken", "^Chicken, .*grilled"),
+    ("fried chicken", "^Chicken, .*fried"),
+    ("chicken nuggets", "^Chicken nuggets"),
+    ("chicken tenders", "^Chicken tenders"),
+    ("turkey bacon", "^Bacon, turkey"),
+    ("pulled pork", "^Pulled pork"),
+    ("pork tenderloin", "^Pork, fresh, loin, tenderloin, .*cooked"),
+    ("tuna salad", "^Fish, tuna salad"),
+    ("crab", "^Crustaceans, crab, .*cooked"),
+    ("lobster", "^Crustaceans, lobster, .*cooked"),
+    ("2% milk", "^Milk, reduced fat, fluid, 2% milkfat"),
+    ("chocolate milk", "^Milk, chocolate"),
+    ("provolone", "^Cheese, provolone"),
+    ("goat cheese", "^Cheese, goat"),
+    ("ricotta", "^Cheese, ricotta"),
+    ("pancakes", "^Pancakes, plain"),
+    ("waffles", "^Waffles, plain"),
+    ("french toast", "^French toast"),
+    ("naan", "^Bread, naan"),
+    ("biscuit", "^Biscuits, plain"),
+    ("blueberry muffin", "^Muffins, blueberry"),
+    ("banana bread", "^Bread, banana"),
+    ("blackberries", "^Blackberries, raw"),
+    ("baby carrots", "^Carrots, baby, raw"),
+    ("romaine lettuce", "^Lettuce, cos or romaine"),
+    ("arugula", "^Arugula"),
+    ("edamame", "^Edamame"),
+    ("butternut squash", "^Squash, winter, butternut"),
+    ("jalapeno", "^Peppers, jalapeno"),
+    ("coleslaw", "^Coleslaw"),
+    ("baked potato", "^Potatoes, baked"),
+    ("mashed potatoes", "^Potatoes, mashed"),
+    ("hash browns", "^Potatoes, hash brown"),
+    ("potato salad", "^Potato salad"),
+    ("pecans", "^Nuts, pecans"),
+    ("flax seeds", "^Seeds, flaxseed"),
+    ("pumpkin seeds", "^Seeds, pumpkin"),
+    ("trail mix", "^Snacks, trail mix"),
+    ("vegetable oil", "^Oil, vegetable"),
+    ("marinara sauce", "^Sauce, pasta, spaghetti/marinara"),
+    ("italian dressing", "^Salad dressing, italian dressing"),
+    ("caesar dressing", "^Salad dressing, caesar"),
+    ("green tea", "^Beverages, tea, green, brewed"),
+    ("iced tea", "^Tea, iced"),
+    ("lemonade", "(?i)^(Beverages, )?lemonade"),
+    ("coconut water", "^Nuts, coconut water"),
+    ("hot chocolate", "(?i)(hot cocoa|hot chocolate)"),
+    ("cheesecake", "^Cake, cheesecake"),
+    ("apple pie", "^Pie, apple"),
+    ("quesadilla", "(?i)quesadilla"),
+    ("orange chicken", "(?i)orange chicken"),
+    ("lo mein", "(?i)lo mein"),
+    ("falafel", "^Falafel"),
+    ("breakfast burrito", "(?i)breakfast burrito"),
+]
+
 /// The everyday form of a plain food: what a word or two typed with no brand most likely means.
 /// These rank foods made here, so they run without either catalog.
 @Suite("Everyday forms")
@@ -272,14 +378,66 @@ struct EverydayFormTests {
     func plainBrand() {
         let listed = OwnWordsTests.food("Chia Seeds", brand: "Seeds")
         let plain = OwnWordsTests.food("Seeds, chia seeds, dried")
-        let score = { (foods: [Food], hints: RankHints) in
-            rankSearch("chia seeds", foods, hints: hints).first { $0.food.id == listed.id }?.score ?? 0
-        }
-        let hints = RankHints(plain: ["seeds"])
-        // Beside a plain food with every word, the one listed under "Seeds" is no brand's.
-        #expect(score([listed, plain], RankHints()) > score([listed, plain], hints) + 1.5)
-        // With no plain food by those words, it is the food asked for.
-        #expect(score([listed], hints) == score([listed], RankHints()))
+        let score = { (foods: [Food]) in rankSearch("chia seeds", foods).first { $0.food.id == listed.id }?.score ?? 0 }
+        // Beside a plain food with every word, the one listed under "Seeds" is no brand's; with
+        // no plain food by those words, it is the food asked for.
+        #expect(score([listed]) > score([listed, plain]) + 1.5)
+        // A brand people scan keeps its foods whatever plain food has the word.
+        let crackers = OwnWordsTests.food("Baked Snack Crackers", brand: "Goldfish")
+        let fish = OwnWordsTests.food("Goldfish snack crackers, baked")
+        let theirs = { (foods: [Food]) in rankSearch("goldfish crackers", foods).first { $0.food.id == crackers.id }?.score ?? 0 }
+        #expect(theirs([crackers]) == theirs([crackers, fish]))
+    }
+
+    func first(seen name: String, _ names: [String]) -> String {
+        scoreFoods(Named(name: name, brand: ""), names.map { OwnWordsTests.food($0) }).first?.food.name ?? ""
+    }
+
+    @Test("a food that lacks a word said is another food where some food has them all")
+    func everyWord() {
+        // Typed or seen: oat milk isn't sheep's milk, and a packaged food's whole name isn't the plain food.
+        let milks = [OwnWordsTests.food("Milk, sheep, fluid"), OwnWordsTests.food("Oat Milk", brand: "Oatly")]
+        #expect(scoreFoods(Named(name: "oat milk", brand: ""), milks).first?.food.brand == "Oatly")
+        let rice = [
+            OwnWordsTests.food("Rice, white, long-grain, regular, cooked"),
+            OwnWordsTests.food("Dolmas Vine Leaves stuffed with rice", brand: "Trader Joe's"),
+        ]
+        #expect(rankSearch("dolmas vine leaves rice", rice).first?.food.brand == "Trader Joe's")
+        // A word that only says how a food comes isn't one it lacks, and with no food that has
+        // every word the nearest still answers.
+        let berries = [OwnWordsTests.food("Strawberries, raw"), OwnWordsTests.food("Fresh Organic Strawberries", brand: "Driscoll's")]
+        #expect(scoreFoods(Named(name: "fresh strawberries", brand: ""), berries).first?.food.name == "Strawberries, raw")
+        #expect(rankSearch("zesty banana", [OwnWordsTests.food("Bananas, raw")]).first?.food.name == "Bananas, raw")
+    }
+
+    @Test("a food is the kind it usually comes in")
+    func usualForms() {
+        // Canned, for the fish that are: not counted against them, nor what they're packed in.
+        let sardines = ["Fish oil, sardine", "Fish, sardine, Atlantic, canned in oil, drained solids with bone"]
+        #expect(first("sardines", sardines) == "Fish, sardine, Atlantic, canned in oil, drained solids with bone")
+        // A two-word food's own usual kind comes before either word's.
+        #expect(
+            first("tomato sauce", ["Sauce, tomato chili sauce, bottled", "Tomato sauce, canned, no salt added"])
+                == "Tomato sauce, canned, no salt added")
+        #expect(first("egg roll", ["Rolls, dinner, egg", "Egg rolls, pork, refrigerated, heated"]) == "Egg rolls, pork, refrigerated, heated")
+        #expect(first("beef stew", ["Beef, chuck for stew, cooked, braised", "Beef stew, canned entree"]) == "Beef stew, canned entree")
+        // A meat alone is the cut most logged, and the kind the list says ribs are stays ahead
+        // of the kind most of USDA's entries are.
+        #expect(
+            first("beef", ["Beef, cured, corned beef, brisket, cooked", "Beef, ground, 85% lean meat / 15% fat, patty, cooked, broiled"]).hasPrefix(
+                "Beef, ground"))
+        let ribs = (1...5).map { "Beef, rib, cut \($0), cooked, braised" } + ["Pork, fresh, backribs, separable lean and fat, cooked, roasted"]
+        #expect(first("ribs", ribs).hasPrefix("Pork, fresh, backribs"))
+    }
+
+    @Test("a group typed alone by its name leads its foods, and a raw food's cooked form is a kind of its own")
+    func groups() {
+        let nuts = ["Spices, nutmeg, ground", "Nuts, cashew nuts, raw", "Nuts, mixed nuts, dry roasted, with peanuts, with salt added"]
+        #expect(first("nuts", nuts) == "Nuts, mixed nuts, dry roasted, with peanuts, with salt added")
+        #expect(first("walnuts", ["Nuts, walnuts, dry roasted, with salt added", "Nuts, walnuts, english"]) == "Nuts, walnuts, english")
+        #expect(
+            first("roasted walnuts", ["Nuts, walnuts, dry roasted, with salt added", "Nuts, walnuts, english"])
+                == "Nuts, walnuts, dry roasted, with salt added")
     }
 }
 
@@ -362,12 +520,26 @@ struct StaplesTests {
         #expect(found.dropFirst().first.map { matches("^Salad dressing, ranch dressing", $0.food.name) } == true)
     }
 
-    @Test("a word of foods that a few are listed under as a brand is read as the food's")
+    @Test("a food a label lists under its own name as a brand is still the plain food")
     func plainWords() {
-        #expect(catalog.searchCatalog("chia seeds", known: [:]).plain.contains("seeds"))
-        // Oreo is a brand on most labels that have the word; cookies are cookies.
-        #expect(catalog.searchCatalog("oreo cookies", known: [:]).plain == ["cookies"])
-        // Counted past the first 2,000 labels: "organic" is in the brand of one food in seven that have it.
-        #expect(catalog.searchCatalog("organic milk", known: [:]).plain == ["milk"])
+        #expect(catalog.top("chia seeds", 1).first.map { matches("^Seeds, chia", $0) } == true)
+        #expect(catalog.top("american cheese", 1).first.map { matches("^Cheese, pasteurized process, American", $0) } == true)
+        // A brand that makes the food keeps it.
+        #expect(catalog.search("kraft cheese").first?.food.brand?.lowercased() == "kraft")
+        #expect(catalog.search("goldfish cheddar crackers").first.map { matches("(?i)goldfish", "\($0.food.name) \($0.food.brand ?? "")") } == true)
+    }
+
+    @Test("pantry foods, dishes and forms come first typed and named as a model would")
+    func pantryBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in pantry {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(3).map(\.food.name) : catalog.top(query)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Pantry foods \(seen ? "as a model names them" : "typed"): \(first) of \(pantry.count) first")
+            #expect(Double(first) >= 0.95 * Double(pantry.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
     }
 }

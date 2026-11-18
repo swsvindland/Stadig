@@ -20,6 +20,8 @@ let alternatives: [String: [String]] = [
     "skim": ["skim", "nonfat"], "bbq": ["bbq", "barbecue"], "coke": ["coke", "cola"], "mayo": ["mayo", "mayonnaise"],
     // USDA's kiwi is "Kiwifruit", which a typed "kiwi" already starts.
     "kiwi": ["kiwi", "kiwifruit"], "kiwis": ["kiwi", "kiwifruit"],
+    // Ribs are its spareribs and backribs.
+    "rib": ["rib", "sparerib", "backrib"], "ribs": ["rib", "sparerib", "backrib"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -60,6 +62,12 @@ func catalogDish(_ name: String) -> String {
 let everydayNames: [(said: [String], means: [(at: Int, word: String)])] = [
     (["hot", "dog"], [(0, "frankfurter"), (1, "frankfurter")]),
     (["bell", "pepper"], [(0, "sweet")]),
+    // Black coffee is USDA's brewed coffee, black olives its ripe ones, pumpkin puree its canned
+    // pumpkin, and a sports drink is Gatorade, the only kind it lists.
+    (["black", "coffee"], [(0, "brewed")]),
+    (["black", "olive"], [(0, "ripe")]),
+    (["pumpkin", "puree"], [(1, "canned")]),
+    (["sport", "drink"], [(0, "gatorade"), (1, "gatorade")]),
 ]
 
 /// Names that, typed alone, mean the food named after them, in the words USDA files it under:
@@ -73,7 +81,7 @@ let aloneFiled: [String: String] = ["spaghetti": "pasta", "macaroni": "pasta"]
 /// A typed word is searched as typed, plus the catalog's own wording for the same food. Looser
 /// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
 let typedAlternatives: Set<String> = [
-    "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers",
+    "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

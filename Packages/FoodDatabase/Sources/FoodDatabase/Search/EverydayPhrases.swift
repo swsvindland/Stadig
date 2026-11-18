@@ -111,6 +111,9 @@ enum EverydayPhrases {
 
     /// Every word of the everyday foods, as searched.
     private static let known: Set<String> = Set(all.flatMap { $0.words.map(stem) })
+
+    /// Whether a word, as searched, is one of an everyday food's: "bar", "bread", "water".
+    static func isWord(_ stem: String) -> Bool { known.contains(stem) }
     private static let stemmed: [(words: [String], stems: [String])] = all.map { ($0.words, $0.words.map(stem)) }
     private static let brands: [(words: [String], stems: [String])] = PopularBrands.names.map { $0.split(separator: " ").map(String.init) }
         .filter { $0.count > 1 }.map { ($0, $0.map(stem)) }

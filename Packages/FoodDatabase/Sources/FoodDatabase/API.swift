@@ -17,8 +17,7 @@ public final class FoodCatalog: Sendable {
     let uncommon: Double
     /// What a typed word probably meant, remembered for the launch since each keystroke asks again.
     let spellings = Mutex<[String: Spelling]>([:])
-    /// Whether words name a brand, by their full-text expression, and whether a word is a food's
-    /// far more often than a brand's, remembered for the launch.
+    /// Whether words name a brand, by their full-text expression, remembered for the launch.
     let brandish = Mutex<[String: Bool]>([:])
     /// How labels write two words they also write as one, by the two words; nil where few labels
     /// have the one word. Remembered for the launch.
@@ -83,7 +82,7 @@ public final class FoodCatalog: Sendable {
         let own = rankSearch(
             typed, personal.map(\.food).filter(matcher.matches), known: known,
             hints: RankHints(
-                fixes: found.readings, brand: found.brand, doubted: found.doubted, respelt: found.respelt, plain: found.plain))
+                fixes: found.readings, brand: found.brand, doubted: found.doubted, respelt: found.respelt))
         var results = own.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: true) }
         var listed = Set(results.map(\.food.id))
         for row in found.ranked where results.count < limit && listed.insert(row.food.id).inserted {
