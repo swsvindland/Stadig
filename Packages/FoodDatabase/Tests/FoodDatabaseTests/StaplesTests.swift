@@ -311,6 +311,115 @@ let pantry: [(String, String)] = [
 ]
 
 /// The everyday form of a plain food: what a word or two typed with no brand most likely means.
+/// Foods said with how they're cooked, cut or trimmed, and by the words people use for how lean,
+/// salted or smooth they are, each with the plain food that should come first: USDA lists a
+/// cooked food one or two ways, and mostly leaves a cut unsaid.
+let forms: [(String, String)] = [
+    // Fish and shellfish, by a way of cooking or a cut USDA doesn't list.
+    ("baked salmon", "^Fish, salmon, .*cooked, dry heat"),
+    ("grilled salmon", "^Fish, salmon, .*cooked, dry heat"),
+    ("roasted salmon", "^Fish, salmon, .*cooked, dry heat"),
+    ("salmon fillet", "^Fish, salmon, .*cooked"),
+    ("grilled salmon fillet", "^Fish, salmon, .*cooked, dry heat"),
+    ("poached salmon", "^Fish, salmon, .*cooked"),
+    ("baked cod", "^Fish, cod, .*cooked"),
+    ("baked tilapia", "^Fish, tilapia, cooked"),
+    ("grilled tilapia", "^Fish, tilapia, cooked"),
+    ("cod fillet", "^Fish, cod, .*cooked"),
+    ("grilled shrimp", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)"),
+    ("steamed shrimp", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)"),
+    ("raw salmon", "^Fish, salmon, .*raw"),
+    // Vegetables.
+    ("steamed broccoli", "^Broccoli, cooked"),
+    ("roasted broccoli", "^Broccoli, cooked"),
+    ("broccoli florets", "^Broccoli, (raw|cooked)"),
+    ("grilled asparagus", "^Asparagus, cooked"),
+    ("roasted asparagus", "^Asparagus, cooked"),
+    ("asparagus spears", "^Asparagus, (raw|cooked)"),
+    ("sauteed spinach", "^Spinach, cooked"),
+    ("steamed spinach", "^Spinach, cooked"),
+    ("baby spinach", "^Spinach, raw"),
+    ("sauteed mushrooms", "^Mushrooms, white, (stir-fried|cooked)"),
+    ("sauteed onions", "^Onions, (yellow, sauteed|cooked)"),
+    ("grilled onions", "^Onions, (yellow, sauteed|cooked)"),
+    ("roasted cauliflower", "^Cauliflower, cooked"),
+    ("steamed cauliflower", "^Cauliflower, cooked"),
+    ("roasted carrots", "^Carrots, cooked"),
+    ("steamed carrots", "^Carrots, cooked"),
+    ("roasted brussels sprouts", "^Brussels sprouts, cooked"),
+    ("steamed green beans", "^Beans, snap, green, (cooked|microwaved)"),
+    ("sauteed kale", "^Kale, cooked"),
+    ("grilled zucchini", "^Squash, summer, zucchini, .*cooked"),
+    ("roasted zucchini", "^Squash, summer, zucchini, .*cooked"),
+    ("grilled corn", "^Corn, sweet, .*cooked"),
+    ("roasted sweet potato", "^Sweet potato, cooked, baked"),
+    ("baked sweet potato", "^Sweet potato, cooked, baked"),
+    ("roasted potatoes", "^Potatoes, (roasted|baked)"),
+    ("raw spinach", "^Spinach, raw"),
+    ("raw broccoli", "^Broccoli, raw"),
+    ("raw carrots", "^Carrots, raw"),
+    ("garlic clove", "^Garlic, raw"),
+    ("celery stalk", "^Celery, raw"),
+    ("corn kernels", "^Corn, "),
+    ("garlic cloves", "^Garlic, raw"),
+    ("baby carrots", "^Carrots, baby"),
+    ("baby potatoes", "^Potatoes"),
+    ("fresh spinach", "^Spinach, raw"),
+    // Rice, meat and tofu.
+    ("steamed rice", "^Rice, white, (steamed|.*cooked)"),
+    ("boiled rice", "^Rice, white, .*cooked"),
+    ("grilled chicken breast", "^Chicken, .*breast.*grilled"),
+    ("baked chicken breast", "^Chicken.*breast.*(roasted|baked)"),
+    ("roasted chicken breast", "^Chicken, .*breast.*roasted"),
+    ("boiled chicken breast", "^Chicken, .*breast.*(stewed|cooked)"),
+    ("grilled chicken thigh", "^Chicken, .*thigh.*(roasted|grilled|cooked)"),
+    ("baked chicken thigh", "^Chicken, .*thigh, meat.*roasted"),
+    ("skinless chicken thigh", "^Chicken, .*thigh, meat only"),
+    ("boneless skinless chicken thigh", "^Chicken, .*thigh, meat only"),
+    ("boneless skinless chicken breast", "^Chicken, .*breast.*(skinless|meat only)"),
+    ("chicken cutlet", "^Chicken, "),
+    ("grilled pork chop", "^Pork, .*chops.*(broiled|grilled)"),
+    ("baked pork chop", "^Pork, .*chops.*(broiled|roasted)"),
+    ("grilled pork tenderloin", "^Pork, .*tenderloin.*(broiled|roasted)"),
+    ("roasted turkey breast", "^Turkey, .*breast.*roasted"),
+    ("grilled steak", "^Beef, .*steak.*(grilled|broiled)"),
+    ("grilled tofu", "^Tofu, (raw|firm|fried|extra firm)"),
+    ("baked tofu", "(?i)tofu"),
+    ("chicken pieces", "(?i)chicken"),
+    // How lean, how fat, how salted, how smooth.
+    ("lean ground beef", "^Beef, ground, 9[0-7]% lean.*cooked"),
+    ("extra lean ground beef", "^Beef, ground, 9[5-7]% lean.*cooked"),
+    ("lean ground turkey", "^Turkey, ground, 93% lean"),
+    ("fat free milk", "^Milk, nonfat"),
+    ("fat free yogurt", "^Yogurt, .*(nonfat|fat free)"),
+    ("fat free greek yogurt", "^Yogurt, Greek, .*nonfat"),
+    ("unsalted butter", "^Butter, without salt"),
+    ("unsalted almonds", "^Nuts, almonds, .*without salt"),
+    ("unsalted peanuts", "^Peanuts, .*without salt"),
+    ("crunchy peanut butter", "^Peanut butter, chunk"),
+    ("creamy peanut butter", "^Peanut butter, smooth"),
+    // Raw, fresh and cut.
+    ("raw almonds", "^Nuts, almonds$"),
+    ("pecan halves", "^Nuts, pecans"),
+    ("apple slices", "^Apples, raw"),
+    ("cucumber slices", "^Cucumber, (with peel, raw|peeled, raw)"),
+    ("pineapple chunks", "^Pineapple, (raw|canned|frozen)"),
+    ("toasted almonds", "^Nuts, almonds, (dry|oil) roasted"),
+    ("general tso chicken", "(?i)general tso"),
+    ("pb&j", "(?i)peanut butter.*jelly"),
+    ("pbj", "(?i)peanut butter.*jelly"),
+    ("oj", "^Orange juice"),
+    ("great northern beans", "^Beans, great northern"),
+    ("little smokies", "(?i)smok"),
+    ("egg salad", "(?i)^egg salad"),
+    ("grape juice", "^Grape juice"),
+    ("ham sandwich", "^Ham sandwich"),
+    ("pea soup", "^Soup, pea"),
+    ("fresh strawberries", "^Strawberries, raw"),
+    ("simple syrup", "(?i)syrup"),
+    ("mission figs", "(?i)fig"),
+]
+
 /// These rank foods made here, so they run without either catalog.
 @Suite("Everyday forms")
 struct EverydayFormTests {
@@ -376,12 +485,18 @@ struct EverydayFormTests {
 
     @Test("a brand that is an everyday word of foods isn't a brand the search names")
     func plainBrand() {
-        let listed = OwnWordsTests.food("Chia Seeds", brand: "Seeds")
-        let plain = OwnWordsTests.food("Seeds, chia seeds, dried")
-        let score = { (foods: [Food]) in rankSearch("chia seeds", foods).first { $0.food.id == listed.id }?.score ?? 0 }
-        // Beside a plain food with every word, the one listed under "Seeds" is no brand's; with
+        let listed = OwnWordsTests.food("Goji Berries Dried", brand: "Goji")
+        let plain = OwnWordsTests.food("Goji berries, dried")
+        let score = { (foods: [Food]) in rankSearch("goji berries", foods).first { $0.food.id == listed.id }?.score ?? 0 }
+        // Beside a plain food with every word, the one listed under "Goji" is no brand's; with
         // no plain food by those words, it is the food asked for.
         #expect(score([listed]) > score([listed, plain]) + 1.5)
+        // An everyday food's own word is no brand whatever else is listed: the oat milk a label
+        // lists under "milk" is no more the one asked for than Oatly's.
+        let milk = OwnWordsTests.food("Oat Milk Original", brand: "Milk")
+        let oatly = OwnWordsTests.food("Oat Milk Original", brand: "Oatly")
+        let ranked = rankSearch("oat milk", [milk, oatly])
+        #expect(ranked.count == 2 && ranked[0].score == ranked[1].score)
         // A brand people scan keeps its foods whatever plain food has the word.
         let crackers = OwnWordsTests.food("Baked Snack Crackers", brand: "Goldfish")
         let fish = OwnWordsTests.food("Goldfish snack crackers, baked")
@@ -428,6 +543,97 @@ struct EverydayFormTests {
                 "Beef, ground"))
         let ribs = (1...5).map { "Beef, rib, cut \($0), cooked, braised" } + ["Pork, fresh, backribs, separable lean and fat, cooked, roasted"]
         #expect(first("ribs", ribs).hasPrefix("Pork, fresh, backribs"))
+    }
+
+    @Test("a way of cooking the plain foods don't list is the nearest way they do")
+    func cooking() {
+        let broccoli = ["Broccoli, raw", "Broccoli, chinese, cooked", "Broccoli, cooked, boiled, drained, without salt"]
+        #expect(first("steamed broccoli", broccoli) == "Broccoli, cooked, boiled, drained, without salt")
+        #expect(first(seen: "roasted broccoli", broccoli) == "Broccoli, cooked, boiled, drained, without salt")
+        // Before a label that says it: the plain cooked food is the one whose numbers are known.
+        let labelled = [OwnWordsTests.food("Steamed Broccoli", brand: "Birds Eye")] + broccoli.map { OwnWordsTests.food($0) }
+        #expect(rankSearch("steamed broccoli", labelled).first?.food.name == "Broccoli, cooked, boiled, drained, without salt")
+        // The same kind of heat first: USDA's "dry heat" is baked and grilled, its "moist heat" poached.
+        let salmon = [
+            "Fish, salmon, Atlantic, farmed, raw", "Fish, salmon, coho, wild, cooked, moist heat", "Fish, salmon, Atlantic, farmed, cooked, dry heat",
+        ]
+        #expect(first("baked salmon", salmon) == "Fish, salmon, Atlantic, farmed, cooked, dry heat")
+        #expect(first(seen: "grilled salmon fillet", salmon) == "Fish, salmon, Atlantic, farmed, cooked, dry heat")
+        #expect(first("poached salmon", salmon) == "Fish, salmon, coho, wild, cooked, moist heat")
+        // A way some plain food lists says which food is meant.
+        let rice = ["Rice, white, long-grain, regular, enriched, cooked", "Restaurant, Chinese, fried rice, without meat"]
+        #expect(first("fried rice", rice) == "Restaurant, Chinese, fried rice, without meat")
+        // Unless only a less common form lists it.
+        let potatoes = [
+            "Potatoes, roasted, salt added in processing, frozen, unprepared", "Potatoes, microwaved, cooked in skin, flesh, without salt",
+            "Potatoes, baked, flesh, without salt",
+        ]
+        #expect(first("roasted potatoes", potatoes) == "Potatoes, baked, flesh, without salt")
+        // Fried is only ever fried: boiled zucchini isn't fried zucchini.
+        let zucchini = [
+            OwnWordsTests.food("Squash, summer, zucchini, includes skin, cooked, boiled, drained, without salt"),
+            OwnWordsTests.food("Fried Zucchini", brand: "Farm Rich"),
+        ]
+        #expect(rankSearch("fried zucchini", zucchini).first?.food.brand == "Farm Rich")
+        // And what's eaten cooked is still the raw food where no cooked one is listed.
+        #expect(first("egg whites", ["Egg, white, dried", "Egg, white, raw, fresh"]) == "Egg, white, raw, fresh")
+    }
+
+    @Test("how a food is cut or trimmed, or that it's raw, is left unsaid")
+    func cuts() {
+        let salmon = [
+            OwnWordsTests.food("Salmon Fillets", brand: "Morrisons"), OwnWordsTests.food("Fish, salmon, Atlantic, farmed, cooked, dry heat"),
+        ]
+        #expect(rankSearch("salmon fillet", salmon).first?.food.name == "Fish, salmon, Atlantic, farmed, cooked, dry heat")
+        #expect(first("garlic clove", ["Spices, garlic powder", "Garlic, raw"]) == "Garlic, raw")
+        #expect(first("raw almonds", ["Nuts, almonds, dry roasted, with salt added", "Nuts, almonds"]) == "Nuts, almonds")
+        // "Baby" is how young it was picked, not baby food; a food that says it is still the one.
+        #expect(first("baby spinach", ["Babyfood, vegetables, spinach, creamed, strained", "Spinach, raw"]) == "Spinach, raw")
+        #expect(first("baby carrots", ["Carrots, raw", "Carrots, baby, raw"]) == "Carrots, baby, raw")
+        // Skinless is USDA's "meat only".
+        let thighs = [
+            "Chicken, broilers or fryers, thigh, meat and skin, cooked, roasted", "Chicken, broilers or fryers, thigh, meat only, cooked, roasted",
+        ]
+        #expect(first("skinless chicken thigh", thighs) == "Chicken, broilers or fryers, thigh, meat only, cooked, roasted")
+        // A cut some plain food lists is that food.
+        #expect(
+            first("turkey slices", ["Turkey, whole, meat only, roasted", "Turkey breast, sliced, prepackaged"])
+                == "Turkey breast, sliced, prepackaged")
+    }
+
+    @Test("an everyday word with another typed after it is that word, and the last names the food")
+    func finishedWords() {
+        #expect(
+            first("grape juice", ["Grapefruit juice, white, raw", "Grape juice, canned or bottled, unsweetened"])
+                == "Grape juice, canned or bottled, unsweetened")
+        #expect(first("ham sandwich", ["Hamburger, sandwich, plain", "Ham sandwich or sub, restaurant"]) == "Ham sandwich or sub, restaurant")
+        // The word still being typed may be the start of a longer one.
+        #expect(rankSearch("grape", [OwnWordsTests.food("Grapefruit juice, white, raw")]).count == 1)
+        // A food that only has some of what was asked added to it is another dish.
+        let salads = [OwnWordsTests.food("Potato salad with egg"), OwnWordsTests.food("Egg Salad", brand: "Market")]
+        #expect(rankSearch("egg salad", salads).first?.food.brand == "Market")
+        // Nor is a chain's pizza with pepperoni topping another dish for the parts before it.
+        let pizza = [
+            OwnWordsTests.food("Fast foods, pizza chain, 14\" pizza, pepperoni topping, regular crust"), OwnWordsTests.food("Pizza, cheese"),
+        ]
+        #expect(rankSearch("pepperoni pizza", pizza).first?.food.name.hasPrefix("Fast foods, pizza chain") == true)
+        // USDA puts the word naming the food first: "Milk, chocolate" is chocolate milk.
+        let milk = [OwnWordsTests.food("Milk, chocolate, fluid, commercial, whole")]
+        #expect((rankSearch("chocolate milk", milk).first?.score ?? 0) > (rankSearch("milk chocolate", milk).first?.score ?? 0))
+    }
+
+    @Test("lean ground meat is the lean kind, and a brand's flavour isn't the food it's named after")
+    func leanAndFlavours() {
+        let beef = [
+            "Beef, ground, 70% lean meat / 30% fat, patty, cooked, broiled", "Beef, ground, 93% lean meat / 7% fat, patty, cooked, broiled",
+        ]
+        #expect(first("lean ground beef", beef) == "Beef, ground, 93% lean meat / 7% fat, patty, cooked, broiled")
+        #expect(first("ground beef", beef) == "Beef, ground, 70% lean meat / 30% fat, patty, cooked, broiled")
+        let berries = [OwnWordsTests.food("Beverages, POWERADE, Zero, Mixed Berry"), OwnWordsTests.food("Mixed Berries", brand: "Publix")]
+        #expect(rankSearch("mixed berries", berries).first?.food.brand == "Publix")
+        // The brand's own name for the food is the food: Reese's are peanut butter cups.
+        let cups = [OwnWordsTests.food("Candies, REESE'S Peanut Butter Cups"), OwnWordsTests.food("Peanut Butter Cups", brand: "Quest")]
+        #expect(rankSearch("peanut butter cups", cups).first?.food.name == "Candies, REESE'S Peanut Butter Cups")
     }
 
     @Test("a group typed alone by its name leads its foods, and a raw food's cooked form is a kind of its own")
@@ -552,6 +758,39 @@ struct StaplesTests {
         // A brand that makes the food keeps it.
         #expect(catalog.search("kraft cheese").first?.food.brand?.lowercased() == "kraft")
         #expect(catalog.search("goldfish cheddar crackers").first.map { matches("(?i)goldfish", "\($0.food.name) \($0.food.brand ?? "")") } == true)
+    }
+
+    @Test("a food said with how it's cooked or cut comes first typed and named as a model would")
+    func formsBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in forms {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(3).map(\.food.name) : catalog.top(query)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Cooked and cut foods \(seen ? "as a model names them" : "typed"): \(first) of \(forms.count) first")
+            #expect(Double(first) >= 0.95 * Double(forms.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+    }
+
+    @Test("a word that starts a brand's name isn't the brand where the words together name a food")
+    func namesNotBrands() {
+        for query in ["great northern beans", "general tso chicken", "garlic clove", "little smokies"] {
+            #expect(catalog.searchCatalog(query, known: [:]).brand.isEmpty, "\(query)")
+        }
+        #expect(catalog.searchCatalog("mission tortillas", known: [:]).brand == ["mission"])
+        #expect(catalog.searchCatalog("great value milk", known: [:]).brand == ["great", "value"])
+    }
+
+    @Test("short names, other wordings and words USDA writes as one are read")
+    func wordings() {
+        #expect(catalog.respell("pb&j").text == "peanut butter and jelly")
+        #expect(catalog.respell("fat free milk").also["fat"]?.contains("nonfat") == true)
+        #expect(catalog.respell("crunchy peanut butter").also["crunchy"]?.contains("chunk") == true)
+        #expect(catalog.respell("water chestnuts").also["water"]?.contains("waterchestnut") == true)
+        // Of a typo's two readings, the one that makes one word with the word before it.
+        #expect(catalog.typos(in: "flax sends")["sends"] == "seed")
     }
 
     @Test("pantry foods, dishes and forms come first typed and named as a model would")

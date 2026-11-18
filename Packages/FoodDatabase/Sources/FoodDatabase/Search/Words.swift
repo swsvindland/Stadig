@@ -22,6 +22,8 @@ let alternatives: [String: [String]] = [
     "kiwi": ["kiwi", "kiwifruit"], "kiwis": ["kiwi", "kiwifruit"],
     // Ribs are its spareribs and backribs.
     "rib": ["rib", "sparerib", "backrib"], "ribs": ["rib", "sparerib", "backrib"],
+    // Unsalted butter and unsalted nuts are its "without salt".
+    "unsalted": ["unsalted", "without"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -68,11 +70,26 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] = [
     (["black", "olive"], [(0, "ripe")]),
     (["pumpkin", "puree"], [(1, "canned")]),
     (["sport", "drink"], [(0, "gatorade"), (1, "gatorade")]),
+    // "Fat free" is USDA's "nonfat", crunchy peanut butter its "chunk style" and creamy its
+    // "smooth style".
+    (["fat", "free"], [(0, "nonfat"), (1, "nonfat")]),
+    (["crunch", "peanut"], [(0, "chunk")]),
+    (["cream", "peanut"], [(0, "smooth")]),
+    // Extra lean ground meat is its 95% lean.
+    (["extra", "lean"], [(0, "95")]),
 ]
 
 /// Names that, typed alone, mean the food named after them, in the words USDA files it under:
 /// "ranch" is its "Salad dressing, ranch dressing".
 let aloneNames: [String: String] = ["ranch": "ranch salad dressing"]
+
+/// What people type for a food instead of its name, as the whole of a search or of what a model
+/// said, by its words: "pb&j" is "pb j".
+let shortNames: [String: String] = [
+    "pb j": "peanut butter and jelly", "pbj": "peanut butter and jelly", "pb and j": "peanut butter and jelly",
+    "pb j sandwich": "peanut butter and jelly sandwich", "pbj sandwich": "peanut butter and jelly sandwich", "pb": "peanut butter",
+    "oj": "orange juice", "evoo": "extra virgin olive oil",
+]
 
 /// Names that, typed alone, are also the word USDA files them under: "spaghetti" is its "Pasta,
 /// cooked". With another word they mean themselves: spaghetti squash, macaroni and cheese.
@@ -81,7 +98,7 @@ let aloneFiled: [String: String] = ["spaghetti": "pasta", "macaroni": "pasta"]
 /// A typed word is searched as typed, plus the catalog's own wording for the same food. Looser
 /// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
 let typedAlternatives: Set<String> = [
-    "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs",
+    "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

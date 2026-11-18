@@ -315,7 +315,14 @@ extension FoodCatalog {
         let few = Self.fewLabels
         var found: Compound?
         let joined = foods(named: left + right)
-        if joined >= few || (asOne && joined < 4) {
+        // A word only the generic catalog has is still searched for beside the two labels
+        // write: "water chestnuts" are USDA's "Waterchestnuts".
+        let generic =
+            !asOne && joined > 0 && joined < few
+            && catalogs.first(where: { $0.kind == .generic })?.terms(
+                "SELECT term, foods FROM terms WHERE term IN (?, ?)", [.text(left + right), .text(stem(left + right))]
+            ).isEmpty == false
+        if joined >= few || (asOne && joined < 4) || generic {
             let apart = catalogs.reduce(0) { $0 + $1.count(inARow(left, right), cap: 20_000) }
             if joined >= few {
                 found = Compound(joined: joined > apart, same: apart >= few && alike(left, right))
@@ -366,6 +373,12 @@ extension FoodCatalog {
         let names = Set(searchedWords(readQuery(query).words))
         let named = { (i: Int) in
             names.contains(tokens[i].word) && !stopWords.contains(tokens[i].word) && !tokens[i].word.unicodeScalars.contains(where: isDigit)
+        }
+        // What people type for a food instead of its name: "pb&j".
+        if let name = shortNames[tokens.map(\.word).joined(separator: " ")] {
+            var read = respell(name, typing: false)
+            read.typed = read.typed ?? query
+            return read
         }
         // A name being typed as one word is read as its words: "hotd" is on its way to a hot dog.
         if typing, let last = tokens.last, last.end == scalars.count, named(tokens.count - 1), let apart = EverydayPhrases.apart(last.word) {
@@ -461,10 +474,16 @@ extension FoodCatalog {
             }
             // Halves of three letters or more, as a word typed as one divides: "pea ch" isn't peach.
             guard i + 1 < tokens.count, named(i + 1), length(word) > 2 else { continue }
-            let next = tokens[i + 1].word
+            let typed = tokens[i + 1].word
+            // A misspelt second word joins as the word it meant: "flax sedes" is flaxseed too.
+            let next = meant[typed] ?? typed
             guard length(next) > 2, scalars[tokens[i].end..<tokens[i + 1].start].allSatisfy({ isSpace($0) || $0 == "-" }) else { continue }
             guard let compound = compound(word, next) else { continue }
-            if compound.joined && compound.same {
+            if next != typed {
+                // And apart as well as joined: "crisp bead" is Wasa's "Crisp Bread" as much as a crispbread.
+                also(stem(word + next), for: [word, typed])
+                also(stem(next), for: [typed])
+            } else if compound.joined && compound.same {
                 write(word + next, over: tokens[i].start..<tokens[i + 1].end)
                 also("\(word) \(stem(next))", for: [word + next])
                 i += 1
@@ -491,6 +510,26 @@ extension FoodCatalog {
             remembered[expression] = brand
         }
         return brand
+    }
+
+    /// Whether the words together name a food far more often than the one at `brand` is the
+    /// brand of a food the others name: "great northern beans" aren't Great Value's, "general tso
+    /// chicken" isn't General Mills', "little smokies" aren't Little Debbie's and a "garlic clove"
+    /// isn't Clover Valley's. Five foods at least are named by them all, and twice as many as
+    /// the brand has; a brand's own (Mission's tortillas, Président's brie) have several times
+    /// more than are named so.
+    private func isNamed(_ words: [String], without brand: Int, _ catalog: Catalog, _ fixes: Fixes) -> Bool {
+        let all = words.map { searchTerm($0, fixes) }
+        let key = "named \(brand) \(all.joined(separator: " "))"
+        if let remembered = brandish.withLock({ $0[key] }) { return remembered }
+        let rest = all.indices.filter { $0 != brand }.map { all[$0] }.joined(separator: " AND ")
+        let foods = catalog.count("{name}: (\(all.joined(separator: " AND ")))", cap: 300)
+        let named = foods >= 5 && foods >= 2 * catalog.count("({brand}: (\(all[brand]))) AND ({name}: (\(rest)))", cap: 100)
+        brandish.withLock { remembered in
+            if remembered.count > 500 { remembered.removeAll() }
+            remembered[key] = named
+        }
+        return named
     }
 
     /// The chains and brands the generic catalog writes first in capitals ("PAPA JOHN'S 14" Pepperoni
@@ -569,7 +608,10 @@ extension FoodCatalog {
                 guard span.contains(where: { length($0) > 1 }) else { continue }
                 // Nor are two letters at the end a brand begun: the "do" of "hot do" isn't Doritos.
                 if size == 1, start + size == words.count, length(words[start]) < 3 { continue }
-                if let catalog, isBrand(span, catalog, fixes) { return start..<(start + size) }
+                if let catalog, isBrand(span, catalog, fixes) {
+                    if size == 1, isNamed(words, without: start, catalog, fixes) { continue }
+                    return start..<(start + size)
+                }
                 if isChain(span, catalog, fixes, halfTyped: start + size == words.count) { return start..<(start + size) }
             }
         }
@@ -596,7 +638,12 @@ extension FoodCatalog {
         var meant: [String: String] = [:]
         for (i, token) in tokens.enumerated() where names.contains(token.word) && length(token.word) >= 4 && !stopWords.contains(token.word) {
             let spelling = spell(token.word, whole: i < tokens.count - 1 || token.end < scalars.count)
-            guard spelling.doubted, spelling.fixes.count == 1, let fix = spelling.fixes.first, !fix.contains(" "), !token.word.hasPrefix(fix),
+            guard spelling.doubted else { continue }
+            // Of two readings, the one that makes one word with the word before it: after
+            // "flax", "sends" is seeds.
+            var readings = spelling.fixes
+            if readings.count > 1, i > 0 { readings = readings.filter { !$0.contains(" ") && compound(tokens[i - 1].word, $0) != nil } }
+            guard readings.count == 1, let fix = readings.first, !fix.contains(" "), !token.word.hasPrefix(fix),
                 catalogs.first(where: { $0.kind == .generic })?.terms("SELECT term, foods FROM terms WHERE term = ?", [.text(stem(token.word))])
                     .isEmpty != false
             else { continue }
@@ -628,8 +675,14 @@ extension FoodCatalog {
         // Each search below is also made with every name written the other way, as one word or as
         // two. It's a search of its own: among the alternatives of one expression, the rarer
         // spelling's foods would take the places of the usual one's.
+        // And one for each other wording, where the words have more than one between them:
+        // "crunchy peanut butter" is "chunk" peanut butter, or crunchy "peanutbutter".
+        let wordings = Array(Set(respelt.also.values.joined())).sorted().prefix(3)
+        let others = wordings.map { form in
+            { (word: String) in respelt.also[word]?.contains(form) == true ? searchTerm(word, [word: [form]], only: true) : term(word) }
+        }
         let other = { (word: String) in respelt.also[word].map { searchTerm(word, [word: $0], only: true) } ?? term(word) }
-        let ways = respelt.also.isEmpty ? [term] : [term, other]
+        let ways = respelt.also.isEmpty ? [term] : wordings.count > 1 ? [term] + others : [term, other]
         // USDA names lead with the food ("Chicken, broilers or fryers, breast…"), so those come first.
         let lead = { (word: String) in fixes[word]?.first ?? searchForms(word)[0] }
         // The words alone rank 12-grain bread too low to reach it for "12 grain bread", or a chain's
@@ -663,9 +716,13 @@ extension FoodCatalog {
             EverydayPhrases.likely(searched).map { likely in
                 jobs(catalogs, (searched.dropLast().map(term) + [searchTerm(likely)]).joined(separator: " AND "), .typed, lead: stem(likely))
             } ?? [],
+            // The plain foods without a word for how they're cooked or cut, which the ranking
+            // may read as the food asked for (see `Ease`): cooked salmon for "baked salmon",
+            // salmon for "salmon fillet". The words together only find the labels that say so.
+            span == nil ? easedJobs(searched, term, lead) : [],
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5]
+        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6]
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").
@@ -694,6 +751,15 @@ extension FoodCatalog {
                 fixes: search.readings, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
                 brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms))
         return search
+    }
+
+    /// A search of the generic foods for the words that say what a food is, without the ones
+    /// that say how it's cooked or cut; with a way of cooking among those, only for cooked foods.
+    private func easedJobs(_ words: [String], _ term: (String) -> String, _ lead: (String) -> String) -> [MatchJob] {
+        let rest = words.filter { !isEasable($0) }
+        guard rest.count < words.count, let first = rest.first(where: { !isNumber($0) }) else { return [] }
+        let cooked = words.contains(where: isHeat) ? " AND \(heatedTerm)" : ""
+        return jobs(catalogs.filter { $0.kind == .generic }, rest.map(term).joined(separator: " AND ") + cooked, .typed, lead: lead(first))
     }
 
     /// Catalog searches for a food a model saw, from most to least specific: brand and name, brand
@@ -772,6 +838,15 @@ extension FoodCatalog {
         }
         // The everyday form can have a name too long for the broad searches to reach.
         for query in everydayQueries(seen, pool: pool) { _ = search(query) }
+        // And the food without the words for how it's cooked or cut: salmon for a grilled
+        // salmon fillet, which the ranking may read as USDA's cooked salmon (see `Ease`).
+        if brand.isEmpty {
+            let said = nameWords(name)
+            let rest = said.filter { !isEasable($0) }
+            if rest.count < said.count, !rest.isEmpty {
+                _ = search(rest.map(term).joined(separator: " AND ") + (said.contains(where: isHeat) ? " AND \(heatedTerm)" : ""))
+            }
+        }
         // A misread brand should cost one tap, so the plain food stays among the options. What it
         // usually is also tells the brand's own name for it from the brand's other foods: Trader
         // Joe's Mini-Wheats are its "Shredded Bite Size Wheats", not its wheat bread.
