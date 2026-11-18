@@ -76,6 +76,7 @@ python3 Scripts/generate-project.py # rewrite the Xcode projects, schemes and te
 swift Scripts/make-icons.swift      # redraw Stadig Lift's icons (make-macro-icons for Stadig Macro's)
 python3 Scripts/build-catalogs.py update|build|validate   # Stadig Macro's catalogs: what's newer upstream, rebuild, check calories against macros
 Scripts/publish-catalogs.sh         # after rebuilding a catalog: upload them all as a new release, then commit the manifest
+python3 Scripts/popular-brands.py Apps/MacroTrack/Catalogs/off.db   # after rebuilding off.db: the brands search suggests, most scanned first
 ```
 
 New Swift files in an app's folders need no project change: the targets use synchronized folders. Only new targets, packages, build settings or Info.plist keys go through `Scripts/generate-project.py`.

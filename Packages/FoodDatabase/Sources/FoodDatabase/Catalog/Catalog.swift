@@ -6,10 +6,12 @@ import SystemCore
 final class Catalog: Sendable {
     enum Kind: Sendable { case generic, branded }
 
-    /// A food a full-text match found, and whether it is sold only in other countries.
+    /// A food a full-text match found, whether it is sold only in other countries, and whether
+    /// it's known to be sold in the phone's: a label that lists only the world, or nowhere, isn't.
     struct Hit: Sendable {
         var entry: Entry
         var away: Bool
+        var home = true
         var food: Food { entry.food }
     }
 
@@ -70,16 +72,20 @@ final class Catalog: Sendable {
         // A brand's recipe differs between countries (US and French Oreos), so a packaged food sold
         // only elsewhere ranks below the foods sold here; one whose countries aren't known isn't one.
         let away: String
+        let home: String
         if markets, let region {
             let sold = { (market: String) in "instr(' ' || foods.markets || ' ', ' \(market) ')" }
             away = "(foods.markets <> '' AND \(sold(region)) = 0 AND \(sold("world")) = 0)"
+            // Generic foods are everywhere's.
+            home = kind == .generic ? "1" : "(\(sold(region)) > 0)"
         } else {
             away = "0"
+            home = "1"
         }
         // Names starting with the lead word come before the full-text ranking, then the foods sold
         // in the phone's region, and among packaged foods the ones scanned more often come sooner.
         matchSQL = """
-            SELECT \(columns), \(away) AS away FROM (
+            SELECT \(columns), \(away) AS away, \(home) AS home FROM (
               SELECT rowid, bm25(food_search, 3.0, 1.0) AS score FROM food_search WHERE food_search MATCH ? LIMIT ?
             ) AS hit
             JOIN foods ON foods.rowid = hit.rowid
@@ -133,11 +139,11 @@ final class Catalog: Sendable {
             ) { row in
                 let rowid = row.int(0)
                 if let entry = read.withLock({ $0[rowid] }) {
-                    hits.append(Hit(entry: entry, away: row.int(10) == 1))
+                    hits.append(Hit(entry: entry, away: row.int(10) == 1, home: row.int(11) == 1))
                 } else if let food = food(row) {
                     let entry = Entry(food, also: row.string(9) ?? "")
                     fresh.append((rowid, entry))
-                    hits.append(Hit(entry: entry, away: row.int(10) == 1))
+                    hits.append(Hit(entry: entry, away: row.int(10) == 1, home: row.int(11) == 1))
                 }
             }
         }

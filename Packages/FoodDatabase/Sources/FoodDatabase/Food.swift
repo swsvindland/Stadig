@@ -134,13 +134,17 @@ public struct FoodMatch: Hashable, Sendable, Identifiable {
     public var score: Double
     /// One of the person's own foods.
     public var personal: Bool
+    /// A packaged food not known to be sold in the phone's country: found, but no suggestion of
+    /// what a search is heading for is read from it.
+    public var away: Bool
 
     public var id: String { food.id }
 
-    public init(food: Food, score: Double, personal: Bool) {
+    public init(food: Food, score: Double, personal: Bool, away: Bool = false) {
         self.food = food
         self.score = score
         self.personal = personal
+        self.away = away
     }
 }
 

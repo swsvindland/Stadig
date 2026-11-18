@@ -13,6 +13,8 @@ struct CatalogSearch {
     var also: Fixes = [:]
     /// The words that are a food's far more often than a brand's.
     var plain: Set<String> = []
+    /// The foods found that aren't known to be sold in the phone's country.
+    var elsewhere: Set<String> = []
     /// What was typed, where the reading added the catalogs' words for it ("ranch" is read as
     /// "ranch salad dressing"): the person's own foods are found by this, so their Ranch Dip still is.
     var typed: String?
@@ -640,6 +642,7 @@ extension FoodCatalog {
         let kind = product.isEmpty ? nil : profile(for: named, anyBrand.map(\.entry), fixes: search.readings, respelt: respelt.forms)
         var seen = Set<String>()
         let unique = pool.lazy.map(\.entry).filter { seen.insert($0.food.id).inserted }
+        search.elsewhere = Set(pool.filter { !$0.home }.map(\.food.id))
         search.ranked = rankSearch(
             query, Array(unique), known: known,
             hints: RankHints(

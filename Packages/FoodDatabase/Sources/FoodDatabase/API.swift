@@ -87,7 +87,8 @@ public final class FoodCatalog: Sendable {
         var results = own.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: true) }
         var listed = Set(results.map(\.food.id))
         for row in found.ranked where results.count < limit && listed.insert(row.food.id).inserted {
-            results.append(FoodMatch(food: row.food, score: row.score, personal: known[row.food.id] != nil))
+            results.append(
+                FoodMatch(food: row.food, score: row.score, personal: known[row.food.id] != nil, away: found.elsewhere.contains(row.food.id)))
         }
         return results
     }
