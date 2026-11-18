@@ -358,8 +358,9 @@ extension FoodCatalog {
     /// labels write both for the same kind of food; two typed apart always find the one word too
     /// ("butter ball turkey" finds Butterball's). Only the words that name the food are read, not
     /// its amount, and the one word has to be a whole word of the catalogs': "pea che" is on its
-    /// way to pea cheese as much as to peaches.
-    func respell(_ query: String) -> Respelt {
+    /// way to pea cheese as much as to peaches. A name a model gave isn't being typed (`typing`
+    /// false), so its last word is whole too.
+    func respell(_ query: String, typing: Bool = true) -> Respelt {
         let scalars = plainScalars(query)
         let tokens = scanTokens(scalars)
         let names = Set(searchedWords(readQuery(query).words))
@@ -403,7 +404,7 @@ extension FoodCatalog {
             guard named(i) else { continue }
             let word = tokens[i].word
             everyday((i..<tokens.count).prefix(while: named).map { tokens[$0].word })
-            if let (left, right, compound) = halves(of: word, whole: i < tokens.count - 1) {
+            if let (left, right, compound) = halves(of: word, whole: !typing || i < tokens.count - 1) {
                 if compound.joined {
                     also("\(left) \(stem(right))", for: [word])
                 } else {
@@ -649,11 +650,13 @@ extension FoodCatalog {
 
     /// Catalog searches for a food a model saw, from most to least specific: brand and name, brand
     /// and head noun, the name, its last two words, the head noun ("cheese" of "cheddar cheese"),
-    /// then the first word ("beef" of "beef patty").
-    func catalogQueries(_ seen: Named) -> [String] {
+    /// then the first word ("beef" of "beef patty"). With `also`, each word that has another name
+    /// is searched by that instead: "frankfurter" for the words of "hot dog".
+    func catalogQueries(_ seen: Named, also: Fixes = [:]) -> [String] {
         let name = nameWords(seen.name)
         let brand = Array(words(seen.brand).prefix(3))
-        let every = { (list: [String]) in list.map(term).joined(separator: " AND ") }
+        let wording = { (word: String) in also[word].map { searchTerm(word, [word: $0], only: true) } ?? term(word) }
+        let every = { (list: [String]) in list.map(wording).joined(separator: " AND ") }
         var queries: [String] = []
         if !brand.isEmpty && !name.isEmpty {
             queries.append(every(brand + name))
@@ -661,7 +664,7 @@ extension FoodCatalog {
         }
         if !name.isEmpty { queries.append(every(name)) }
         if name.count > 2 { queries.append(every(Array(name.suffix(2)))) }
-        if name.count > 1 { queries += [term(name[name.count - 1]), term(name[0])] }
+        if name.count > 1 { queries += [wording(name[name.count - 1]), wording(name[0])] }
         var seenQueries = Set<String>()
         return queries.filter { seenQueries.insert($0).inserted }
     }
@@ -670,12 +673,20 @@ extension FoodCatalog {
     /// to least specific until 40 are found, ranked with the typed search's scorer.
     func matchCandidates(name said: String, brand: String, personal: [PersonalFood], limit: Int) -> [FoodMatch] {
         // A brand's own product keeps its name; a plain dish is looked up in the catalog's words.
-        let name = brand.isEmpty ? catalogDish(said) : said
+        let dish = brand.isEmpty ? catalogDish(said) : said
+        // Its names are read as a typed search's are: written the way most labels write them
+        // ("hotdog" is "hot dog", "soy milk" is "soymilk"), and also by the catalogs' own name for
+        // them, so a hot dog is USDA's frankfurter and a bell pepper its sweet pepper.
+        let read = respell(dish, typing: false)
+        // A brand's "Ranch" is its own; only a plain "ranch" is the salad dressing.
+        let name = brand.isEmpty ? read.text : read.typed ?? read.text
         let seen = Named(name: name, brand: brand)
         let known = Self.known(personal)
         var pool: [Entry] = []
         var ids: [String: Int] = [:]
-        let check = CoverageQuery(seen: seen)
+        // The person's own foods are found by the name as it was said: their Ranch Dip by "ranch".
+        let own = read.typed ?? name
+        let check = CoverageQuery(seen: Named(name: own, brand: brand), target: nameWords(own), fixes: read.also, respelt: read.forms)
         for item in personal {
             let entry = Entry(item.food)
             guard check.cover(entry.text).name >= 0.5 else { continue }
@@ -706,14 +717,32 @@ extension FoodCatalog {
             if pool.count >= 40 { break }
             _ = search(query)
         }
+        // By its other name too, as far as the first search that finds it, however many foods
+        // have the words said: relish and buns have "hot dog", and the frankfurters don't.
+        if !read.also.isEmpty {
+            for query in catalogQueries(seen, also: read.also) where !search(query).isEmpty { break }
+        }
         // The everyday form can have a name too long for the broad searches to reach.
         for query in everydayQueries(seen, pool: pool) { _ = search(query) }
         // A misread brand should cost one tap, so the plain food stays among the options. What it
         // usually is also tells the brand's own name for it from the brand's other foods: Trader
         // Joe's Mini-Wheats are its "Shredded Bite Size Wheats", not its wheat bread.
         let plain = brand.isEmpty ? nil : catalogQueries(Named(name: name, brand: "")).first
-        let kind = plain.flatMap { profile(for: nameWords(name), search($0)) }
-        let ranked = scoreFoods(seen, pool, known: known, hints: RankHints(away: away, profile: kind))
+        let kind = plain.flatMap { profile(for: nameWords(name), search($0), fixes: read.also, respelt: read.forms) }
+        var ranked = scoreFoods(seen, pool, known: known, hints: RankHints(fixes: read.also, away: away, profile: kind, respelt: read.forms))
+        // Where the reading added words to the name, the person's own foods are ranked by it as
+        // it was said: their Ranch Dip has "ranch", not "salad dressing".
+        if own != name {
+            let mine = pool.filter { known[$0.food.id] != nil }
+            for said in scoreFoods(Named(name: own, brand: brand), mine, known: known, hints: RankHints(away: away)) {
+                if let i = ranked.firstIndex(where: { $0.food.id == said.food.id }) {
+                    ranked[i].score = max(ranked[i].score, said.score)
+                } else {
+                    ranked.append(Ranked(food: said.food, score: said.score, index: pool.count + ranked.count, name: said.name))
+                }
+            }
+            ranked.sort { $0.score != $1.score ? $0.score > $1.score : $0.index < $1.index }
+        }
         let head = ranked.prefix(brand.isEmpty ? 8 : 6)
         let generic = brand.isEmpty ? [] : ranked.dropFirst(head.count).filter { !FoodText($0.food).branded }.prefix(2)
         let first = Set((head + generic).map(\.index))

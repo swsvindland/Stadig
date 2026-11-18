@@ -557,8 +557,60 @@ struct CandidateTests {
         #expect(first.score >= 1.5, "a sure match")
     }
 
+    @Test(
+        "a seen food is found by the catalogs' name for it, however its own is written",
+        arguments: [
+            // A hot dog is USDA's frankfurter, as one word or two, and a bell pepper its sweet pepper.
+            ("hot dog", "^Frankfurter, (meat|beef)", ""),
+            ("Hot dogs", "^Frankfurter, (meat|beef)", ""),
+            ("hotdog", "^Frankfurter, (meat|beef)", ""),
+            ("bell pepper", "^Peppers, sweet, (red|green|yellow), raw", "(?i)spice"),
+            ("red bell pepper", "^Peppers, sweet, red", ""),
+            ("green bell peppers", "^Peppers, sweet, green", ""),
+            // Alone, ranch is the dressing and spaghetti or macaroni cooked pasta.
+            ("ranch", "^Salad dressing, ranch dressing, regular", ""),
+            ("spaghetti", "^Pasta, cooked", "(?i)spinach|squash"),
+            ("macaroni", "^Pasta, cooked", "(?i)vegetable"),
+            // A name labels write as one word or as two is found written either way.
+            ("soy milk", "^Soymilk", "(?i)sheep|buttermilk"),
+            ("milkshake", "^Milk shakes?", ""),
+            ("kiwi", "^Kiwifruit", ""),
+            ("mac and cheese", "^Macaroni and [Cc]heese", ""),
+            ("mac n cheese", "^Macaroni and [Cc]heese", ""),
+            // A food named after one keeps its own name: the bun, not a frankfurter.
+            ("hot dog bun", "^Rolls, hamburger or hot ?dog", "(?i)frankfurter"),
+            ("corn dog", "^Corn dogs", "(?i)frankfurter"),
+            ("spaghetti squash", "^Squash, winter, spaghetti", "(?i)pasta"),
+            ("ranch dressing", "^Salad dressing, ranch dressing", ""),
+        ])
+    func otherNames(name: String, pattern: String, not: String) throws {
+        let found = catalog.candidates(name: name, brand: nil)
+        let first = try #require(found.first)
+        #expect(matches(pattern, first.food.name), "\(name): \(found.prefix(4).map(\.food.name))")
+        if !not.isEmpty { #expect(!matches(not, first.food.name), "\(name): \(first.food.name)") }
+        #expect(!isBranded(first.food), "\(name): \(first.food.name)")
+        #expect(first.score >= 1.5, "a sure match")
+    }
+
+    @Test("a brand's own food and the person's own keep the name as it was said")
+    func saidNames() throws {
+        // A brand's "Ranch" is its ranch, not USDA's salad dressing by another route.
+        let branded = catalog.candidates(name: "Ranch", brand: "Hidden Valley")
+        #expect(branded.first.map { matches("(?i)ranch", $0.food.name) && matches("(?i)hidden valley", $0.food.brand ?? "") } == true)
+        // Their Ranch Dip is still offered for a plain "ranch", read as "ranch salad dressing".
+        let own = Food(id: "custom:dip", name: "Ranch Dip", basis: .g, nutrients: .zero, source: .custom)
+        let found = catalog.candidates(name: "ranch", brand: nil, personal: [PersonalFood(food: own, score: 1)])
+        #expect(found.contains { $0.food.id == own.id && $0.personal })
+        // Their hot dogs are found by the words, and frankfurters come with them.
+        let dogs = Food(id: "custom:dogs", name: "Ballpark Hot Dogs", basis: .g, nutrients: .zero, source: .custom)
+        let seen = catalog.candidates(name: "hot dog", brand: nil, personal: [PersonalFood(food: dogs, score: 1)])
+        #expect(seen.first?.food.id == dogs.id, "\(seen.prefix(3).map(\.food.name))")
+        #expect(seen.prefix(4).contains { matches("^Frankfurter", $0.food.name) })
+    }
+
     @Test("a dish the catalog files under another name is found by it")
     func dishNames() throws {
+        #expect(catalogDish("Mac and cheese") == "macaroni cheese")
         #expect(catalogDish("Spaghetti bolognese") == "spaghetti meat sauce")
         #expect(catalogDish("spag bol") == "spaghetti meat sauce")
         #expect(catalogDish("Penne with bolognese sauce") == "penne meat sauce")

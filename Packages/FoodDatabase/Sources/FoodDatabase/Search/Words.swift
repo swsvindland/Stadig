@@ -18,11 +18,15 @@ let alternatives: [String: [String]] = [
     // USDA's skim milk is "Milk, nonfat", its Coke "cola". A model's "mayo" is mayonnaise; typed,
     // it is already the start of the word.
     "skim": ["skim", "nonfat"], "bbq": ["bbq", "barbecue"], "coke": ["coke", "cola"], "mayo": ["mayo", "mayonnaise"],
+    // USDA's kiwi is "Kiwifruit", which a typed "kiwi" already starts.
+    "kiwi": ["kiwi", "kiwifruit"], "kiwis": ["kiwi", "kiwifruit"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
 /// bolognese is "spaghetti with meat sauce". Longest first.
 let dishNames: [(said: [String], catalog: [String])] = [
+    (["mac", "n", "cheese"], ["macaroni", "cheese"]),
+    (["mac", "cheese"], ["macaroni", "cheese"]),
     (["spag", "bol"], ["spaghetti", "meat", "sauce"]),
     (["bolognese", "sauce"], ["meat", "sauce"]),
     (["bolognaise", "sauce"], ["meat", "sauce"]),
