@@ -88,7 +88,7 @@ extension AppModel {
     /// The current set's bar, when it's loaded with plates.
     func boardPlates(item: LiveItem, exercise: Exercise, load: Double) -> BoardPlateLoad? {
         guard item.plan.isStrength, exercise.equipment.platePaired else { return nil }
-        let increments = gymForToday.increments(for: exercise.equipment)
+        let increments = gymForToday.increments(for: exercise)
         guard let plates = increments.platesPerSide(load), !plates.isEmpty else { return nil }
         return BoardPlateLoad(plates: plates, unit: increments.gym.unit, bar: increments.gym.unit.fromKilograms(increments.barKg))
     }

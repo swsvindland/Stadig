@@ -627,9 +627,23 @@ struct GymEditor: View {
                         step: 0.5)
                     Stepper(
                         "Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
+                    // Machines that move by their own amount, set from the exercise's menu in a session.
+                    ForEach(exerciseSteps) { entry in
+                        HStack(spacing: 12) {
+                            Text("\(entry.name) steps of \(Format.number(entry.step, digits: 2)) \(gym.unit.symbol)")
+                            Spacer(minLength: 8)
+                            Button("Use the gym's steps for \(entry.name)", systemImage: "xmark.circle.fill") { gym.exerciseSteps[entry.id] = nil }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.plain)
+                                .foregroundStyle(Ink.text3)
+                                .accessibilityIdentifier("gym.exerciseStep.remove")
+                        }
+                    }
                 }
                 .font(.subheadline)
                 .foregroundStyle(Ink.text)
+                Text("A machine that goes up by its own amount, like a leg press in 20s: set it in a session, from its menu's Weight steps.")
+                    .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, Platform.isMac ? 16 : 0)
@@ -639,6 +653,19 @@ struct GymEditor: View {
         .background(.pageBackground)
         .formPage("Gym")
         .editing($edit, of: model.gym) { edited, original in model.save(gymEdits: edited, from: original) }
+    }
+
+    /// An exercise with a step of its own here.
+    private struct ExerciseStep: Identifiable {
+        let id: String
+        let name: String
+        let step: Double
+    }
+
+    /// The exercises with steps of their own here, by name: a handful at most.
+    private var exerciseSteps: [ExerciseStep] {
+        gym.exerciseSteps.map { ExerciseStep(id: $0.key, name: model.catalog.resolve($0.key).name, step: $0.value) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     /// A group of things the gym has, as chips two by two in a card under its eyebrow, the ones it

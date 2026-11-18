@@ -264,7 +264,7 @@ public enum Analyst {
             for slot in mesocycle.days.flatMap(\.strengthSlots) where !stalls.contains(where: { $0.exerciseID == slot.exerciseID }) {
                 let exercise = state.catalog.resolve(slot.exerciseID)
                 let context = ProgressionContext(
-                    exercise: exercise, increments: state.gym.increments(for: exercise.equipment), trust: trust,
+                    exercise: exercise, increments: state.gym.increments(for: exercise), trust: trust,
                     phase: phase.effects, bodyweightKg: bodyweight, history: history[exercise.id] ?? [])
                 if let stall = Stalls.detect(
                     context, sets: slot.sets(week: 0), repRange: slot.repRange, today: today, phase: phase.effects,

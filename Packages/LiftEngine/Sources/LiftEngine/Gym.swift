@@ -21,12 +21,16 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
     public var excluded: Set<String>
     /// Exercises it can do although their equipment isn't listed.
     public var included: Set<String>
+    /// The step one exercise's machine moves by here, in the gym's unit, where it isn't the gym's
+    /// usual: a leg press whose sled takes 20 lb at a time, a cable stack with 5 lb plates. The
+    /// person sets these, from the session or the gym's settings.
+    public var exerciseSteps: [String: Double]
     public var updatedAt: Date
 
     public init(
         id: UUID = UUID(), name: String, access: EquipmentAccess, unit: WeightUnit, barWeight: Double, plates: [Double],
         dumbbellStep: Double, dumbbellMax: Double, machineStep: Double, equipment: Set<Equipment>, apparatus: Set<Apparatus>,
-        excluded: Set<String> = [], included: Set<String> = [], updatedAt: Date = Date()
+        excluded: Set<String> = [], included: Set<String> = [], exerciseSteps: [String: Double] = [:], updatedAt: Date = Date()
     ) {
         self.id = id
         self.name = name
@@ -41,6 +45,7 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
         self.apparatus = apparatus
         self.excluded = excluded
         self.included = included
+        self.exerciseSteps = exerciseSteps
         self.updatedAt = updatedAt
     }
 
@@ -67,7 +72,32 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
     /// The loads this gym makes for one piece of equipment.
     public func increments(for equipment: Equipment) -> GymIncrements { GymIncrements(gym: self, equipment: equipment) }
 
-    /// The gym moved to the other unit. Plates don't convert, so they become the typical ones.
+    /// The loads this gym makes for one exercise: its equipment's, or its own step where one is set.
+    public func increments(for exercise: Exercise) -> GymIncrements {
+        GymIncrements(gym: self, equipment: exercise.equipment, exerciseStep: step(for: exercise))
+    }
+
+    /// The step set for an exercise here, when it has one and can take one.
+    public func step(for exercise: Exercise) -> Double? {
+        guard GymIncrements.takesOwnStep(exercise), let step = exerciseSteps[exercise.id], step > 0 else { return nil }
+        return step
+    }
+
+    /// The gym with an exercise's own step set, or cleared (nil, or the step its equipment already
+    /// has here, so the setting follows the gym's if that changes later).
+    public func setting(step: Double?, for exercise: Exercise) -> Gym {
+        var gym = self
+        let usual = GymIncrements(gym: self, equipment: exercise.equipment).usualStep
+        if let step, step > 0, GymIncrements.takesOwnStep(exercise), abs(step - (usual ?? 0)) > 1e-9 {
+            gym.exerciseSteps[exercise.id] = (step * 100).rounded() / 100
+        } else {
+            gym.exerciseSteps[exercise.id] = nil
+        }
+        return gym
+    }
+
+    /// The gym moved to the other unit. Plates don't convert, so they become the typical ones, and
+    /// exercises' own steps go with them: 20 lb is no step a kg machine has.
     public func converted(to unit: WeightUnit) -> Gym {
         guard unit != self.unit else { return self }
         var gym = Gym.preset(access, unit: unit)
@@ -83,7 +113,7 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
     }
 
     /// The gym as another kind: that kind's equipment, plates and steps, but still this gym, with
-    /// its name, its exercise exceptions and its sauna or steam room (no kind assumes either).
+    /// its name, its exercise exceptions and steps, and its sauna or steam room (no kind assumes either).
     public func switched(to access: EquipmentAccess) -> Gym {
         guard access != self.access else { return self }
         var gym = Gym.preset(access, unit: unit)
@@ -92,6 +122,7 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
         gym.apparatus.formUnion(apparatus.filter(\.isRecovery))
         gym.excluded = excluded
         gym.included = included
+        gym.exerciseSteps = exerciseSteps
         return gym
     }
 
@@ -99,7 +130,8 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
     /// this gym, the latest copy: whatever the screen left alone keeps what synced in meanwhile.
     /// Equipment, fixtures and the exercise exceptions merge item by item, so a sauna added on another
     /// device survives a dumbbell rack added here. The unit and the loads go as one, since the loads
-    /// are in the unit: half of a kg gym's steps under lb would be nonsense.
+    /// are in the unit: half of a kg gym's steps under lb would be nonsense. Exercises' own steps
+    /// merge exercise by exercise, unless the unit changed, which takes them all with it.
     public func applying(_ edited: Gym, from original: Gym) -> Gym {
         var gym = self
         if edited.name != original.name { gym.name = edited.name }
@@ -109,6 +141,14 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
         gym.apparatus = Self.merge(gym.apparatus, edited.apparatus, from: original.apparatus)
         gym.excluded = Self.merge(gym.excluded, edited.excluded, from: original.excluded)
         gym.included = Self.merge(gym.included, edited.included, from: original.included)
+        if edited.unit != original.unit {
+            gym.exerciseSteps = edited.exerciseSteps
+        } else {
+            for (id, step) in original.exerciseSteps where edited.exerciseSteps[id] != step {
+                gym.exerciseSteps[id] = edited.exerciseSteps[id]
+            }
+            for (id, step) in edited.exerciseSteps where original.exerciseSteps[id] != step { gym.exerciseSteps[id] = step }
+        }
         return gym
     }
 
@@ -141,14 +181,67 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
+// Also in the Watch's copy of today and in backups, which an older version may have written: a gym
+// from before exercises had their own steps reads as having none.
+extension Gym {
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        access = try c.decode(EquipmentAccess.self, forKey: .access)
+        unit = try c.decode(WeightUnit.self, forKey: .unit)
+        barWeight = try c.decode(Double.self, forKey: .barWeight)
+        plates = try c.decode([Double].self, forKey: .plates)
+        dumbbellStep = try c.decode(Double.self, forKey: .dumbbellStep)
+        dumbbellMax = try c.decode(Double.self, forKey: .dumbbellMax)
+        machineStep = try c.decode(Double.self, forKey: .machineStep)
+        equipment = try c.decode(Set<Equipment>.self, forKey: .equipment)
+        apparatus = try c.decode(Set<Apparatus>.self, forKey: .apparatus)
+        excluded = try c.decodeIfPresent(Set<String>.self, forKey: .excluded) ?? []
+        included = try c.decodeIfPresent(Set<String>.self, forKey: .included) ?? []
+        exerciseSteps = try c.decodeIfPresent([String: Double].self, forKey: .exerciseSteps) ?? [:]
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+    }
+}
+
 /// A gym's makeable loads for one kind of equipment, in kg, for the core's progression maths.
 public struct GymIncrements: LoadIncrements, Hashable {
     public var gym: Gym
     public var equipment: Equipment
+    /// The exercise's own step here, in the gym's unit (`Gym.exerciseSteps`): its loads are every
+    /// multiple of it instead of what the equipment usually makes.
+    public var exerciseStep: Double?
 
-    public init(gym: Gym, equipment: Equipment) {
+    public init(gym: Gym, equipment: Equipment, exerciseStep: Double? = nil) {
         self.gym = gym
         self.equipment = equipment
+        self.exerciseStep = exerciseStep.flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    /// Whether an exercise on this equipment can have a step of its own. A bar's steps are its
+    /// plates, set for the whole gym; stacks, sleds, dumbbells and belts vary machine to machine.
+    public static func takesOwnStep(_ equipment: Equipment) -> Bool {
+        switch equipment {
+        case .barbell, .ezBar, .trapBar, .smith: false
+        case .rower, .bike, .stairClimber, .treadmill: false
+        default: true
+        }
+    }
+
+    /// Whether an exercise can have a step of its own: loaded, untimed work on such equipment.
+    public static func takesOwnStep(_ exercise: Exercise) -> Bool {
+        exercise.loadBasis != .none && !exercise.timed && takesOwnStep(exercise.equipment)
+    }
+
+    /// The step the equipment moves by here before any exercise's own: the gym's stack or dumbbell
+    /// step, or the smallest plate (a pair of them on a sled). Nil without plates to make one.
+    public var usualStep: Double? {
+        let smallest = gym.plates.filter { $0 > 0 }.min()
+        switch equipment {
+        case .dumbbell, .kettlebell: return gym.dumbbellStep
+        case .machine, .cable: return gym.machineStep
+        default: return smallest.map { equipment.platePaired ? $0 * 2 : $0 }
+        }
     }
 
     /// Bars other than the gym's standard one, in the gym's unit.
@@ -178,6 +271,14 @@ public struct GymIncrements: LoadIncrements, Hashable {
         // (minus infinity, say) would trap in the conversion to cents.
         let ceiling = gym.unit.fromKilograms(Self.maximumLoadKg) * 2
         let limit = limit.isNaN ? 0 : min(max(limit, -ceiling), ceiling)
+        if let step = exerciseStep {
+            switch equipment {
+            case .dumbbell, .kettlebell: return steps(step, through: min(limit, gym.dumbbellMax))
+            case .machine, .cable, .plateLoaded: return steps(step, through: limit + step)
+            // Added load or assistance starts from none.
+            default: return [0] + steps(step, through: limit + step)
+            }
+        }
         if equipment.platePaired {
             let perSide = plateSums(limit: max(0, Self.cents((limit - base) / 2)) + 1)
             return perSide.map { base + Double($0 * 2) / 100 }

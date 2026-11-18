@@ -23,6 +23,9 @@ nonisolated extension LiftSettings: @retroactive StoredRecord {
 
 nonisolated extension Gym: @retroactive StoredRecord {
     public static var kind: String { "gym" }
+    /// Still 1 with exercises' own steps (`exerciseSteps`), which read as none when absent. A gym is
+    /// only saved when the person edits it, so a version that doesn't know them loses them only on
+    /// an edit made there; a bump would leave that version on a stand-in full gym until it updates.
     public static var schemaVersion: Int { 1 }
 }
 

@@ -439,9 +439,15 @@ public enum Progression {
             for _ in 0..<steps { cap = LoadMath.step(cap, 1, basis: basis, increments: context.increments) }
             if LoadMath.harder(load, cap, basis: basis) { load = cap }
             if context.loadFactor >= 1, !missed, !target.firstWeek {
-                // Don't slide back more than a step on a single off day. A block's first week is
-                // meant to be lighter, and the estimate stays within 3% of the recent best anyway.
-                let floor = LoadMath.step(lastLoad, -1, basis: basis, increments: context.increments)
+                // Never lighter after the reps were there: a weight done for the reps this session
+                // asks, without a miss, is held at least, however hard it was rated. The estimate
+                // can say less when the sets went closer to failure than this week's reserve (a push
+                // past the plan, rated just right, read by low trust as nothing left), but the
+                // reserve falls week to week, so the plan catches up rather than taking back what
+                // was lifted. Short of the reps, an off day, it slides back a step at most. A block's
+                // first week is meant to be lighter, and the estimate stays within 3% of the recent
+                // best anyway.
+                let floor = bestReps >= reps ? lastLoad : LoadMath.step(lastLoad, -1, basis: basis, increments: context.increments)
                 if LoadMath.harder(floor, load, basis: basis) { load = floor }
             }
             if LoadMath.harder(load, lastLoad, basis: basis) {

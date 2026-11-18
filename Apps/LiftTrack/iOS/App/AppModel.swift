@@ -1091,7 +1091,7 @@ final class AppModel {
                 exercise, reps: item.repRange.middle, bodyweightKg: state?.effectiveBodyweight, sex: profile.sex,
                 experience: profile.experience)
             {
-                startingLoads[id] = todaysGym.increments(for: exercise.equipment).round(guess, down: true)
+                startingLoads[id] = todaysGym.increments(for: exercise).round(guess, down: true)
             }
         }
         var context = PhoneContext(

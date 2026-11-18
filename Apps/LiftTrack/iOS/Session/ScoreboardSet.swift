@@ -124,7 +124,7 @@ struct BoardSet: View {
 
     private func editor(_ exercise: Exercise) -> some View {
         @Bindable var draft = draft
-        let increments = model.gymForToday.increments(for: exercise.equipment)
+        let increments = model.gymForToday.increments(for: exercise)
         return HStack(spacing: 12) {
             if hasLoad(exercise) {
                 LoadControl(
@@ -247,7 +247,7 @@ struct BoardSet: View {
     private var keys: some View {
         if case .rated = kind, let live = model.live, live.items.indices.contains(item) {
             let exercise = model.catalog.resolve(live.items[item].exerciseID)
-            let increments = model.gymForToday.increments(for: exercise.equipment)
+            let increments = model.gymForToday.increments(for: exercise)
             Group {
                 if hasLoad(exercise) {
                     Button("Heavier") { draft.load = increments.step(draft.load, direction: 1) }.keyboardShortcut(.upArrow, modifiers: [])

@@ -65,7 +65,7 @@ struct FormatTests {
         #expect(Format.temperature(odd.step(by: 1), fahrenheit: true) == "190°F")
     }
 
-    @Test("A typed load is rounded to what the gym can make, and slips are refused")
+    @Test("A typed load is kept as typed, off the gym's steps too, and slips are refused")
     func typedLoads() {
         let kg = Gym.preset(.fullGym, unit: .kg).increments(for: .barbell)
         #expect(LoadControl.typedLoad("100", increments: kg) == 100)
@@ -83,6 +83,12 @@ struct FormatTests {
         #expect(LoadControl.typedLoad("3400", increments: lb) == nil)
         let typed = LoadControl.typedLoad("225", increments: lb)
         #expect(typed.map { Format.load($0, unit: .lb) } == "225 lb")
+        // 85 on a stack that the gym has in steps of 10: what was lifted, not 80 or 90. + goes on to 90.
+        let stack = Gym.preset(.fullGym, unit: .lb).increments(for: .machine)
+        let between = LoadControl.typedLoad("85", increments: stack)
+        #expect(between.map { Format.load($0, unit: .lb) } == "85 lb")
+        #expect(between.map { Format.load(stack.step($0, direction: 1), unit: .lb) } == "90 lb")
+        #expect(between.map { Format.load(stack.step($0, direction: -1), unit: .lb) } == "80 lb")
     }
 
     @Test("Typed reps are whole numbers from 0 to 100")

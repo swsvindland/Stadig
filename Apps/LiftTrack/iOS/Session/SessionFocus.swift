@@ -266,6 +266,7 @@ struct FocusedExercise: View {
 private struct OtherExerciseRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.showExercise) private var showExercise
+    @Environment(\.editSteps) private var editSteps
     @Environment(\.dynamicTypeSize) private var typeSize
     let live: LiveSession
     let index: Int
@@ -305,6 +306,12 @@ private struct OtherExerciseRow: View {
                 }
                 if item.takesMoreSets {
                     Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+                }
+                if item.plan.isStrength, GymIncrements.takesOwnStep(exercise) {
+                    Button("Weight steps", systemImage: "plusminus") { editSteps?(item.exerciseID) }
+                }
+                if live.canSplitSuperset(item: index) {
+                    Button("Do separately", systemImage: "rectangle.split.1x2") { model.update { $0.splitSuperset(item: index) } }
                 }
                 if !item.isDone { Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } } }
                 Button("About this exercise", systemImage: "info.circle") { showExercise?(item.exerciseID) }
