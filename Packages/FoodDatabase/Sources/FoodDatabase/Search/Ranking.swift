@@ -1023,9 +1023,10 @@ func scoreFoods(
     // every word of a search, a word that half of them have before the word naming the food.
     // "Beef" for a steak, "Salad dressing" for mayonnaise, "Squash, summer" for zucchini, "Snacks"
     // for potato chips. It isn't held against a food, and a name with nothing else before the
-    // food leads with it as "Fish, salmon" does.
+    // food leads with it as "Fish, salmon" does. For a food a model saw as for a typed search:
+    // its "sirloin" is beef before veal.
     var shelf = Set<String>()
-    if search {
+    do {
         let family = rows.filter { $0.match.missing == 0 && !$0.text.branded }
         if family.count >= 5 {
             var foods: [String: Int] = [:]
@@ -1048,7 +1049,7 @@ func scoreFoods(
         let theirs = asked && row.mine && row.name == 1 && !makesKind
         let like = theirs ? max(0, row.like) : row.like
         var score =
-            3 * row.name + (leads ? (search ? 0.75 : 0.5) : 0)
+            3 * row.name + (leads ? 0.75 : 0)
             // A generic food USDA names by exactly the words said, inverted, ranks above a blend or
             // dish that only has them.
             + (match.named && !row.text.branded ? 0.5 : 0)
@@ -1057,7 +1058,8 @@ func scoreFoods(
             // The brand's food named by exactly the words said is as usual as its kind that says
             // so (Great Value's "Cottage Cheese Small Curd" beside its lowfat one), and "typical"
             // is USDA's word for its own entries: a label's "Original" is another product.
-            + (match.usual || (row.said && query.asksUsual) ? 0.6 : 0) + (match.typical && !row.text.branded ? 0.3 : 0)
+            // Among foods with every word said, that is: plain white rice isn't the usual fried rice.
+            + (match.missing > 0 ? 0 : (match.usual || (row.said && query.asksUsual) ? 0.6 : 0) + (match.typical && !row.text.branded ? 0.3 : 0))
             - 0.5 * Double(match.partial) - 0.4 * Double(match.fixed) - 0.8 * match.variations
             // A note in brackets says more about the same food, however long it is.
             - 0.25 * Double(match.others) - min(0.1, 0.05 * Double(match.notes)) + filedUnder

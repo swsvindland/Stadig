@@ -9,7 +9,7 @@ import Testing
 /// mayonnaise", "Frankfurter").
 let staples: [(String, String)] = [
     // Meat, fish and eggs.
-    ("chicken", "^Chicken, broilers or fryers, .*cooked, roasted"),
+    ("chicken", "^Chicken, (broilers or fryers|roasting), .*cooked, roasted"),
     ("chicken breast", "^Chicken, broilers or fryers, breast, .*cooked, roasted"),
     ("chicken thigh", "^Chicken, broilers or fryers, thigh, .*cooked"),
     ("chicken wings", "^Chicken, broilers or fryers, wing, .*cooked"),
@@ -301,6 +301,21 @@ struct StaplesTests {
         print("Staples: \(first) of \(staples.count) first, \(three) in the first three")
         // A few points under what the ranking does on this catalog (every one first), so a change
         // can cost a staple or two for something worth more, and no more than that.
+        #expect(Double(first) >= 0.97 * Double(staples.count), "\(missed.joined(separator: " | "))")
+        #expect(Double(three) >= 0.99 * Double(staples.count), "\(missed.joined(separator: " | "))")
+    }
+
+    @Test("an everyday food a model names is matched to the same food")
+    func seenBasket() {
+        var first = 0
+        var three = 0
+        var missed: [String] = []
+        for (name, pattern) in staples {
+            let names = catalog.candidates(name: name, brand: nil).prefix(3).map(\.food.name)
+            if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(name): \(names.first ?? "nothing")") }
+            if names.contains(where: { matches(pattern, $0) }) { three += 1 }
+        }
+        print("Staples as a model names them: \(first) of \(staples.count) first, \(three) in the first three")
         #expect(Double(first) >= 0.97 * Double(staples.count), "\(missed.joined(separator: " | "))")
         #expect(Double(three) >= 0.99 * Double(staples.count), "\(missed.joined(separator: " | "))")
     }

@@ -529,6 +529,10 @@ struct CandidateTests {
             // With or without its skin, the fruit is still the fruit.
             ("apple", "^Apples, raw", "(?i)rose|mammy"),
             ("sweet potato", "^Sweet potato, cooked", "(?i)leaves"),
+            // Filed under what it's made of, and before a food that only has the word or lacks one said.
+            ("sirloin", "^Beef, .*sirloin", "(?i)veal"),
+            ("meatballs", "^Meatballs", "(?i)pockets|meatless"),
+            ("fried rice", "(?i)fried rice", "(?i)^Rice, white"),
         ])
     func everyday(name: String, pattern: String, not: String) throws {
         let found = catalog.candidates(name: name, brand: nil)
