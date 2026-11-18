@@ -369,6 +369,26 @@ extension FoodCatalog {
         let named = { (i: Int) in
             names.contains(tokens[i].word) && !stopWords.contains(tokens[i].word) && !tokens[i].word.unicodeScalars.contains(where: isDigit)
         }
+        // A name being typed as one word is read as its words: "hotd" is on its way to a hot dog.
+        if typing, let last = tokens.last, last.end == scalars.count, named(tokens.count - 1), let apart = EverydayPhrases.apart(last.word) {
+            return respell(makeString(scalars[..<last.start]) + apart, typing: typing)
+        }
+        // One letter after a food's or a brand's first words is enough to say which: "chicken b"
+        // is searched as chicken breast, where the letter alone would be left out.
+        if typing, let last = tokens.last, last.end == scalars.count, length(last.word) == 1, !isNumber(last.word), tokens.count > 1,
+            scalars[last.start - 1] == " ",
+            let whole = EverydayPhrases.completing(tokens.dropLast().indices.filter(named).map { tokens[$0].word } + [last.word])
+        {
+            var read = respell(makeString(scalars[..<last.start]) + whole, typing: false)
+            read.typed = read.typed ?? query
+            return read
+        }
+        // The word still being typed, as the food it's most likely on its way to: it's read by
+        // that food's other names too, so "hot do" already finds frankfurters.
+        var likely: String?
+        if typing, let last = tokens.last, last.end == scalars.count, named(tokens.count - 1) {
+            likely = EverydayPhrases.likely(tokens.indices.filter(named).map { tokens[$0].word })
+        }
         var respelt = Respelt(text: "")
         var text: [Unicode.Scalar] = []
         var copied = 0
@@ -382,30 +402,47 @@ extension FoodCatalog {
             respelt.forms.insert(form)
         }
         // An everyday name the catalogs file under another: "hot dogs" also find frankfurters.
-        func everyday(_ typed: [String]) {
-            for name in everydayNames where typed.count >= name.said.count && typed.prefix(name.said.count).map(stem) == name.said {
+        // `read` is the words as they're taken, where the last is still being typed.
+        func everyday(_ typed: [String], read: [String]? = nil) {
+            let read = read ?? typed
+            for name in everydayNames where typed.count >= name.said.count && read.prefix(name.said.count).map(stem) == name.said {
                 for (at, catalog) in name.means { also(catalog, for: [typed[at]]) }
             }
         }
-        // Typed alone, "ranch" is the dressing and "spaghetti" is also USDA's pasta.
+        // Typed alone, "ranch" is the dressing and "spaghetti" is also USDA's pasta. A word still
+        // being typed is, from four letters.
         let only = tokens.indices.filter(named)
         if only.count == 1 {
             let alone = tokens[only[0]]
-            if let meant = aloneNames[stem(alone.word)] {
+            let word = likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
+            if let meant = aloneNames[stem(word)] {
                 write(meant, over: alone.start..<alone.end)
                 text += scalars[copied...]
                 respelt.text = makeString(text[...])
                 respelt.typed = query
                 return respelt
             }
-            if let filed = aloneFiled[stem(alone.word)] { also(filed, for: [alone.word]) }
+            if let filed = aloneFiled[stem(word)] { also(filed, for: [alone.word]) }
+        }
+        if let likely, let last = tokens.last {
+            // The catalogs' own wording for it: "ketchu" is on its way to catsup too.
+            if typedAlternatives.contains(likely) { for form in forms(likely) where form != stem(likely) { also(form, for: [last.word]) } }
+            // And the other way labels write it: "milkshak" to "milk shake", "soy mil" to soymilk.
+            if let (left, right, _) = halves(of: likely, whole: true) { also("\(left) \(stem(right))", for: [last.word]) }
+            let before = tokens.count - 2
+            if before >= 0, named(before), length(tokens[before].word) > 2, let compound = compound(tokens[before].word, likely),
+                compound.joined || compound.same
+            {
+                also(stem(tokens[before].word + likely), for: [tokens[before].word, last.word])
+            }
         }
         var i = 0
         while i < tokens.count {
             defer { i += 1 }
             guard named(i) else { continue }
             let word = tokens[i].word
-            everyday((i..<tokens.count).prefix(while: named).map { tokens[$0].word })
+            let run = (i..<tokens.count).prefix(while: named).map { tokens[$0].word }
+            everyday(run, read: likely != nil && i + run.count == tokens.count ? run.dropLast() + [likely ?? ""] : nil)
             if let (left, right, compound) = halves(of: word, whole: !typing || i < tokens.count - 1) {
                 if compound.joined {
                     also("\(left) \(stem(right))", for: [word])
@@ -550,6 +587,8 @@ extension FoodCatalog {
                 let span = words[start..<(start + size)]
                 // A letter on its own is a size or a variety ("k cup"), whatever brands start with it.
                 guard span.contains(where: { length($0) > 1 }) else { continue }
+                // Nor are two letters at the end a brand begun: the "do" of "hot do" isn't Doritos.
+                if size == 1, start + size == words.count, length(words[start]) < 3 { continue }
                 if let catalog, isBrand(span, catalog, fixes) { return start..<(start + size) }
                 if isChain(span, catalog, fixes, halfTyped: start + size == words.count) { return start..<(start + size) }
             }
@@ -617,9 +656,14 @@ extension FoodCatalog {
                         + jobs(catalogs.filter { $0.kind == .generic }, "{name}: \(brandTerms)\(anyWord)", .typed)
                 },
             ways.dropFirst().flatMap { way in jobs(catalogs, searched.map(way).joined(separator: " AND "), .typed) },
+            // The foods of the word the last is most likely on its way to: two letters match too
+            // much for the everyday food to be among the first found ("ch" for chicken).
+            EverydayPhrases.likely(searched).map { likely in
+                jobs(catalogs, (searched.dropLast().map(term) + [searchTerm(likely)]).joined(separator: " AND "), .typed, lead: stem(likely))
+            } ?? [],
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand
+        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5]
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").

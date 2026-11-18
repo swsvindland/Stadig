@@ -93,6 +93,30 @@ let firstResults: [(String, String)] = [
     ("pop tarts", "(?i)pop.?tarts"),
     ("burger", "(?i)burger"),
     ("pop", "(?i)^(Snacks, )?popcorn"),
+    // A word still being typed is read as the everyday food it's on its way to, by that food's
+    // usual kind, other names and other spellings.
+    ("ch", "^Chicken, (broilers or fryers|roasting), .*cooked, roasted"),
+    ("chees", "^Cheese, cheddar"),
+    ("mil", "^Milk, whole"),
+    ("brea", "^Bread, (white|wheat)"),
+    ("stea", "^Beef, .*steak"),
+    ("sal", "^Fish, salmon, .*cooked"),
+    ("ground bee", "^Beef, ground, .*cooked"),
+    ("ketchu", "^Catsup"),
+    ("hot do", "^Frankfurter"),
+    ("bell peppe", "^Peppers, sweet"),
+    ("spaghett", "^Pasta, cooked"),
+    ("ranc", "^Salad dressing, ranch dressing"),
+    ("soy mil", "^Soymilk"),
+    ("milkshak", "^Milk shakes?"),
+    // One letter after a food's first words says which, and a name typed as one word is read as two.
+    ("chicken b", "^Chicken, broilers or fryers, breast"),
+    ("peanut b", "^Peanut butter"),
+    ("hotd", "^Frankfurter"),
+    ("peanutb", "^Peanut butter"),
+    ("icecr", "^Ice creams"),
+    // Two letters at the end aren't a brand begun: not Doritos, nor McLaren Vale's eggs.
+    ("egg mc", "^McDONALD'S, Egg McMUFFIN"),
     // A food named by its leading parts, as USDA inverts them, before a blend or dish with the words.
     ("olive oil", "^Oil, olive, salad or cooking$"),
     ("peanut butter", "^Peanut butter, (smooth|chunk)"),

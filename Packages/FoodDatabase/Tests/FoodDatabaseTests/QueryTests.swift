@@ -107,6 +107,33 @@ struct QueryTests {
         #expect(!same("brand", "bran") && !same("cod", "co") && !same("loin", "lo"))
     }
 
+    @Test("a word still being typed is read as the everyday word it's on its way to")
+    func likelyWords() {
+        #expect(EverydayPhrases.likely(["chees"]) == "cheese")
+        #expect(EverydayPhrases.likely(["mil"]) == "milk")
+        // By the words before it, where a food has them: the "bee" of ground beef, not beets.
+        #expect(EverydayPhrases.likely(["ground", "bee"]) == "beef")
+        #expect(EverydayPhrases.likely(["kirkland", "chees"]) == "cheese")
+        // A word that's already a food's isn't on its way to a longer one.
+        for word in ["milk", "pepper", "eggs", "toast"] { #expect(EverydayPhrases.likely([word]) == nil, "\(word)") }
+        // One letter is enough after a food's or a brand's first words, and only there.
+        #expect(EverydayPhrases.completing(["chicken", "b"]) == "breast")
+        #expect(EverydayPhrases.completing(["trader", "j"]) == "joe's")
+        #expect(EverydayPhrases.completing(["vitamin", "d"]) == nil)
+        #expect(EverydayPhrases.completing(["b"]) == nil)
+    }
+
+    @Test("a name being typed as one word is read as its words")
+    func typedAsOne() {
+        #expect(EverydayPhrases.apart("hotd") == "hot d")
+        #expect(EverydayPhrases.apart("icecr") == "ice cr")
+        #expect(EverydayPhrases.apart("redb") == "red b")
+        // Not a word that is one already, could be one, or stops inside the first.
+        #expect(EverydayPhrases.apart("eggs") == nil)
+        #expect(EverydayPhrases.apart("blackb") == nil)
+        #expect(EverydayPhrases.apart("hot") == nil)
+    }
+
     @Test("typos count a swapped pair as one and read the start of a word")
     func typoDistance() {
         #expect(typos("protien", "protein", limit: 2) == 1)

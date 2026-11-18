@@ -276,13 +276,37 @@ struct CompoundTests {
         #expect(catalog.search("butter finger").prefix(3).contains { matches("(?i)butterfinger", $0.food.title) })
     }
 
+    @Test("a brand of one word typed alone lists its foods, the most scanned first")
+    func alone() {
+        for brand in ["chobani", "fage", "kind"] {
+            let found = catalog.search(brand, limit: 6)
+            #expect(found.count == 6 && found.allSatisfy { matches("(?i)\(brand)", $0.food.brand ?? $0.food.name) }, "\(brand)")
+            let scanned = found.map(\.food.popularity)
+            #expect(scanned == scanned.sorted(by: >) && (scanned.first ?? 0) >= 1.5, "\(brand): \(scanned)")
+        }
+        // Half typed too, where no plain food starts as typed, and typed as one word.
+        #expect(catalog.search("chob").first?.food.brand?.lowercased() == "chobani")
+        #expect(catalog.search("redb").first.map { matches("(?i)red ?bull", $0.food.brand ?? "") } == true)
+        // A chain's items as USDA analysed them come before what shops sell under its name.
+        #expect(catalog.top("wendys", 1).first.map { matches("^WENDY'S, ", $0) } == true)
+        // A plain food by the word comes first, whatever is listed under it as a brand, and a
+        // word corrected into one isn't a brand typed.
+        #expect(catalog.top("cod", 1).first.map { matches("^Fish, cod", $0) } == true)
+        #expect(catalog.top("yogrt", 1).first.map { matches("^Yogurt, ", $0) } == true)
+        #expect(catalog.top("her", 1).first.map { matches("^Fish, herring", $0) } == true)
+    }
+
     @Test("words still being typed, short halves and everyday pairs are searched as typed")
     func asTyped() {
         // "pea che" is on its way to pea cheese as much as to peaches, and "peache" is no word yet.
-        for query in ["pea ch", "pea che", "pop cor", "red bul", "chicken breast", "greek yogurt", "olive oil", "2% milk"] {
+        for query in ["pea ch", "pea che", "chicken breast", "greek yogurt", "olive oil", "2% milk"] {
             let found = catalog.searchCatalog(query, known: [:])
             #expect(found.text == plain(query) && found.also.isEmpty, "\(query): \(found.text) \(found.also)")
         }
+        // A last word on its way to an everyday food or a brand people scan is read as that one's
+        // names too: "pop cor" already finds popcorn, "red bul" Redbull.
+        #expect(catalog.searchCatalog("pop cor", known: [:]).also["cor"]?.contains("popcorn") == true)
+        #expect(catalog.searchCatalog("red bul", known: [:]).also["bul"]?.contains("redbull") == true)
         // A brand half typed after the food isn't divided: "popcor" is on its way to PopCorners.
         #expect(catalog.searchCatalog("sea salt popcor", known: [:]).text == "sea salt popcor")
         // A word no label has is the two words labels write, unless it's last and may be half typed.

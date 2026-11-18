@@ -320,6 +320,25 @@ struct StaplesTests {
         #expect(Double(three) >= 0.99 * Double(staples.count), "\(missed.joined(separator: " | "))")
     }
 
+    @Test("an everyday food is first before its name is typed out")
+    func letterByLetter() {
+        // Every third staple, typed a letter at a time: the share of its letters it takes to come first.
+        var shares: [Double] = []
+        var slow: [String] = []
+        for (query, pattern) in staples.enumerated().filter({ $0.offset % 3 == 0 }).map(\.element) {
+            let letters = Array(query)
+            let needed = (2...letters.count).first { count in
+                letters[count - 1] != " " && catalog.top(String(letters[..<count]), 1).first.map { matches(pattern, $0) } == true
+            }
+            shares.append(Double(needed ?? letters.count) / Double(letters.count))
+            if needed == nil || needed == letters.count { slow.append(query) }
+        }
+        let share = shares.reduce(0, +) / Double(shares.count)
+        print(String(format: "Staples typed a letter at a time: first after %.0f%% of their letters", 100 * share))
+        // Half the letters on this catalog; it was 63% while only whole words were read as foods.
+        #expect(share <= 0.56, "only once typed whole: \(slow.joined(separator: ", "))")
+    }
+
     @Test("an everyday name finds the food the catalogs file under another")
     func everydayNames() {
         // Typed apart or as one word, hot dogs are USDA's frankfurters and a bell pepper its sweet pepper.
