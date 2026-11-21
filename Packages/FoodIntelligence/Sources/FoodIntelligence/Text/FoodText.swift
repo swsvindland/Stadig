@@ -100,9 +100,11 @@ enum FoodText {
     }
 
     /// The words that name the food, without counts and sizes ("mini" names products: Mini-Wheats).
+    /// A bowl named last is a dish, as the catalog reads it: a poke bowl, a burrito bowl.
     static func nameWords(_ name: String) -> [String] {
         let list = words(name)
-        let food = list.filter { $0 == "mini" || !countWords.contains($0) }
+        let dish = list.count > 1 && (list.last == "bowl" || list.last == "bowls") ? list.count - 1 : -1
+        let food = list.indices.filter { $0 == dish || list[$0] == "mini" || !countWords.contains(list[$0]) }.map { list[$0] }
         return Array((food.isEmpty ? list : food).prefix(6))
     }
 

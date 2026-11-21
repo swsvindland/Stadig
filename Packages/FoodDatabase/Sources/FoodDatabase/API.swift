@@ -87,7 +87,9 @@ public final class FoodCatalog: Sendable {
         var listed = Set(results.map(\.food.id))
         for row in found.ranked where results.count < limit && listed.insert(row.food.id).inserted {
             results.append(
-                FoodMatch(food: row.food, score: row.score, personal: known[row.food.id] != nil, away: found.elsewhere.contains(row.food.id)))
+                FoodMatch(
+                    food: row.food, score: row.score, personal: known[row.food.id] != nil, away: found.elsewhere.contains(row.food.id),
+                    named: row.name >= 1))
         }
         return results
     }
@@ -98,6 +100,17 @@ public final class FoodCatalog: Sendable {
     /// best, so a misread brand is one tap from the plain food.
     public func candidates(name: String, brand: String?, personal: [PersonalFood] = [], limit: Int = 40) -> [FoodMatch] {
         matchCandidates(name: name, brand: brand ?? "", personal: personal, limit: limit)
+    }
+
+    /// The food a name with no brand is for, as `candidates` reads it: apart from what it says
+    /// comes with the food ("Whole wheat toast" for "Whole wheat toast with butter", "Cereal" for
+    /// "Cereal with milk") and from what it puts in brackets, with a word for the food's form
+    /// kept ("fresh Orange juice" for "Orange juice (fresh squeezed)"). Its last word names the
+    /// food, which the last word of the whole name needn't.
+    /// What people say for a food instead of its name is that name: "oj" is orange juice.
+    public static func food(in name: String) -> String {
+        let main = seenName(name).main
+        return shortNames[tokens(main).joined(separator: " ")] ?? main
     }
 
     /// A food by id: "usda:171287", "off:00016000275287", and the earlier "off:" forms that leave out

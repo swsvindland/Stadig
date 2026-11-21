@@ -47,11 +47,38 @@ enum Matching {
         food.isPlausible && covers(name, food) && Drinks.sameKind(name, food) && !qualifies(name, food)
     }
 
+    /// The same for a catalog's match, which names what was seen where the catalog read it so,
+    /// whatever the words alone say: a frankfurter for a hot dog, brewed coffee for black
+    /// coffee, toast for "toast with butter", cooked white rice for jasmine rice, scrambled eggs
+    /// for "scrambled eggs (2 large)".
+    static func fits(_ name: String, _ match: FoodMatch) -> Bool {
+        match.food.isPlausible && (match.named || covers(name, match.food)) && Drinks.sameKind(name, match.food) && !qualifies(name, match.food)
+    }
+
+    /// The first part of a catalog name, where it says what the food is: up to its first comma or
+    /// bracket ("Chickpeas" in "Chickpeas (garbanzo beans, bengal gram), mature seeds").
+    static func firstPart(_ name: String) -> String {
+        String(name.prefix { $0 != "," && $0 != "(" })
+    }
+
+    private static let kindEnd = Pattern(#"\s(?:or|in|with|on)\s.*$"#)
+    private static let readyTo = Pattern(#"\bready[- ]to[- ](?:eat|drink|serve|heat)\b"#)
+
+    /// The words of that part that say what kind of food it is, the last naming it: not what it
+    /// comes in or with or may also be ("Pulled pork in barbecue sauce" is pulled pork, a "Ham
+    /// sandwich or sub" a ham sandwich), nor how it's sold ("Cereals ready-to-eat" are cereals).
+    static func kind(of food: Food) -> [String] {
+        let part = readyTo.replacing(in: kindEnd.replacing(in: firstPart(food.name), with: ""), with: " ")
+        return FoodText.words(part).map(FoodText.stem)
+    }
+
+    /// Two words for one food in a catalog's name: "Jams and preserves" are jam.
+    private static let sameFood: [String: Set<String>] = ["jam": ["preserve"], "preserve": ["jam"]]
+
     /// The food's name starts with what was seen: "Blueberries, raw" for blueberries.
     static func filedUnder(_ name: String, _ food: Food) -> Bool {
         guard let head = FoodText.nameWords(name).last.map(FoodText.stem) else { return false }
-        return FoodText.words(String(food.name.split(separator: ",").first ?? "")).map(FoodText.stem)
-            .contains { FoodText.same($0, head) || FoodText.same(head, $0) }
+        return FoodText.words(firstPart(food.name)).map(FoodText.stem).contains { FoodText.same($0, head) || FoodText.same(head, $0) }
     }
 
     /// The food is something else, which what was seen only describes: "Salad dressing" for a caesar
@@ -59,11 +86,11 @@ enum Matching {
     /// last word of its name's first part; USDA files under a group first ("Fish, salmon"), which
     /// doesn't count against it.
     static func qualifies(_ name: String, _ food: Food) -> Bool {
-        let kind = FoodText.words(String(food.name.split(separator: ",").first ?? "")).map(FoodText.stem)
+        let kind = kind(of: food)
         let seen = FoodText.nameWords(name).map(FoodText.stem)
         guard let head = seen.last, let own = kind.last, kind.count > 1 else { return false }
         let named = { (word: String) in seen.contains { FoodText.same($0, word) || FoodText.same(word, $0) } }
-        return kind.dropLast().contains { FoodText.same($0, head) || FoodText.same(head, $0) } && !named(own)
+        return kind.dropLast().contains { FoodText.same($0, head) || FoodText.same(head, $0) } && !named(own) && sameFood[head]?.contains(own) != true
     }
 
     /// Cooking and cutting words a catalog name may leave out: grilled chicken is roasted chicken.
@@ -85,8 +112,11 @@ enum Matching {
     /// what was `seen`, a match that fits it comes first when one scores close enough, only fitting
     /// matches are near-ties, and an unfitting best match is never sure.
     static func rank(_ ranked: [FoodMatch], branded: Bool, generic extra: [FoodMatch] = [], seen: String? = nil) -> Candidates {
+        // A plain food is judged by the food its name is for, as the catalog matched it: the
+        // toast of "toast with butter", the cereal of "cereal with milk", which is no drink.
+        let seen = branded ? seen : seen.map(FoodCatalog.food(in:))
         var ranked = ranked.enumerated().sorted { ($0.element.score, -$0.offset) > ($1.element.score, -$1.offset) }.map(\.element)
-        let fit: (FoodMatch) -> Bool = { match in seen.map { fits($0, match.food) } ?? true }
+        let fit: (FoodMatch) -> Bool = { match in seen.map { fits($0, match) } ?? true }
         if let top = ranked.first, !fit(top), let i = ranked.firstIndex(where: { fit($0) && $0.score >= top.score - fitWindow }) {
             ranked.insert(ranked.remove(at: i), at: 0)
         }

@@ -21,6 +21,11 @@ struct RankHints {
     var doubted: Set<String> = []
     /// The corrections that are the same words written as one or apart ("redbull", "pop corn").
     var respelt: Set<String> = []
+    /// What a model said comes with the food or about it, apart from its name (see `seenName`):
+    /// "butter" for toast with butter, "buffalo" for chicken wings (buffalo). `beside` are the
+    /// ones that are other foods served with it.
+    var sides: [String] = []
+    var beside: [String] = []
 }
 
 /// A ranked food.
@@ -224,6 +229,7 @@ private let everydayVarieties: [String: Usual] = [
     "taco": Usual(["beef"], "shell shells salad seasoning sauce kit chip chips flavor".split(separator: " ").map(String.init)),
     "nacho": Usual(["fast"], "chip chips flavor tortilla sauce dip".split(separator: " ").map(String.init)),
     "cornbread": Usual(["recipe"], ["mix", "stuffing"]),
+    "lettuce": Usual(["iceberg"], "romaine cos butterhead bibb boston leaf salad wrap wraps".split(separator: " ").map(String.init)),
     // Goat cheese is the soft kind; goat's milk and meat are themselves.
     "goat": Usual(["soft"], ["milk", "meat", "roasted", "raw"]),
     // A kind of food typed alone is the one of its kind most logged: orange juice, olive oil,
@@ -279,6 +285,7 @@ private let usualPhrases: [(words: [String], usual: Usual)] = [
     ("tomato sauce", Usual(["canned"], ["chili", "pasta", "spaghetti", "marinara"])),
     ("tomato paste", Usual(["canned"], [])),
     ("condensed milk", Usual(["canned", "sweetened"], [])),
+    ("peanut butter", Usual(["smooth"], ["chunk", "chunky", "crunchy", "reduced", "powder", "powdered", "cup", "cups", "cookie", "cookies"])),
     // Ground meat sold as lean is 93% lean, and as extra lean 95% or more; every kind USDA
     // lists says how lean it is.
     ("extra lean", Usual(["95", "96", "97"], [])),
@@ -322,14 +329,34 @@ private let trimWords = ["skinless": "skin", "boneless": "bone"]
 /// "Nuts, almonds".
 private let rawWords = stems("raw fresh uncooked")
 
-/// Whether a word says how a food is cooked or cut, not what it is.
-func isEasable(_ word: String) -> Bool {
+/// How a model says a food on a plate is cut, which is no kind of the food. Typed, "diced
+/// tomatoes" and "sliced peaches" more often name what's sold in a can, so there they're
+/// words like any other.
+private let plateCuts = stems("sliced diced chopped shredded crumbled grated minced cubed halved quartered torn")
+
+/// Whether a word says how a food is cooked or cut, not what it is. `seen` for a food a model
+/// named, where more ways of cutting say nothing of the food.
+func isEasable(_ word: String, seen: Bool = false) -> Bool {
     let said = stem(word)
-    return heats[said] != nil || cutWords.contains(said) || trimWords[said] != nil || rawWords.contains(said)
+    return heats[said] != nil || cutWords.contains(said) || trimWords[said] != nil || rawWords.contains(said) || (seen && plateCuts.contains(said))
 }
 
 /// Whether a word says how a food is cooked.
 func isHeat(_ word: String) -> Bool { heats[stem(word)] != nil }
+
+/// Words for the form a food comes in, beyond how it's cooked or kept: how fat, sweet or salted,
+/// which colour, with its skin or bone.
+private let formsSaid = stems(
+    "plain whole skim unsweetened sweetened salted unsalted light lite diet free reduced instant skin skinless bone boneless red green white "
+        + "yellow brown black dark extra virgin ground lean")
+
+/// Whether a word a model put in brackets or after "with" says which form of the food it is,
+/// and so belongs to its name: "(canned)", "(nonfat)", "(93% lean)", "with skin".
+func isFormSaid(_ word: String) -> Bool {
+    let said = stem(word)
+    return isNumber(word) || heats[said] != nil || keptWords.contains(said) || cookedWords.contains(said) || rawWords.contains(said)
+        || fatWords.contains(said) || formsSaid.contains(said)
+}
 
 /// A word said that a food needn't have to be the food asked for, because no plain food with
 /// the other words has it: "steamed" where USDA's broccoli is only "cooked, boiled", "fillet"
@@ -343,6 +370,9 @@ struct Ease {
     var unless: String?
     /// The word says the food isn't cooked.
     var raw = false
+    /// A way a model says the food on the plate is cut: any food is spared it, one that says
+    /// it a little ahead.
+    var plate = false
     /// No food is spared the word: some plain food lists it, or none comes near it. Then it
     /// says which food is meant, and a food without it lacks it, though it's a word for how a
     /// food comes: fried rice isn't USDA's plain cooked rice, nor fresh mozzarella its block.
@@ -371,7 +401,7 @@ struct Ease {
     /// that than one that only says "cooked": USDA's own cooked entry says how, and one that
     /// doesn't is a variety's or a restaurant's.
     func nearness(_ text: FoodText) -> Double {
-        guard let heat else { return 0 }
+        guard let heat else { return plate ? -0.3 : 0 }
         let kinds = text.cooking.kinds
         return kinds.contains(heat) ? 0.3 : kinds.isEmpty ? 0 : 0.1
     }
@@ -793,6 +823,10 @@ struct Coverage {
     /// The word naming the food is only in what this food comes with: the "cheese" of a chicken
     /// sandwich "with cheese".
     var garnish: Bool
+    /// How many of the words said to come with the food or about it this food has.
+    var sides: Int
+    /// The food leads with what was said to come with the one named.
+    var served: Bool
     /// How near the food's way of cooking is to one said that it doesn't list (see `Ease`).
     var near: Double
     var others: Int
@@ -820,14 +854,21 @@ struct CoverageQuery {
     fileprivate let usual: Usual?
     /// For each word, how a food may do without it; nil for a word every food asked for has.
     fileprivate let ease: [Ease?]
+    /// What was said to come with the food or about it, stemmed: words a food has by being
+    /// asked for, and none it lacks.
+    fileprivate let sides: [String]
+    /// The ones of those that are other foods served with it.
+    fileprivate let beside: [String]
 
     init(
         seen: Named, target words: [String], prefix: Bool = false, fixes: Fixes = [:], nameOnly: Bool = false,
-        doubted: Set<String> = [], respelt: Set<String> = [], eases: [String: Ease] = [:]
+        doubted: Set<String> = [], respelt: Set<String> = [], eases: [String: Ease] = [:], sides: [String] = [], beside: [String] = []
     ) {
         self.prefix = prefix
         self.nameOnly = nameOnly
         ease = eases.isEmpty ? [] : words.map { eases[$0] }
+        self.sides = sides.map(stem)
+        self.beside = beside.map(stem)
         // A typed search's last word may only be begun.
         let likely = prefix ? EverydayPhrases.likely(words) : nil
         target = words.enumerated().map { i, word in
@@ -862,6 +903,7 @@ struct CoverageQuery {
         if prefix {
             for word in said where countWords.contains(word) && !words.contains(word) && !entire.contains(stem(word)) { entire.append(stem(word)) }
         }
+        for side in self.sides where !entire.contains(side) { entire.append(side) }
         self.mentioned = mentioned
         self.entire = entire
         level = words.contains(where: isNumber)
@@ -872,7 +914,10 @@ struct CoverageQuery {
         // A two-word food's, else the first word's that the others don't rule out: "beef stew" is
         // a stew, not ground beef.
         // Read through a word's one correction: "tomao paste" is tomato paste.
-        var read = said.map { word in fixes[word].flatMap { $0.count == 1 && !$0[0].contains(" ") ? $0[0] : nil } ?? stem(word) }
+        // Not through the same words written as one: "peanut butter" isn't read "peanutbutter".
+        var read = said.map { word in
+            fixes[word].flatMap { $0.count == 1 && !$0[0].contains(" ") && !respelt.contains($0[0]) ? $0[0] : nil } ?? stem(word)
+        }
         if let likely, !read.isEmpty { read[read.count - 1] = stem(likely) }
         let phrased = usualPhrases.first { phrase in
             read.indices.contains { $0 + phrase.words.count <= read.count && Array(read[$0..<($0 + phrase.words.count)]) == phrase.words }
@@ -956,9 +1001,13 @@ struct CoverageQuery {
         // "Soy sauce made from soy" leads with soy sauce too: how it's made says no other food.
         // So does "Cereals ready-to-eat" with cereal, and a group typed alone by its own name
         // leads every food in it: "nuts".
+        // A food that leads with what was said to come with the one named is that food, not
+        // the one named: the sauce of "pasta with marinara sauce", the dressing of a salad.
+        let served = !beside.isEmpty && text.lead.contains { word in beside.contains { same(word, $0) } }
         let leads =
-            (text.lead.contains(where: asked) && text.lead.allSatisfy { asked($0) || leadFillers.contains($0) })
-            || (target.count == 1 && (text.group.first.map(asked) ?? false))
+            !served
+            && ((text.lead.contains(where: asked) && text.lead.allSatisfy { asked($0) || leadFillers.contains($0) })
+                || (target.count == 1 && (text.group.first.map(asked) ?? false)))
         var spared: [Bool] = []
         var near = 0.0
         // The kinds of heat said that this food is spared the word for.
@@ -992,8 +1041,16 @@ struct CoverageQuery {
             let inBrand = has && i >= own && branded(word, text.titled)
             // A typed word naming the food that the name has only in what it "(includes …)" names
             // another food: a plain bagel that includes poppy seed ones isn't "pop".
+            // Nor does a word that only a note of what's in the food has, while another word
+            // said is in its name: "Vegetables, mixed (corn, lima beans, peas, green beans,
+            // carrots)" isn't mixed greens. A note that is the whole of what was said is another
+            // name for the food ("Chickpeas (garbanzo beans, bengal gram)"), and a word or two
+            // in brackets say more of the same food ("Whole Milk (Organic)").
+            let listed =
+                has && i == naming && text.noted.count > 2 && !self.has(word, text.said + text.own + text.included)
+                && target.indices.contains { j in j != i && self.has(target[j], text.said) && !self.has(target[j], text.noted) }
             let aside =
-                prefix && has && i == naming && !text.included.isEmpty && !self.has(word, text.said + text.noted + text.own)
+                listed || (prefix && has && i == naming && !text.included.isEmpty && !self.has(word, text.said + text.noted + text.own))
             if has {
                 hits += weight * (inBrand || aside ? 0.5 : 1)
             } else {
@@ -1017,7 +1074,7 @@ struct CoverageQuery {
         var filed: [String] = []
         // The ones of those in the same part of the name as the word naming the food, which
         // name it after another: the "potato" of "Potato salad with egg".
-        var beside: [String] = []
+        var alongside: [String] = []
         var forms: [String] = []
         // USDA's "mature seeds" are dried beans and lentils as usually cooked, not the seeds of a plant.
         let legume = text.said.contains("mature") || text.said.contains("immature")
@@ -1039,7 +1096,7 @@ struct CoverageQuery {
             }
             if let named, i < named {
                 filed.append(w)
-                if text.runs[i] == text.runs[named], !variationWords.contains(w) { beside.append(w) }
+                if text.runs[i] == text.runs[named], !variationWords.contains(w) { alongside.append(w) }
             }
         }
         let notes = text.noted.filter { w in !neutral.contains(w) && !asked(w) }.count
@@ -1065,7 +1122,7 @@ struct CoverageQuery {
             // A word describing the food comes only in a later part than the food's own, which
             // is named after something else: the "egg" of "Potato salad with egg".
             if let named, places.dropLast().contains(where: { found in !found.isEmpty && found.allSatisfy { text.runs[$0] > text.runs[named] } }) {
-                added = beside
+                added = alongside
             }
         } else if target.count > 1, missing == 0 {
             // One word of several is all this food needs, and it has it.
@@ -1088,9 +1145,15 @@ struct CoverageQuery {
             let both = text.heads[0] + text.heads[1]
             // Of two words or more, the one naming the food is the one USDA puts first: "Milk,
             // chocolate" is chocolate milk, not milk chocolate.
-            inverted =
-                !needed.allSatisfy { has($0, text.heads[0]) } && needed.allSatisfy { has($0, both) }
-                && both.allSatisfy(asked) && (needed.count == 1 || (needed.last.map { has($0, text.heads[0]) } ?? false))
+            // By all the words it has, or by the ones that say what the food is where another
+            // says only how it comes: "Carrots, baby" for baby carrots, and "Cheese, parmesan,
+            // grated" for grated parmesan cheese as "Cheese, parmesan, shredded" is.
+            let inverts = { (words: [WordForms]) in
+                !words.isEmpty && !words.allSatisfy { self.has($0, text.heads[0]) } && words.allSatisfy { self.has($0, both) }
+                    && (words.count == 1 || (words.last.map { self.has($0, text.heads[0]) } ?? false))
+            }
+            let what = ease.isEmpty ? needed : target.indices.filter { ease[$0] == nil }.map { target[$0] }
+            inverted = both.allSatisfy(asked) && (inverts(needed) || (what.count < needed.count && inverts(what)))
         }
         // By the name's own words, not a note of what else it includes: white bread "(includes
         // soft bread crumbs)" is still white bread.
@@ -1117,6 +1180,8 @@ struct CoverageQuery {
             together: together,
             added: added,
             garnish: garnish,
+            sides: sides.isEmpty || served ? 0 : sides.filter { side in found.contains { same($0, side) } }.count,
+            served: served,
             near: near,
             others: others,
             notes: notes,
@@ -1252,12 +1317,12 @@ func scoreFoods(
     // A word still being typed counts once it's most of one: "chick" for chicken.
     // Not a food named after one: potato chips aren't a potato to bake.
     // Unless how it's cooked was said: "toast", "roasted almonds", "baked beans".
-    let saidCooked = target.contains { cookedWords.contains(stem($0)) || stem($0) == "toast" }
+    let saidCooked = (target + hints.sides).contains { cookedWords.contains(stem($0)) || stem($0) == "toast" }
     // The word being typed counts as the food it's most likely on its way to: "ground bee" is beef.
     let likely = search ? EverydayPhrases.likely(target) : nil
     let namedAfter = (likely ?? target.last).map { formWords.contains(stem($0)) && !eatenCooked.contains(stem($0)) } ?? false
     let cooked =
-        !target.contains("raw") && !namedAfter
+        !target.contains("raw") && !hints.sides.contains("raw") && !namedAfter
         && (target + target.flatMap { alternatives[$0] ?? [] } + fixValues(fixes, order: target) + (likely.map { [$0] } ?? [])).contains { word in
             let s = stem(word)
             return eatenCooked.contains(s) || (search && length(s) >= 4 && eatenCooked.contains { starts($0, s) })
@@ -1275,8 +1340,8 @@ func scoreFoods(
     // whose product is named as its label names it.
     var eases: [String: Ease] = [:]
     if !asked, seen.brand.isEmpty, target.count > 1 {
-        let easable = target.filter(isEasable)
-        let rest = target.filter { !isEasable($0) }
+        let easable = target.filter { isEasable($0, seen: !search) }
+        let rest = target.filter { !isEasable($0, seen: !search) }
         if !easable.isEmpty, !rest.isEmpty {
             // The other words are whole unless the last of them is the last typed: the "pot" of
             // "pot roast" isn't a potato begun.
@@ -1297,19 +1362,28 @@ func scoreFoods(
             let under = having.count >= 5 ? Set(before.filter { 2 * $0.value >= having.count }.keys) : []
             let plain = having.map { food in
                 (
-                    text: food.text, varied: food.match.variations > 0,
+                    text: food.text, forms: food.match.forms,
                     leads: food.match.leads || (!food.match.filed.isEmpty && food.match.filed.allSatisfy(under.contains))
                 )
             }
             for word in easable {
                 let said = stem(word)
-                let ease = Ease(said)
+                var ease = Ease(said)
+                // How a model saw the food cut says nothing of which food it is.
+                if !search, plateCuts.contains(said) {
+                    ease.plate = true
+                    eases[word] = ease
+                    continue
+                }
                 // A plain food that lists it is the food meant, unless only a less common form
                 // does: apple slices aren't USDA's "Apples, canned, sweetened, sliced", nor
                 // roasted potatoes its "Potatoes, roasted, …, frozen, unprepared". Nor one filed
                 // under more than was said, where a food filed under it will do: baked chicken
                 // isn't a "Chicken wing, baked or broiled, from fast food".
-                let listing = plain.filter { food in !food.varied && food.text.all.contains { same($0, said) || same(said, $0) } }
+                // The word itself isn't what makes a form less common: "Carrots, baby" lists baby carrots.
+                let listing = plain.filter { food in
+                    food.forms.allSatisfy { same($0, said) || same(said, $0) } && food.text.all.contains { same($0, said) || same(said, $0) }
+                }
                 let fits = plain.contains { $0.leads && ease.fits($0.text) }
                 // Where no food is spared the word, it says which food is meant.
                 eases[word] = fits && !listing.contains(where: \.leads) ? ease : Ease(said, listed: true)
@@ -1318,14 +1392,15 @@ func scoreFoods(
     }
     let query = CoverageQuery(
         seen: seen, target: named.isEmpty ? target : named, prefix: search, fixes: fixes,
-        nameOnly: asked && !named.isEmpty, respelt: hints.respelt, eases: eases)
+        nameOnly: asked && !named.isEmpty, respelt: hints.respelt, eases: eases, sides: hints.sides, beside: hints.beside)
     // The same, also reading a word the catalogs barely know as a food's own word misspelt.
     let lenient =
         hints.doubted.isEmpty
         ? nil
         : CoverageQuery(
             seen: seen, target: named.isEmpty ? target : named, prefix: search, fixes: fixes,
-            nameOnly: asked && !named.isEmpty, doubted: hints.doubted, respelt: hints.respelt, eases: eases)
+            nameOnly: asked && !named.isEmpty, doubted: hints.doubted, respelt: hints.respelt, eases: eases, sides: hints.sides,
+            beside: hints.beside)
     // Each brand word's forms, a form being words in a row: "papajohns" is corrected to "papa john".
     let brandForms = brand.map { word in
         isNumber(word) ? [[word]] : (searchForms(word) + (fixes[word] ?? [])).map { $0.split(separator: " ").map(String.init) }
@@ -1633,12 +1708,19 @@ func scoreFoods(
             - (likely == nil ? 0.5 : 0.75) * Double(match.partial) - 0.4 * Double(match.fixed) - 0.8 * match.variations
             // A note in brackets says more about the same food, however long it is.
             - 0.25 * Double(match.others) - min(0.1, 0.05 * Double(match.notes)) + filedUnder + match.near
+            // Of two foods that are the food named, the one that has what a model said of it
+            // or beside it: the buffalo wings, the mashed potatoes with gravy. No more than
+            // that: at 0.75 a word, spaghetti with tomato sauce was a restaurant's whole grain
+            // pasta with tomato-based sauce.
+            + (match.missing == 0 ? 0.5 * Double(match.sides) : 0) - (match.served ? 1.5 : 0)
             // A food found by another name ranks a little below one its own name matches as well.
             - (row.other == nil ? 0 : 0.5)
             // A food named after the one asked for: cake pretzels and cake fries for "cake". Not a
             // brand's own food by those words when it makes nothing like the food: Papa John's
             // pepperoni is its pepperoni pizza.
-            - (match.modifies && !theirs ? 1 : 0)
+            // A little more for a plain food, so a label named exactly as said comes before it:
+            // mixed berries before USDA's "Snack, Mixed Berry Bar".
+            - (match.modifies && !theirs ? (row.text.branded ? 1 : 1.05) : 0)
         // A plain food named after another food's word, with a word said only added to it, is
         // that other food with some of this in it: "Potato salad with egg" isn't an egg salad.
         // Not where the word before is only what the food is filed under.

@@ -7,7 +7,9 @@ enum Drinks {
     private static let words: Set<String> = Set(
         ("water coffee espresso latte cappuccino americano macchiato cortado mocha "
             + "frappuccino tea chai matcha juice lemonade limeade soda cola coke pepsi sprite fanta beer lager ale wine cider cocktail "
-            + "smoothie shake milkshake kombucha beverage beverages drink drinks milk gatorade powerade redbull").split(separator: " ")
+            + "smoothie shake milkshake kombucha beverage beverages drink drinks milk gatorade powerade redbull "
+            + "whiskey whisky vodka rum gin tequila bourbon scotch brandy sake champagne soymilk oatmilk almondmilk eggnog kefir")
+            .split(separator: " ")
             .map { FoodText.stem(String($0)) })
     private static let phrases = Pattern(#"\b(?:flat white|hot chocolate|iced tea|soft drink|energy drink|red bull|sports drink)\b"#)
 
@@ -30,7 +32,8 @@ enum Drinks {
     static func sameKind(_ name: String, _ food: Food) -> Bool {
         let drink = isDrink(name)
         guard drink == isDrink(food) else { return false }
-        return !drink || food.basis != .g || food.nutrients.kcal <= 200
+        // Spirits are over that as poured: USDA's vodka is 231 kcal per 100 g.
+        return !drink || food.basis != .g || food.nutrients.kcal <= 200 || FoodText.words(Matching.firstPart(food.name)).contains("alcoholic")
     }
 }
 

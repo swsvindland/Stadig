@@ -95,6 +95,40 @@ struct MatchingTests {
         #expect(Matching.fits("peanut butter", food("Peanut butter, smooth style")))
     }
 
+    @Test func theCatalogsReadingOfANameCounts() {
+        // The catalog matched "toast with butter" to toast and says the match names the food; the
+        // words alone would want butter in it.
+        let toast = food("Bread, whole-wheat, commercially prepared, toasted")
+        #expect(!Matching.covers("Whole wheat toast with butter", toast))
+        let read = FoodMatch(food: toast, score: 3.35, personal: false, named: true)
+        #expect(Matching.rank([read], branded: false, seen: "Whole wheat toast with butter").sure)
+        // By another name the catalog files the food under, which only it knows.
+        let frankfurter = food("Frankfurter, beef")
+        #expect(Matching.rank([FoodMatch(food: frankfurter, score: 3.75, personal: false, named: true)], branded: false, seen: "hot dog").sure)
+        #expect(!Matching.rank([match(frankfurter, 3.75)], branded: false, seen: "hot dog").sure)
+        // It is still judged as the kind of thing the food is, not what comes with it: cereal with
+        // milk is no drink, and rice isn't a match for a latte whatever a catalog says.
+        #expect(Matching.rank([match(food("Cereals ready-to-eat, granola"), 3.8)], branded: false, seen: "Cereal with milk").sure)
+        let rice = FoodMatch(food: food("Rice, white, cooked"), score: 3, personal: false, named: true)
+        #expect(!Matching.rank([rice], branded: false, seen: "Latte (whole milk)").sure)
+        // A brand's product keeps its whole name.
+        #expect(!Matching.rank([match(toast, 3.35)], branded: true, seen: "Toast with butter").sure)
+        // What kind of food a catalog's name says it is: not a note in brackets, what it comes in
+        // or may also be, or how it's sold.
+        #expect(Matching.fits("chickpeas", food("Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt")))
+        #expect(Matching.fits("pulled pork", food("Pulled pork in barbecue sauce")))
+        #expect(Matching.fits("ham sandwich", food("Ham sandwich or sub, restaurant")))
+        #expect(Matching.fits("cereal", food("Cereals ready-to-eat, granola")))
+        #expect(Matching.fits("jam", food("Jams and preserves")))
+        #expect(!Matching.fits("beans", food("Beans and rice, from fast food / restaurant")))
+        // Spirits are drinks, and over 200 kcal per 100 g as poured.
+        #expect(Matching.fits("vodka", food("Alcoholic beverage, distilled, vodka, 80 proof", kcal: 231)))
+        #expect(Drinks.isDrink(food("Soymilk, original and vanilla, unfortified")))
+        // A bowl named last is a dish, as the catalog reads it.
+        #expect(FoodText.nameWords("Poke bowl") == ["poke", "bowl"])
+        #expect(FoodText.nameWords("Bowl of rice") == ["rice"])
+    }
+
     @Test func aDishContainingTheFoodIsNoNearTie() {
         let raw = food("Blueberries, raw", kcal: 57)
         let wild = food("Blueberries, wild, raw", kcal: 57)

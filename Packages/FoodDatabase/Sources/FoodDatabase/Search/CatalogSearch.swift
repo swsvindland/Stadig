@@ -423,12 +423,14 @@ extension FoodCatalog {
         func everyday(_ typed: [String], read: [String]? = nil) {
             let read = read ?? typed
             for name in everydayNames where typed.count >= name.said.count && read.prefix(name.said.count).map(stem) == name.said {
+                if writtenNames.contains(name.said[0]), typed.prefix(name.said.count).map(stem) != name.said { continue }
                 for (at, catalog) in name.means { also(catalog, for: [typed[at]]) }
             }
         }
         // Typed alone, "ranch" is the dressing and "spaghetti" is also USDA's pasta. A word still
         // being typed is, from four letters.
-        let only = tokens.indices.filter(named)
+        // For a food a model named, apart from how much of it: a "side salad" is a salad.
+        let only = tokens.indices.filter { named($0) && (typing || !countWords.contains(tokens[$0].word)) }
         if only.count == 1 {
             let alone = tokens[only[0]]
             let word = meant[alone.word] ?? likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
@@ -735,7 +737,7 @@ extension FoodCatalog {
             // The plain foods without a word for how they're cooked or cut, which the ranking
             // may read as the food asked for (see `Ease`): cooked salmon for "baked salmon",
             // salmon for "salmon fillet". The words together only find the labels that say so.
-            span == nil ? easedJobs(searched, term, lead) : [],
+            span == nil ? ways.flatMap { easedJobs(searched, $0, lead) } : [],
             // And the usual kind of what was typed, which the first rows found needn't hold:
             // orange juice among every food with "juice" in its name.
             span == nil ? everydayQueries(Named(name: query, brand: "")).flatMap { jobs(catalogs.filter { $0.kind == .generic }, $0, .typed) } : [],
@@ -809,8 +811,12 @@ extension FoodCatalog {
     /// Candidates for a seen food: the person's own that match it, then catalog searches from most
     /// to least specific until 40 are found, ranked with the typed search's scorer.
     func matchCandidates(name said: String, brand: String, personal: [PersonalFood], limit: Int) -> [FoodMatch] {
-        // A brand's own product keeps its name; a plain dish is looked up in the catalog's words.
-        let dish = brand.isEmpty ? catalogDish(said) : said
+        // What a model says comes with a food or about it ("toast with butter", "yogurt
+        // (nonfat)") is kept apart from its name: the food is found by its own words. A brand's
+        // product keeps its whole name.
+        let (food, sides, beside) = brand.isEmpty ? seenName(said) : (said, [], [])
+        // A plain dish is looked up in the catalog's words.
+        let dish = brand.isEmpty ? catalogDish(food) : said
         // Its names are read as a typed search's are: written the way most labels write them
         // ("hotdog" is "hot dog", "soy milk" is "soymilk"), and also by the catalogs' own name for
         // them, so a hot dog is USDA's frankfurter and a bell pepper its sweet pepper.
@@ -867,19 +873,32 @@ extension FoodCatalog {
         for query in everydayQueries(seen, pool: pool) { _ = search(query) }
         // And the food without the words for how it's cooked or cut: salmon for a grilled
         // salmon fillet, which the ranking may read as USDA's cooked salmon (see `Ease`).
+        // Both the foods a search for those words alone would find, which show what the food is
+        // filed under, and its cooked ones.
         if brand.isEmpty {
             let said = nameWords(name)
-            let rest = said.filter { !isEasable($0) }
+            let rest = said.filter { !isEasable($0, seen: true) }
             if rest.count < said.count, !rest.isEmpty {
-                _ = search(rest.map(term).joined(separator: " AND ") + (said.contains(where: isHeat) ? " AND \(heatedTerm)" : ""))
+                // By its other name too: a seared tuna steak is USDA's fresh tuna.
+                let wording = { (word: String) in read.also[word].map { searchTerm(word, [word: $0], only: true) } ?? term(word) }
+                for way in read.also.isEmpty ? [term] : [term, wording] {
+                    let food = rest.map(way).joined(separator: " AND ")
+                    _ = search(food)
+                    if said.contains(where: isHeat) { _ = search("\(food) AND \(heatedTerm)") }
+                }
             }
+            // And the food with what was said to come with it, where one entry is both:
+            // "Potato, mashed, from restaurant, with gravy".
+            if !sides.isEmpty { _ = search((said + sides).map(term).joined(separator: " AND ")) }
         }
         // A misread brand should cost one tap, so the plain food stays among the options. What it
         // usually is also tells the brand's own name for it from the brand's other foods: Trader
         // Joe's Mini-Wheats are its "Shredded Bite Size Wheats", not its wheat bread.
         let plain = brand.isEmpty ? nil : catalogQueries(Named(name: name, brand: "")).first
         let kind = plain.flatMap { profile(for: nameWords(name), search($0), fixes: read.also, respelt: read.forms) }
-        var ranked = scoreFoods(seen, pool, known: known, hints: RankHints(fixes: read.also, away: away, profile: kind, respelt: read.forms))
+        var ranked = scoreFoods(
+            seen, pool, known: known, hints: RankHints(fixes: read.also, away: away, profile: kind, respelt: read.forms, sides: sides, beside: beside)
+        )
         // Where the reading added words to the name, the person's own foods are ranked by it as
         // it was said: their Ranch Dip has "ranch", not "salad dressing".
         if own != name {
@@ -897,6 +916,6 @@ extension FoodCatalog {
         let generic = brand.isEmpty ? [] : ranked.dropFirst(head.count).filter { !FoodText($0.food).branded }.prefix(2)
         let first = Set((head + generic).map(\.index))
         let ordered = Array(head) + Array(generic) + ranked.filter { !first.contains($0.index) }
-        return ordered.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil) }
+        return ordered.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil, named: $0.name >= 1) }
     }
 }

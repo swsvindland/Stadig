@@ -420,6 +420,110 @@ let forms: [(String, String)] = [
     ("mission figs", "(?i)fig"),
 ]
 
+/// Foods as a vision model names what's on a plate: with an amount in brackets, what the food
+/// comes with, how it was cooked and cut. Each with the plain food the meal AI's matching
+/// should offer first.
+let plates: [(String, String)] = [
+    ("Grilled chicken breast (skinless)", "^Chicken, .*breast.*grilled"),
+    ("Grilled chicken breast, sliced", "^Chicken, .*breast.*grilled"),
+    ("White rice, cooked", "^Rice, white, .*cooked"),
+    ("Brown rice (cooked)", "^Rice, brown, .*cooked"),
+    ("Jasmine rice", "^Rice, white, .*cooked"),
+    ("Basmati rice", "^Rice, white, .*cooked"),
+    ("Mixed greens with vinaigrette", "(?i)^mixed greens"),
+    ("Side salad with ranch dressing", "^Lettuce, salad"),
+    ("Scrambled eggs (2 large)", "^Egg, whole, cooked, scrambled"),
+    ("Fried egg, sunny side up", "^Egg, whole, cooked, fried"),
+    ("Hard-boiled egg", "^Egg, whole, cooked, hard-boiled"),
+    ("Whole wheat toast with butter", "^Bread, whole-wheat, .*toasted"),
+    ("Buttered toast", "^Bread, .*toasted"),
+    ("Sourdough toast", "^Bread, .*toasted.*sourdough"),
+    ("Toast with jam", "^Bread, .*toasted"),
+    ("Black coffee", "^Beverages, coffee, brewed"),
+    ("Coffee with milk", "^Beverages, coffee, brewed"),
+    ("Iced coffee with cream", "^Beverages, coffee, brewed"),
+    ("Orange juice (fresh squeezed)", "^Orange juice"),
+    ("Glass of whole milk", "^Milk, whole"),
+    ("French fries (medium serving)", "^Potato(es)?, french fri"),
+    ("Cheeseburger with lettuce and tomato", "(?i)^cheeseburger"),
+    ("Hamburger patty", "^Beef, ground, .*patty, cooked"),
+    ("Beef burger patty (grilled)", "^Beef, ground, .*patty, cooked"),
+    ("Pasta with marinara sauce", "^Pasta, cooked"),
+    ("Spaghetti with tomato sauce", "^(Pasta, cooked|Spaghetti)"),
+    ("Penne pasta", "^Pasta, cooked"),
+    ("Roasted vegetables (broccoli, carrots)", "^Vegetables, mixed, .*cooked"),
+    ("Roasted broccoli florets", "^Broccoli, cooked"),
+    ("Steamed green beans", "^Beans, snap, green, (cooked|microwaved)"),
+    ("Sauteed spinach with garlic", "^Spinach, cooked"),
+    ("Avocado slices", "^Avocados, raw"),
+    ("Half an avocado", "^Avocados, raw"),
+    ("Cherry tomatoes", "^Tomatoes, red, ripe, raw"),
+    ("Sliced cucumber", "^Cucumber, .*raw"),
+    ("Sliced tomato", "^Tomatoes, red, ripe, raw"),
+    ("Diced onion", "^Onions, raw"),
+    ("Shredded lettuce", "^Lettuce, .*raw"),
+    ("Shredded cheddar cheese", "^Cheese, cheddar"),
+    ("Grated parmesan cheese", "^Cheese, parmesan"),
+    ("Crumbled feta cheese", "^Cheese, feta"),
+    ("Greek yogurt with berries", "^Yogurt, Greek, plain"),
+    ("Plain Greek yogurt (nonfat)", "^Yogurt, Greek, plain, nonfat"),
+    ("Almonds (raw)", "^Nuts, almonds$"),
+    ("Tortilla chips with salsa", "^(Snacks, t|T)ortilla chips"),
+    ("Black beans (canned)", "^Beans, black.*canned"),
+    ("Chicken thigh, roasted, with skin", "^Chicken, .*thigh, meat and skin, cooked, roasted"),
+    ("Chicken wings (buffalo)", "^Chicken, .*wing.*cooked"),
+    ("Ground beef, cooked", "^Beef, ground, .*cooked"),
+    ("Ground turkey (93% lean)", "^Turkey, ground, 93% lean"),
+    ("Pan-seared salmon fillet", "^Fish, salmon, .*cooked, dry heat"),
+    ("Salmon, baked", "^Fish, salmon, .*cooked, dry heat"),
+    ("Tuna steak, seared", "^Fish, tuna, .*fresh.*cooked"),
+    ("Shrimp, grilled", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)"),
+    ("Bacon strips (2)", "^Pork, cured, bacon, .*cooked"),
+    ("Sausage patty", "^Pork sausage, .*cooked"),
+    ("Pork chop, grilled", "^Pork, fresh, .*chops.*cooked"),
+    ("Sirloin steak, grilled", "^Beef, .*sirloin.*cooked"),
+    ("Baked potato with sour cream", "^Potatoes, baked"),
+    ("Mashed potatoes with gravy", "^Potato(es)?, mashed.*gravy"),
+    ("Roasted potatoes", "^Potatoes, (baked|roasted)"),
+    ("Corn on the cob", "^Corn, sweet, .*cooked"),
+    ("Steamed broccoli", "^Broccoli, cooked"),
+    ("Asparagus spears, grilled", "^Asparagus, cooked"),
+    ("Brussels sprouts, roasted", "^Brussels sprouts, cooked"),
+    ("Baby carrots", "^Carrots, baby"),
+    ("Red bell pepper", "^Peppers, sweet, red, raw"),
+    ("Mushrooms, sauteed", "^Mushrooms, white, (stir-fried|cooked)"),
+    ("Zucchini, grilled", "^Squash, summer, zucchini, .*cooked"),
+    ("Butternut squash, roasted", "^Squash, winter, butternut, cooked"),
+    ("Sweet potato, baked", "^Sweet potato, cooked, baked"),
+    ("Apple slices", "^Apples, raw"),
+    ("Banana (medium)", "^Bananas, raw"),
+    ("Blueberries (fresh)", "^Blueberries, raw"),
+    ("Strawberries, sliced", "^Strawberries, raw"),
+    ("Grapes (red)", "^Grapes, red"),
+    ("Orange segments", "^Oranges, raw"),
+    ("Watermelon cubes", "^Watermelon, raw"),
+    ("Pineapple chunks", "^Pineapple, raw"),
+    ("Mango slices", "^Mangos, raw"),
+    ("Peanut butter (2 tbsp)", "^Peanut butter, smooth"),
+    ("Honey drizzle", "^Honey$"),
+    ("Olive oil drizzle", "^Oil, olive"),
+    ("Butter pat", "^Butter, salted"),
+    ("Bagel with cream cheese", "^Bagels, plain"),
+    ("Pancakes with syrup", "^Pancakes, plain"),
+    ("French toast with syrup", "^French toast"),
+    ("Oatmeal with banana", "^Cereals, oats, .*cooked"),
+    ("Oatmeal (cooked)", "^Cereals, oats, .*cooked"),
+    ("Cereal with milk", "^Cereals ready-to-eat"),
+    ("Vanilla ice cream scoop", "^Ice creams, vanilla"),
+    ("Slice of cheese pizza", "^Pizza, cheese"),
+    ("Slice of pepperoni pizza", "^Pizza.*pepperoni"),
+    ("Turkey sandwich on wheat bread", "^Turkey sandwich"),
+    ("Hummus with pita", "^Hummus"),
+    ("White bread slice", "^Bread, white"),
+    ("Quinoa (cooked)", "^Quinoa, cooked"),
+    ("Tofu, fried", "^Tofu, fried"),
+]
+
 /// These rank foods made here, so they run without either catalog.
 @Suite("Everyday forms")
 struct EverydayFormTests {
@@ -656,6 +760,60 @@ struct EverydayFormTests {
         #expect(nameWords("Bowl of rice") == ["rice"])
     }
 
+    @Test("a model's name is read apart from its amount and what the food comes with")
+    func seenNames() {
+        #expect(seenName("Whole wheat toast with butter") == ("Whole wheat toast", ["butter"], ["butter"]))
+        #expect(seenName("Turkey sandwich on wheat bread").main == "Turkey sandwich")
+        // What's in brackets is said about the food; only another food is served beside it.
+        #expect(seenName("Chicken wings (buffalo)") == ("Chicken wings", ["buffalo"], []))
+        // A word for the form the food comes in is part of its name, before it.
+        #expect(seenName("Plain Greek yogurt (nonfat)") == ("nonfat Plain Greek yogurt", [], []))
+        #expect(seenName("Chicken thigh, roasted, with skin") == ("skin Chicken thigh, roasted", [], []))
+        #expect(seenName("Ground turkey (93% lean)").main == "93 lean Ground turkey")
+        // An amount is neither.
+        #expect(seenName("Scrambled eggs (2 large)") == ("Scrambled eggs", [], []))
+        // "On" and "in" after one short word name a dish.
+        #expect(seenName("Corn on the cob").main == "Corn on the cob")
+        #expect(seenName("Pigs in a blanket").main == "Pigs in a blanket")
+        #expect(nameWords("Scrambled eggs (2 large)") == ["scrambled", "eggs"])
+        #expect(nameWords("Glass of whole milk") == ["whole", "milk"])
+        #expect(nameWords("Pan-seared salmon fillet") == ["seared", "salmon", "fillet"])
+        #expect(nameWords("Buttered toast") == ["toast"])
+        #expect(nameWords("Watermelon cubes") == ["watermelon"])
+        #expect(catalogDish("Fried egg, sunny side up") == "fried egg")
+        // The food a name is for, as a caller can ask it.
+        #expect(FoodCatalog.food(in: "Whole wheat toast with butter") == "Whole wheat toast")
+        #expect(FoodCatalog.food(in: "Cereal with milk") == "Cereal")
+        #expect(FoodCatalog.food(in: "oj") == "orange juice")
+    }
+
+    @Test("what comes with a food tells two foods apart, and is never the food")
+    func sides() {
+        let seen = { (name: String, foods: [String], sides: [String], beside: [String]) in
+            scoreFoods(Named(name: name, brand: ""), foods.map { OwnWordsTests.food($0) }, hints: RankHints(sides: sides, beside: beside)).first?.food
+                .name ?? ""
+        }
+        // The food with what was said beside it, where one entry is both.
+        let mashed = ["Potatoes, mashed, ready-to-eat", "Potato, mashed, from restaurant, with gravy"]
+        #expect(seen("Mashed potatoes", mashed, ["gravy"], ["gravy"]) == "Potato, mashed, from restaurant, with gravy")
+        #expect(seen("Mashed potatoes", mashed, [], []) == "Potatoes, mashed, ready-to-eat")
+        // Not the thing beside it: pasta with marinara sauce is pasta.
+        let pasta = ["Sauce, pasta, spaghetti/marinara, ready-to-serve", "Pasta, cooked, enriched, without added salt"]
+        #expect(seen("Pasta", pasta, ["marinara", "sauce"], ["marinara", "sauce"]) == "Pasta, cooked, enriched, without added salt")
+        // How a model saw the food cut is no kind of it; a food that says it is a little ahead.
+        #expect(first(seen: "Strawberries, sliced", ["Strawberries, frozen, sweetened, sliced", "Strawberries, raw"]) == "Strawberries, raw")
+        #expect(first(seen: "Grated parmesan cheese", ["Cheese, parmesan, shredded", "Cheese, parmesan, grated"]) == "Cheese, parmesan, grated")
+        // A word only a note of what's in the food has doesn't name it; a note that is the
+        // whole of what was said is another name for it.
+        let greens = [
+            OwnWordsTests.food("Vegetables, mixed (corn, lima beans, peas, green beans, carrots) canned, no salt added"),
+            OwnWordsTests.food("Mixed Greens", brand: "Simply Nature"),
+        ]
+        #expect(scoreFoods(Named(name: "Mixed greens", brand: ""), greens).first?.food.brand == "Simply Nature")
+        let chickpeas = [OwnWordsTests.food("Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt")]
+        #expect(scoreFoods(Named(name: "Garbanzo beans", brand: ""), chickpeas).first?.name == 1)
+    }
+
     @Test("a kind of food typed alone is the one of its kind most logged")
     func kinds() {
         #expect(first("juice", ["Lemon juice, raw", "Orange juice, raw"]) == "Orange juice, raw")
@@ -817,6 +975,23 @@ struct StaplesTests {
             print("Cooked and cut foods \(seen ? "as a model names them" : "typed"): \(first) of \(forms.count) first")
             #expect(Double(first) >= 0.95 * Double(forms.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
         }
+    }
+
+    @Test("a food as a vision model names it is matched to the plain food")
+    func plateBasket() {
+        var first = 0
+        var missed: [String] = []
+        for (name, pattern) in plates {
+            let names = catalog.candidates(name: name, brand: nil).prefix(3).map(\.food.name)
+            if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(name): \(names.first ?? "nothing")") }
+        }
+        print("Foods as a model names them: \(first) of \(plates.count) first")
+        #expect(Double(first) >= 0.95 * Double(plates.count), "\(missed.joined(separator: " | "))")
+        // A match says when it names the food as the catalog read it, which the words of the two
+        // names alone don't show: a frankfurter for a hot dog, toast for toast with butter.
+        #expect(catalog.candidates(name: "hot dog", brand: nil).first?.named == true)
+        #expect(catalog.candidates(name: "Whole wheat toast with butter", brand: nil).first?.named == true)
+        #expect(catalog.candidates(name: "lobster roll", brand: nil).first?.named == false)
     }
 
     @Test("a word that starts a brand's name isn't the brand where the words together name a food")

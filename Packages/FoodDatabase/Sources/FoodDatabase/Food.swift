@@ -137,14 +137,20 @@ public struct FoodMatch: Hashable, Sendable, Identifiable {
     /// A packaged food not known to be sold in the phone's country: found, but no suggestion of
     /// what a search is heading for is read from it.
     public var away: Bool
+    /// The food has every word that names what was asked for, as the catalog read it: by another
+    /// name the catalog files it under ("Frankfurter" for a hot dog), without the amount or what
+    /// it comes with ("toast with butter" is toast), and whatever way it's cooked or cut where
+    /// that's left unsaid. Wider than comparing the words of the two names.
+    public var named: Bool
 
     public var id: String { food.id }
 
-    public init(food: Food, score: Double, personal: Bool, away: Bool = false) {
+    public init(food: Food, score: Double, personal: Bool, away: Bool = false, named: Bool = false) {
         self.food = food
         self.score = score
         self.personal = personal
         self.away = away
+        self.named = named
     }
 }
 

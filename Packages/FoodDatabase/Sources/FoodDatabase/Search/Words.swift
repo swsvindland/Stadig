@@ -42,6 +42,20 @@ let dishNames: [(said: [String], catalog: [String])] = [
     (["bolognaise", "sauce"], ["meat", "sauce"]),
     (["bolognese"], ["meat", "sauce"]),
     (["bolognaise"], ["meat", "sauce"]),
+    // How an egg is fried, and a soft-boiled one, which USDA lists hard-boiled.
+    (["sunny", "side", "up"], ["fried"]),
+    (["over", "easy"], ["fried"]),
+    (["over", "medium"], ["fried"]),
+    (["over", "hard"], ["fried"]),
+    (["soft", "boiled"], ["hard", "boiled"]),
+    // Corn on the cob is its cooked sweet corn.
+    (["corn", "cob"], ["sweet", "corn", "cooked"]),
+    // Toast of a kind of bread is that bread, toasted, which is how USDA lists it.
+    (["sourdough", "toast"], ["sourdough", "bread", "toasted"]),
+    (["rye", "toast"], ["rye", "bread", "toasted"]),
+    (["multigrain", "toast"], ["multigrain", "bread", "toasted"]),
+    // Iced coffee is its brewed coffee, poured over ice; its "iced" coffee is a bottled mocha.
+    (["iced", "coffee"], ["brewed", "coffee"]),
 ]
 
 /// A seen dish in the catalog's wording: "Spaghetti bolognese" → "spaghetti meat sauce".
@@ -61,7 +75,10 @@ func catalogDish(_ name: String) -> String {
             }
         }
     }
-    return changed ? list.joined(separator: " ") : name
+    guard changed else { return name }
+    // "Fried egg, sunny side up" is a fried egg, said once.
+    var seen = Set<String>()
+    return list.filter { seen.insert($0).inserted }.joined(separator: " ")
 }
 
 /// Everyday names of two words that the catalogs file under another: a hot dog is USDA's
@@ -86,7 +103,29 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
         (["extra", "lean"], [(0, "95")]),
         // Monterey Jack is its "Cheese, monterey".
         (["monterey", "jack"], [(1, "monterey")]),
-    ] as [([String], [(Int, String)])]).map { (said: $0.0.map(stem), means: $0.1.map { (at: $0.0, word: stem($0.1)) }) }
+        // Jasmine and basmati rice are its white rice, which it lists cooked; a label's is the
+        // dry rice in the bag.
+        (["jasmine", "rice"], [(0, "white")]),
+        (["basmati", "rice"], [(0, "white")]),
+        // A tuna steak is its fresh tuna, not the canned; a burger patty its ground beef patty.
+        (["tuna", "steak"], [(1, "fresh")]),
+        (["hamburger", "patty"], [(0, "ground")]),
+        (["burger", "patty"], [(0, "ground")]),
+        // Cherry and grape tomatoes are its red ones.
+        (["cherry", "tomato"], [(0, "red")]),
+        (["grape", "tomato"], [(0, "red")]),
+    ] as [([String], [(Int, String)])] + pastaShapes.map { ([$0, "pasta"], [(0, "pasta")]) }).map {
+        (said: $0.0.map(stem), means: $0.1.map { (at: $0.0, word: stem($0.1)) })
+    }
+
+/// Shapes of pasta, which USDA lists only as "Pasta, cooked": alone or before "pasta" they're
+/// that, where a label's penne is the dry pasta in the box. With another word they're a dish
+/// ("fettuccine alfredo").
+let pastaShapes = ["penne", "fusilli", "rigatoni", "linguine", "fettuccine", "farfalle", "rotini", "ziti", "orzo", "tagliatelle"]
+
+/// The everyday names that stand for a plainer food only as they're written: a typo of
+/// "jasmine" beside a brand is still that brand's jasmine rice, not its white.
+let writtenNames: Set<String> = Set((["jasmine", "basmati"] + pastaShapes).map(stem))
 
 /// Names that, typed alone, mean the food named after them, in the words USDA files it under:
 /// "ranch" is its "Salad dressing, ranch dressing", "protein" its protein powder and "salad" its
@@ -99,12 +138,16 @@ let shortNames: [String: String] = [
     "pb j": "peanut butter and jelly", "pbj": "peanut butter and jelly", "pb and j": "peanut butter and jelly",
     "pb j sandwich": "peanut butter and jelly sandwich", "pbj sandwich": "peanut butter and jelly sandwich", "pb": "peanut butter",
     "oj": "orange juice", "evoo": "extra virgin olive oil",
+    "sunny side up egg": "fried egg", "sunny side up eggs": "fried egg", "over easy egg": "fried egg", "over easy eggs": "fried egg",
+    "corn on the cob": "sweet corn cooked",
 ]
 
 /// Names that, typed alone, are also the word USDA files them under: "spaghetti" is its "Pasta,
 /// cooked", a "wrap" its tortilla and "meat" its beef. With another word they mean themselves:
 /// spaghetti squash, macaroni and cheese, a chicken wrap.
-let aloneFiled: [String: String] = ["spaghetti": "pasta", "macaroni": "pasta", "wrap": "tortilla", "meat": "beef"]
+let aloneFiled: [String: String] = Dictionary(
+    uniqueKeysWithValues: [("spaghetti", "pasta"), ("macaroni", "pasta"), ("wrap", "tortilla"), ("meat", "beef")]
+        + pastaShapes.map { (stem($0), "pasta") })
 
 /// A typed word is searched as typed, plus the catalog's own wording for the same food. Looser
 /// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
@@ -119,6 +162,8 @@ let countWords: Set<String> = [
     "slice", "slices", "piece", "pieces", "strip", "strips", "leaf", "leaves", "wedge", "wedges", "chunk", "chunks",
     "serving", "servings", "portion", "portions", "cup", "cups", "bowl", "bowls", "plate", "plates", "side", "sides",
     "order", "orders", "small", "medium", "large", "regular", "jumbo", "mini", "kid", "kids", "tall", "grande", "venti",
+    "segment", "segments", "cube", "cubes", "drizzle", "pat", "pats", "scoop", "scoops", "dollop", "sprinkle", "pinch", "dash", "splash",
+    "spoonful", "squeeze",
 ]
 
 /// A search can carry its amount: "cup of coffee", "200 g chicken", "2 eggs".
@@ -241,14 +286,97 @@ func words(_ value: String) -> [String] { tokens(value).filter { !stopWords.cont
 /// Only ASCII digits: "12", not "12g".
 @inline(__always) func isNumber(_ word: String) -> Bool { !word.isEmpty && word.utf8.allSatisfy { $0 >= 0x30 && $0 <= 0x39 } }
 
-/// The words that name a food a model saw: "tomato slice" is a tomato. "Mini" names products more
-/// often than a size: Mini-Wheats, mini pretzels, mini peppers.
+/// Words a model puts before a way of cooking that say no more about the food: "pan-seared",
+/// "oven-roasted", "stir-fried", "lightly grilled".
+private let methodHelpers: Set<String> = ["pan", "oven", "air", "deep", "stir", "char", "flame", "slow", "lightly", "freshly", "pressure", "wood"]
+
+/// The words that name a food a model saw: "tomato slice" is a tomato, "scrambled eggs (2
+/// large)" scrambled eggs and a "pan-seared salmon fillet" a seared one. "Mini" names products
+/// more often than a size: Mini-Wheats, mini pretzels, mini peppers.
 func nameWords(_ name: String) -> [String] {
-    let list = words(name)
+    // Without its amount, as a typed search is read: "2 large", "2 tbsp", "glass of".
+    var list = readQuery(name).words
+    list = list.indices.filter { i in
+        !(methodHelpers.contains(list[i]) && i + 1 < list.count && (isHeat(list[i + 1]) || list[i + 1] == "cooked" || list[i + 1] == "fired"))
+    }.map { list[$0] }
+    // Nor what was done to it on the way to the plate, where that isn't all that's said.
+    let plain = list.filter { !servingWords.contains($0) }
+    if !plain.isEmpty { list = plain }
+    // "Half an avocado" is an avocado; half and half is a cream.
+    if list.first == "half", list.count > 1, !list.dropFirst().contains("half") { list.removeFirst() }
     // A bowl named last is a dish: a poke bowl, a burrito bowl.
     let dish = list.count > 1 && (list.last == "bowl" || list.last == "bowls") ? list.count - 1 : -1
     let food = list.indices.filter { $0 == dish || list[$0] == "mini" || !countWords.contains(list[$0]) }.map { list[$0] }
     return Array((food.isEmpty ? list : food).prefix(6))
+}
+
+/// What a model says was done to a food before serving it, which names no other food:
+/// "buttered toast" is toast.
+private let servingWords: Set<String> = ["buttered", "seasoned", "garnished", "homemade", "leftover", "assorted"]
+
+/// Words after which a model's name goes on to what the food comes with, on or in.
+private let sideWords: Set<String> = ["with", "on", "over", "in", "atop"]
+
+/// What a food is said to be done with what comes with it, which says nothing of the food:
+/// "salad topped with chicken", "rice served with beans".
+private let servedWords: Set<String> = [
+    "topped", "served", "drizzled", "sprinkled", "garnished", "mixed", "tossed", "dressed", "paired", "covered", "smothered", "loaded", "filled",
+]
+
+/// A food as a model names it, apart from what it says comes with it: "Whole wheat toast with
+/// butter" is whole wheat toast, with butter beside; "Turkey sandwich on wheat bread" a turkey
+/// sandwich; "Chicken wings (buffalo)" chicken wings, said to be buffalo. The food is matched by
+/// its own words, and the rest only tells two foods that match as well apart. A word for the
+/// form the food comes in is part of its name wherever it's said: "Black beans (canned)" are
+/// canned black beans, "Chicken thigh with skin" the thigh with its skin. `beside` are the
+/// `sides` that are other foods served with it. "On", "over" and "in" divide a name only after
+/// a food of two words or a long one: pigs in a blanket and corn on the cob are dishes.
+func seenName(_ said: String) -> (main: String, sides: [String], beside: [String]) {
+    var outside = ""
+    var inside = ""
+    var depth = 0
+    for character in said {
+        if character == "(" {
+            depth += 1
+            inside += " "
+        } else if character == ")" {
+            depth = max(0, depth - 1)
+            outside += " "
+        } else if depth > 0 {
+            inside.append(character)
+        } else {
+            outside.append(character)
+        }
+    }
+    var main = outside.split(separator: " ").map(String.init)
+    var with: [String] = []
+    if let at = main.indices.first(where: { i in
+        guard i > 0, i + 1 < main.count else { return false }
+        let word = main[i].lowercased().trimmingCharacters(in: .punctuationCharacters)
+        guard sideWords.contains(word) || word == "w" else { return false }
+        if word == "with" || word == "w" { return true }
+        let before = words(main[..<i].joined(separator: " "))
+        return before.count > 1 || (before.first.map { length($0) > 4 } ?? false)
+    }) {
+        with = Array(main[(at + 1)...])
+        main = Array(main[..<at])
+    }
+    if main.count > 1, let last = main.last, servedWords.contains(last.lowercased().trimmingCharacters(in: .punctuationCharacters)) {
+        main.removeLast()
+    }
+    let name = main.joined(separator: " ").trimmingCharacters(in: CharacterSet(charactersIn: " ,;:-"))
+    guard !words(name).isEmpty else { return (said, [], []) }
+    // An amount is neither: "(2 large)", "(1 cup)".
+    let said = { (text: String) in nameWords(text).filter { !countWords.contains($0) && !unitWords.contains($0) } }
+    let served = said(with.joined(separator: " "))
+    let about = said(inside)
+    // The forms go before the name, so its last word still names the food.
+    let forms = (served + about).filter(isFormSaid)
+    var seen = Set(words(name))
+    let kept = forms.filter { seen.insert($0).inserted }
+    let beside = served.filter { !isFormSaid($0) && seen.insert($0).inserted }
+    let sides = beside + about.filter { !isFormSaid($0) && seen.insert($0).inserted }
+    return ((kept + [name]).joined(separator: " "), Array(sides.prefix(5)), Array(beside.prefix(5)))
 }
 
 // MARK: - Stems and forms
