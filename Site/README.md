@@ -47,5 +47,4 @@ Import the repo, set **Root Directory** to `Site`, framework preset Astro. `verc
 
 ## Still to do
 
-- Open source: the repository is under the GPL-3.0 (`LICENSE`). Once it's public, follow the comment on `brand.free` in `src/content/site.ts` (the line under the buttons, a "Read the source" link with the licence in the Free section, and "Source" in the footer). The site doesn't claim it until then.
 - If it isn't done yet: make the reports repository's token and set `FEEDBACK_REPO` and `FEEDBACK_TOKEN` in Vercel (the support form, above), then send one report through the live form to see it arrive. Both apps' App Store Support URL already points at `/support`.

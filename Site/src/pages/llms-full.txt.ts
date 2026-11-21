@@ -12,6 +12,8 @@ export const GET: APIRoute = () => {
     `${brand.name} is pronounced ${brand.pronunciation} and is ${brand.meaning} Website: ${brand.domain}. Support and contact: ${brand.domain}/support. Made by ${brand.publisher}.`,
     "",
     `Price: both apps are free, all of it. No account, no ads.`,
+    "",
+    `Source: ${brand.source} (open source, ${brand.license})`,
   );
 
   h("## The six scores");

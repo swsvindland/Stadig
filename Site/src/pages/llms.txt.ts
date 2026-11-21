@@ -7,7 +7,7 @@ export const GET: APIRoute = () => {
     ``,
     `> ${brand.description}`,
     ``,
-    `${brand.name} (pronounced ${brand.pronunciation}) is ${brand.meaning} Both apps are free, all of it, with no account and no ads. They follow seven principles: prescribe don't describe; real-world tests over time in the app; no XP and no streaks; offline first; private by construction; free, all of it; no third-party code. Six scores (Strength, Physique, Endurance, Agility, Vitality and Discipline), each 0 to 100, are drawn together as "your shape". Made by ${brand.publisher}.`,
+    `${brand.name} (pronounced ${brand.pronunciation}) is ${brand.meaning} Both apps are free, all of it, with no account and no ads, and open source under the ${brand.license} (${brand.source}). They follow seven principles: prescribe don't describe; real-world tests over time in the app; no XP and no streaks; offline first; private by construction; free, all of it; no third-party code. Six scores (Strength, Physique, Endurance, Agility, Vitality and Discipline), each 0 to 100, are drawn together as "your shape". Made by ${brand.publisher}.`,
     ``,
     `## Apps`,
     ``,

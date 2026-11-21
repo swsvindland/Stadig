@@ -1,9 +1,9 @@
 ---
-// "Free. All of it.": nothing to pay, and everything that's included, as one full ruler.
-// The open-source line and the link to the source go here once the repository is public and
-// licensed (see brand.free in content/site.ts).
+// "Free. All of it.": nothing to pay, and everything that's included, as one full ruler, with
+// the licence and the link to the source under the heading (brand.source in content/site.ts).
 import Rule from "./Rule.astro";
 import Reading from "./Reading.astro";
+import { brand } from "../content/site";
 interface Props {
   aside?: string;
   lede: string;
@@ -20,6 +20,7 @@ const { aside, lede, title, items, legend = false } = Astro.props;
     <div class="headone">
       <h2 class="h2" id="free-title"><span class="block">Free.</span><span class="block">All of it.</span></h2>
       <p class="lede">{lede}</p>
+      <p class="fine">Open source, under the {brand.license}. <a class="inline-link" href={brand.source} rel="noopener">Read the source</a></p>
     </div>
   </div>
   <div class="all">

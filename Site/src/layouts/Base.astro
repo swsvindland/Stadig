@@ -31,6 +31,7 @@ const organization = {
   // There's no address to write to: the support form is the contact.
   contactPoint: { "@type": "ContactPoint", contactType: "customer support", url: `${brand.domain}/support` },
   founder: { "@type": "Person", name: brand.publisher },
+  sameAs: [brand.source],
   description: brand.description,
 };
 const website = {

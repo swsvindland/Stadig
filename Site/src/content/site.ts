@@ -13,11 +13,11 @@ export const brand = {
   publisher: "Sam Svindland",
   platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro", "Apple Watch"],
   // The line under every App Store button.
-  // Open source: once the repository is public and has a licence, this line becomes
-  // "Free and open source. No account.", the Free section gets a "Read the source" link with
-  // the licence's name beside it, and the footer's Stadig column gets "Source". Until then
-  // the site doesn't say it.
-  free: "Free. No account, no ads.",
+  free: "Free and open source. No account.",
+  // Where the source is and the licence it's under: the Free section's "Read the source", the
+  // footer's "Source", the FAQ and the llms files.
+  source: "https://github.com/swsvindland/Stadig",
+  license: "GPL-3.0",
 };
 
 /** A phone screenshot: 624 × 1357, the status bar painted out. */
@@ -563,6 +563,10 @@ export const faq = [
   {
     q: "What does it cost?",
     a: "Nothing. Both apps are free, all of it: every plan, every target, every way to log. There's nothing to unlock, no ads and no account.",
+  },
+  {
+    q: "Is it open source?",
+    a: "Yes. Both apps, the Swift packages they're built on and this website are at github.com/swsvindland/Stadig, under the GPL-3.0 licence.",
   },
   {
     q: "Do I need both apps?",
