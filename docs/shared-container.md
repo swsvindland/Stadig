@@ -2,7 +2,7 @@
 
 Stadig Lift and Stadig Macro each own their own database and publish small files for each other into the App Group container, `group.dev.svindland.stadig` (`SystemStore`'s `SharedContainer`). Each file is a versioned envelope, `{schemaVersion, writtenBy, writtenAt, payload}`, written atomically under file coordination, with a change notification the other app hears. The keys are the `SharedKey` extensions in `Packages/SystemStore/Sources/SystemStore/SharedContainer.swift`; the payload types are in `SystemCore`.
 
-Stadig used to have two more apps: the hub (Stadig), which planned a day around work and showed the stats, and Stadig Mind. Both left this repo on 2026-11-11 (`docs/decisions.md`). What they wrote may still be on people's devices and in iCloud, so it's listed here too. Nothing reads it now.
+Stadig used to have two more apps: the hub (Stadig), which planned a day around work and showed the stats, and Stadig Mind. Both left this repo on 2026-11-11 (`agent-docs/decisions.md`). What they wrote may still be on people's devices and in iCloud, so it's listed here too. Nothing reads it now.
 
 ## The files
 

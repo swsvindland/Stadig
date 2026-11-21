@@ -10,11 +10,11 @@ Internal TestFlight builds need nothing: every push to `main` that touches an ap
 ## Before cutting the branch
 
 - `main` is green: GitHub `CI` passed on the commit, and the app's Xcode Cloud Main build passed (ask the owner if you can't see it).
-- `docs/verification.md`: what's verified on a device, and what isn't. Raise anything unverified that the release depends on.
-- `docs/decisions.md`: list the calls still waiting on sign-off that this release ships, for the owner to confirm.
-- First release only: everything in `docs/app-store-connect.md`: the agreements, the app record, both products, and both attached to the version.
+- `agent-docs/verification.md`: what's verified on a device, and what isn't. Raise anything unverified that the release depends on.
+- `agent-docs/decisions.md`: list the calls still waiting on sign-off that this release ships, for the owner to confirm.
+- A new target, or a change to what an app stores: the checks in `docs/app-store-connect.md` ("Before a build reaches people"). Both apps are free, so there are no products to attach.
 - Catalogs: the manifest's release holds the catalogs this version should ship (`Scripts/catalogs.manifest`).
-- Stadig Macro, App Store releases: `off.db` and its recipe are publicly reachable and the app links to them (`docs/decisions.md`, "Public access to `off.db`"). Stop and raise it if they aren't.
+- Stadig Macro, App Store releases: `off.db` and its recipe are publicly reachable and the app links to them (`agent-docs/decisions.md`, "Public access to `off.db`"). Stop and raise it if they aren't.
 - Privacy strings: every Info.plist usage description (in the generator) still says truthfully what the app does.
 - Screenshots: if a screen in the store set changed, `Scripts/store-screenshots.sh <app>`, then `storeassets -C Store/<app> validate` and `export` (and `Store/<app>-watch` for Stadig Lift and Stadig Macro); the owner uploads them in App Store Connect. `Store/README.md`.
 
@@ -37,5 +37,5 @@ Push only when the owner says to. The push starts the app's Release workflow: pa
 ## After
 
 - Fixes for the release go on the release branch first, then get merged back to `main`.
-- When it's live: tag the shipped commit (`git tag lift-v1.1`), merge the release branch into `main`, and note the version in `docs/verification.md`.
+- When it's live: tag the shipped commit (`git tag lift-v1.1`), merge the release branch into `main`, and note the version in `agent-docs/verification.md`.
 - Versions only go up; build numbers are Xcode Cloud's and never need touching.

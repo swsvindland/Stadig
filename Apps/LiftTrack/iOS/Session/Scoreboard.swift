@@ -3,7 +3,7 @@ import LiftEngine
 import SwiftUI
 import SystemCore
 
-// The scoreboard (docs/lift-track.md): an iPad propped against the wall three metres from the bar.
+// The scoreboard (docs/lift.md): an iPad propped against the wall three metres from the bar.
 // In landscape the session's left two-thirds is the set at cinema scale, with three rating zones big
 // enough for a knuckle; the right third is the whole session as a tape. Rest takes the left side
 // over with the countdown at the same scale. Everything it does goes through the calls the dock

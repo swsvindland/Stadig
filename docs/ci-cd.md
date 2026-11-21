@@ -26,7 +26,7 @@ Until the Xcode Cloud workflows below exist, the only thing that compiles the ap
   1. Branch `release/lift-1.1` (or `macro-…`) from `main`.
   2. On the release branch, set that app's entry in `VERSIONS` in `Scripts/generate-project.py` to the version you're shipping, run it, commit.
   3. On `main`, bump the same entry to the next version (1.2) straight away: TestFlight refuses builds of a version that's already been approved, so `main` must never build a shipped version.
-  4. Both apps are free (since 2026-11-11): purchases are off in each app's `Purchase/Purchases.swift` (`enabled: false`), and there are no products to set up. [app-store-connect.md](app-store-connect.md) says what to do with the ones already made.
+  4. Both apps are free (since 2026-11-11): purchases are off in each app's `Purchase/Purchases.swift` (`enabled: false`), and there are no products to set up. [app-store-connect.md](app-store-connect.md) has what's on the store, and what a price would take.
   5. Push the release branch. The Release workflow tests, archives and uploads; submit the build for review in App Store Connect.
   6. Fixes for that release go on the release branch and are merged back to `main`. Tag what shipped (`lift-v1.1`).
 
@@ -78,4 +78,4 @@ The repo carries everything Xcode Cloud needs (shared schemes, test plans, `ci_s
 
 ## Catalogs
 
-The catalogs (`off.db`, `supplements.db`) aren't in git. After rebuilding one, run `Scripts/publish-catalogs.sh` (uploads them all as a new private release and rewrites `Scripts/catalogs.manifest`) and commit the manifest; CI and Xcode Cloud then fetch the new ones. They stay private while the repo is, which TestFlight doesn't mind: `CATALOG_TOKEN` reads them. They must be public before the App Store release (`docs/decisions.md`, "Public access to `off.db`").
+The catalogs (`off.db`, `supplements.db`) aren't in git. After rebuilding one, run `Scripts/publish-catalogs.sh` (uploads them all as a new release, as private or public as the repository, with the data's licence notice in its notes, and rewrites `Scripts/catalogs.manifest`) and commit the manifest. The release is how `off.db` and its recipe are offered under the ODbL, so its tag has to sit on a commit that holds the scripts that built it: `main` by default, or `CATALOG_TARGET=<a pushed branch>` when they aren't merged yet; CI and Xcode Cloud then fetch the new ones. They stay private while the repo is, which TestFlight doesn't mind: `CATALOG_TOKEN` reads them. They must be public before the App Store release (`agent-docs/decisions.md`, "Public access to `off.db`").

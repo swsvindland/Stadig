@@ -29,6 +29,6 @@ Read the whole diff (`git diff`, or `git diff main...<branch>`), then the code a
 - `Scripts/build.sh lint` clean; zero warnings; project files only changed through the generator.
 
 ## Docs
-- `docs/<app>.md`, `docs/decisions.md` (calls made without sign-off), `docs/verification.md` (what was checked by hand) updated where they should be.
+- `docs/<app>.md`, `agent-docs/decisions.md` (calls made without sign-off), `agent-docs/verification.md` (what was checked by hand) updated where they should be.
 
 Report findings most severe first, each with file:line, what goes wrong and the fix. Don't pad with style nits the formatter would settle.

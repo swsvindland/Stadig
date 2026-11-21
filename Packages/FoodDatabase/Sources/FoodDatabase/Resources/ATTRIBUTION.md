@@ -20,7 +20,9 @@ Individual contents are available under the
 downloaded November 6, 2026. It is distributed under the ODbL 1.0, and is publicly offered with
 the method that made it:
 
-- `off.db` — the derivative database exactly as the app ships it.
+- `off.db` — the derivative database exactly as the app ships it: the `off.db.gz` asset on the
+  [GitHub release](https://github.com/swsvindland/the-system/releases) that `Scripts/catalogs.manifest`
+  names. It's about 600 MB, so it isn't in git.
 - `Scripts/build-catalogs.py` with `food_catalog.py` and `food_energy.py` — the complete
   transformation recipe, which rebuilds `off.db` (and `usda.db`) from the source exports.
 - `Packages/FoodDatabase/catalog-manifest.json` — source URLs, source and recipe SHA-256 hashes,
@@ -31,22 +33,32 @@ the notice stays with the file when it is copied out of the app.
 
 No product images are included (Open Food Facts images are under a separate CC BY-SA license). This
 is not a verified or comprehensive catalog; only records with a valid barcode, complete core
-macros, and an explicit g/ml (or oz/fl oz) basis are included. Vector Macros is not affiliated
+macros, and an explicit g/ml (or oz/fl oz) basis are included. Stadig Macro is not affiliated
 with or endorsed by Open Food Facts.
 
 ## What each public release must keep doing (ODbL 4.2, 4.3, 4.6)
 
-1. **Notice in the app.** Library → _Your offline food catalog_ shows the ODbL notice above, links
-   to Open Food Facts, the ODbL and the DbCL, and links here to download the database.
-2. **Per-food source.** A packaged food's portion screen names Open Food Facts as its source.
-3. **Public access to the derivative.** Keep this directory, with the `off.db` and recipe that match
-   the shipped build, publicly reachable. At about 570 MiB, `off.db` is stored with Git LFS; GitHub
-   serves it from this directory like any other file. If the repository ever goes private, publish
-   the same files elsewhere (for example a public GitHub release) and update the Library link.
+1. **Notice in the app.** Settings → _Food data_ names each catalog with its licence and its
+   attribution row, and carries the ODbL notice. Under the notice is a row for each address it
+   names, which opens it: Open Food Facts, the ODbL, the DbCL, and where this database and its
+   recipe are published.
+2. **Per-food source.** A packaged food names Open Food Facts as its source where it's logged and
+   where its numbers are corrected.
+3. **Public access to the derivative.** Keep the `off.db` that matches each shipped build publicly
+   reachable, with its recipe: the release above, and the scripts in `Scripts/` at that release's
+   tag. `Scripts/publish-catalogs.sh` makes a new release for a new catalog; keep the older releases
+   while builds that bundle them are in use. If the repository ever goes private, publish the same
+   files elsewhere and update the notices.
+
+   A catalog's own `attribution` row says where it's published (`RECIPE_URL` in
+   `Scripts/food_catalog.py`): this repository's releases, for every catalog built since
+   2026-11-21. The one in Stadig Macro 1.0 (`catalogs-20261107-0100`) was built before this
+   repository was public and names an earlier repository; its foods are the same, row for row, as
+   the first catalog built since.
 4. **Keep notices intact.** Don't strip `catalog_meta` or this file from redistributed copies.
 
 The personal diary is not part of either catalog. Foods logged from `off.db` into the person's own
-diary or Apple Health / Health Connect stay private to them and are not public use of the database.
+diary or Apple Health stay private to them and are not public use of the database.
 
 ## Transformations
 

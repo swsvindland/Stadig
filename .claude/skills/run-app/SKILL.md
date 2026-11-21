@@ -29,13 +29,13 @@ xcrun simctl launch --terminate-running-process $UDID dev.svindland.stadig.lift 
 - `-inMemoryStore` keeps nothing and never touches the stored data: use it unless the task is about persistence.
 - `-seedSampleData` fills the store through the real engines (weeks of sessions or logging).
 - `-uiTesting` is what UI tests use: in-memory store, no permission prompts, no animations.
-- Each app has many more (open a tab, a logger, a session, a check-in, a sheet). They're listed in `docs/lift-track.md` and `docs/macro-track.md` under "DEBUG launch arguments", and parsed in each app's `iOS/App/*App.swift`.
+- Each app has many more (open a tab, a logger, a session, a check-in, a sheet). They're listed in `docs/lift.md` and `docs/macro.md` under "DEBUG launch arguments", and parsed in each app's `iOS/App/*App.swift`.
 
 ## Look and drive
 
 - Screenshot without the simulator panel: `xcrun simctl io $UDID screenshot /tmp/shot.png`, then read the PNG.
 - Fatal errors and logs: `xcrun simctl launch --console-pty $UDID <bundle id> <args>`, or `xcrun simctl spawn $UDID log stream --predicate 'subsystem BEGINSWITH "dev.svindland.stadig"'`.
-- Deep links: `xcrun simctl openurl $UDID 'macrotrack://log'` (the schemes are in the README's identifiers table).
+- Deep links: `xcrun simctl openurl $UDID 'macrotrack://log'` (the schemes are in the identifiers table in `docs/architecture.md`).
 - With the simulator tool: SwiftUI toggles need a held tap (`duration: 0.15`); screenshots lag taps by a second or two, so take a second one before deciding a tap failed.
 - No camera in the simulator: Stadig Macro's `-liveScanDemo` and `-photo <file in Documents>` stand in for it.
 

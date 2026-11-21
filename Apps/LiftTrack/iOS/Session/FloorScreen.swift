@@ -3,7 +3,7 @@ import LiftEngine
 import SwiftUI
 import SystemCore
 
-// Floor mode (docs/lift-track.md): the iPhone set down on the floor or a bench a metre or two away,
+// Floor mode (docs/lift.md): the iPhone set down on the floor or a bench a metre or two away,
 // the hands chalky. The session becomes a scoreboard and the whole screen is the button: a tap
 // anywhere is the dock's main button, a swipe up or down (starting anywhere) its others. Picked up,
 // it's the normal screen with its dock again.

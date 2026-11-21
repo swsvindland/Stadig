@@ -28,7 +28,7 @@ pnpm preview
 
 ## What the site says
 
-Everything on it is either in the docs or seen in the apps' screens; the sample scores are labelled as samples. Scores carry a trend word ("rising", "steady"…), never "+2 this month", because the apps don't keep a score's history yet ([docs/decisions.md](../docs/decisions.md)). Both apps are free, so there are no prices anywhere.
+Everything on it is either in the docs or seen in the apps' screens; the sample scores are labelled as samples. Scores carry a trend word ("rising", "steady"…), never "+2 this month", because the apps don't keep a score's history yet ([agent-docs/decisions.md](../agent-docs/decisions.md)). Both apps are free, so there are no prices anywhere.
 
 ## The support form
 
@@ -45,9 +45,7 @@ Without them every report goes to the failed page, which can only say to try aga
 
 Import the repo, set **Root Directory** to `Site`, framework preset Astro. `vercel.json` adds `cleanUrls` (so `/faq` serves `faq.html`), immutable caching for images, security headers, and permanent redirects from the pre-rename paths (`/lift-track`, `/macro-track` and their OG images) and the retired ones (`/mind`, `/mind-track`). Set the production domain to `stadig.dev`; `astro.config.mjs` has `site` set to that, which the sitemap, canonical URLs and OG tags use.
 
-## Before launch
+## Still to do
 
-- Register `stadig.dev` (and `stadig.io` as a defensive backup). Both were free on 17 October 2026. `stadig.com` has been held by the same registrant since 2000.
-- Fill in `appStoreUrl` for each app in `src/content/site.ts` once they're live. Until then each App Store button names the app and says "Coming to the App Store" (a link to the app's page from elsewhere, plain text on the app's own page); with a URL they become "Stadig Lift on the App Store" links on their own.
-- Open source: once the repository is public and licensed, follow the comment on `brand.free` in `src/content/site.ts` (the line under the buttons, a "Read the source" link with the licence in the Free section, and "Source" in the footer). The site doesn't claim it until then.
-- Make the reports repository's token and set `FEEDBACK_REPO` and `FEEDBACK_TOKEN` in Vercel (the support form, above). Then send one report through the live form to see it arrive. Both apps' App Store Support URL already points at `/support`.
+- Open source: the repository is under the GPL-3.0 (`LICENSE`). Once it's public, follow the comment on `brand.free` in `src/content/site.ts` (the line under the buttons, a "Read the source" link with the licence in the Free section, and "Source" in the footer). The site doesn't claim it until then.
+- If it isn't done yet: make the reports repository's token and set `FEEDBACK_REPO` and `FEEDBACK_TOKEN` in Vercel (the support form, above), then send one report through the live form to see it arrive. Both apps' App Store Support URL already points at `/support`.

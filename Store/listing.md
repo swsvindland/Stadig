@@ -21,7 +21,7 @@ Both apps share these:
 
 - **Subtitle:** Strength training that adapts
 - **Marketing URL:** https://stadig.dev/lift
-- **Content rights:** no third-party content (the exercise library taken as our own; see `docs/decisions.md`)
+- **Content rights:** no third-party content (the exercise library taken as our own; see `agent-docs/decisions.md`)
 - **Promotional text:** Your program, written for you. Every set filled in and adjusted to how the last one felt. Free, with no account and no ads, and it works offline.
 - **Keywords:** `workout,gym,weightlifting,RPE,progressive overload,deload,program,planner,powerlifting,log,tracker`
 

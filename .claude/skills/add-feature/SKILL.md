@@ -9,7 +9,7 @@ Work in this order. Each step is small and checked before the next.
 
 ## 1. Find where it belongs
 
-- Read the app's `docs/<app>.md` section for the area, and the design doc if the owner pointed at it. Product behaviour comes from there; if the doc is silent and you have to choose, choose, then record it in `docs/decisions.md`.
+- Read the app's `docs/<app>.md` section for the area, and the design doc if the owner pointed at it. Product behaviour comes from there; if the doc is silent and you have to choose, choose, then record it in `agent-docs/decisions.md`.
 - Logic (a rule, a number, a plan, a parse) goes in the app's engine package, or `SystemCore` if the other app must agree with it. The app gets views, model wiring and platform glue.
 - Look for an existing type that already models the concept before adding one. The apps mirror each other (`AppModel`, `StoredRecords`, `SampleData`, `Purchases`, `Platform/`): copy the established shape.
 
@@ -27,7 +27,7 @@ Work in this order. Each step is small and checked before the next.
 - Give every interactive control `.accessibilityIdentifier("screen.element")`, and make sure VoiceOver reads it sensibly.
 - Long-lived observers, timers and tasks: `[weak self]`, stored, cancelled in `onDisappear`/`deinit` (or `.task`, which cancels itself).
 - If it needs data to show, extend `SampleData` so `-seedSampleData` exercises it, and add a DEBUG launch argument if the screen is deep (open it directly).
-- Purchases: check whether it sits behind the unlock (`Purchases`; see `docs/decisions.md`).
+- Purchases: check whether it sits behind the unlock (`Purchases`; see `agent-docs/decisions.md`).
 
 ## 4. Tests in the app
 
@@ -38,5 +38,5 @@ Work in this order. Each step is small and checked before the next.
 ## 5. Finish
 
 - `Scripts/build.sh lint`, zero warnings.
-- Update `docs/<app>.md` (behaviour, new launch arguments), `docs/package-tests.md` (notable tests), `docs/verification.md` (what you checked on a simulator).
+- Update `docs/<app>.md` (behaviour, new launch arguments), `docs/package-tests.md` (notable tests), `agent-docs/verification.md` (what you checked on a simulator).
 - Run the `review-change` skill over the diff, then the `commit` skill.

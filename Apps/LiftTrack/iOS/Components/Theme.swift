@@ -253,7 +253,7 @@ extension String {
 }
 
 /// A score's trend as the design's small chip beside a hero numeral: "Rising" in green with an arrow up.
-/// Nothing keeps a score's history yet, so it's a word, not "+2 this month" (docs/decisions.md).
+/// Nothing keeps a score's history yet, so it's a word, not "+2 this month" (agent-docs/decisions.md).
 struct TrendChip: View {
     let trend: TrendWord
 

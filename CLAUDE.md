@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Stadig ("The System"): two fitness apps (Stadig Lift and Stadig Macro), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (each with a Watch app), as thin shells over ten local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
+Stadig ("The System"): two fitness apps (Stadig Lift and Stadig Macro), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (each with a Watch app), as thin shells over ten local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; it isn't in the repo, so `docs/lift.md` and `docs/macro.md` are its record here. [docs/architecture.md](docs/architecture.md) has the layout and [docs/building.md](docs/building.md) the commands.
 
 Names: anything a person reads (app text, Info.plist, StoreKit, the site, docs) says Stadig Lift and Stadig Macro, never "Lift Track", "Macro Track" or "The System"; the family is Stadig. Code keeps its old names (`Apps/LiftTrack`, `LiftEngine`, `AppID.knowledge`, `SystemCore`), and identifiers (bundle and product IDs, the App Group, CloudKit containers) never change.
 
@@ -51,12 +51,16 @@ Swift Testing for everything but UI tests (XCTest). Engine behaviour gets packag
 
 ## Docs to keep current
 
-- Behaviour or a new screen: the app's `docs/<app>.md` (and its DEBUG launch arguments).
-- A product call made without the owner's sign-off: `docs/decisions.md`. Don't bury decisions in code.
-- What was checked by hand on a simulator or device: `docs/verification.md`.
+Two folders, for two readers. `docs/` is for people: how the apps work and how to build them ([docs/README.md](docs/README.md) is its index). `agent-docs/` is the notes sessions keep for each other and the owner. `README.md` is the repo's front page for other developers: keep it short, and put detail in `docs/`.
+
+- Behaviour or a new screen: the app's doc, `docs/lift.md` or `docs/macro.md` (and its DEBUG launch arguments).
+- A product call made without the owner's sign-off: `agent-docs/decisions.md`. Don't bury decisions in code.
+- What was checked by hand on a simulator or device: `agent-docs/verification.md`.
 - New tests worth knowing about: `docs/package-tests.md`.
-- Build, CI or release changes: `README.md`, `docs/ci-cd.md`, and this file. Both apps are free (purchases off); App Store Connect: `docs/app-store-connect.md`.
+- Build, CI or release changes: `docs/building.md`, `docs/ci-cd.md`, and this file. Both apps are free (purchases off); App Store Connect: `docs/app-store-connect.md`.
 - The look (palette, numerals, the ruler, Your shape, what each device is for): `docs/design.md`.
+- A package added, removed or given a new job: the table and diagram in `docs/architecture.md`, and the same diagram and the count in `README.md`.
+- A screen the README shows that changed: its image in `docs/images/` (the README there says where each came from). `docs/screenshots.md` shows the store captures in `Store/`, so it follows them.
 
 ## Working alongside other sessions
 

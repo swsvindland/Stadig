@@ -97,7 +97,7 @@ struct AppModelTests {
     }
 
     @Test func theSupplementSampleTakesTwoWeeksOfDosesWithDrinksOn() {
-        // -seedSupplements, as docs/macro-track.md describes it.
+        // -seedSupplements, as docs/macro.md describes it.
         let model = TestEnvironment().model()
         SampleData.seedIfEmpty(model)
         SampleData.seedSupplements(model)

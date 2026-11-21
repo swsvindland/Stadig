@@ -1,115 +1,142 @@
-# Stadig: Stadig Lift and Stadig Macro
+<p align="center">
+  <a href="https://stadig.dev"><img src="docs/images/banner.png" alt="Stadig. Six scores that move when you do the work. Stadig Lift and Stadig Macro, both free." width="880"></a>
+</p>
 
-**Stadig** (STAH-dig, Norwegian for steady; "the System" in the design doc and the code) is a small family of fast, offline-first fitness apps, Stadig Lift and Stadig Macro. The apps don't just chart trends. They tell you what to do next, and every insight ends in a concrete action.
+<h1 align="center">Stadig Lift and Stadig Macro</h1>
 
-- **Stadig Lift** is the training app: every session prescribed, and every set adjusted to how it went. On the iPad and the Mac it's also where you study the program, the exercise library and your history; an iPad in the gym runs the session in two panes. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
-- **Stadig Macro** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. Turned on, it reads meal timing from the log (the gaps between meals, the overnight fast) and runs fasts toward a goal, with their phases on the Lock Screen and the Watch. On the iPad and the Mac it adds a food table to search and compare, the meal plan as a week, and a history of every day; the Watch logs from the wrist. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
+<p align="center">
+  <b>Two free fitness apps for iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.</b><br>
+  Native SwiftUI over ten local Swift packages. No account, no server, no third-party code. All of it is here.
+</p>
 
-This repo is built from the design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on. Both apps are free and open source: purchases are switched off (`enabled: false` in each app's `Purchase/Purchases.swift`), and [docs/app-store-connect.md](docs/app-store-connect.md) says what's left to change on the store's side. The look is in [docs/design.md](docs/design.md). No third-party dependencies.
+<p align="center">
+  <a href="https://stadig.dev">stadig.dev</a> ·
+  <a href="docs/screenshots.md">Screenshots</a> ·
+  <a href="docs/building.md">Build it</a> ·
+  <a href="docs/architecture.md">Architecture</a> ·
+  <a href="docs/README.md">All the docs</a>
+</p>
 
-## Layout
+<p align="center">
+  <img src="docs/images/lift-set.webp" width="23%" alt="Stadig Lift in a session: a deadlift set, its warm-ups, and Easy, Just right or Missed to log it">
+  <img src="docs/images/lift-shape.webp" width="23%" alt="Stadig Lift's Your shape: six scores out of 100 drawn as a hexagon">
+  <img src="docs/images/macro-today.webp" width="23%" alt="Stadig Macro's Today: 1,299 kcal left over a ruler, the day's foods, and one-tap usual foods">
+  <img src="docs/images/macro-plan.webp" width="23%" alt="Stadig Macro's Plan: a cut, week 1 of 4, at 2,200 kcal a day, and the year ahead">
+</p>
 
+**Stadig** (STAH-dig, Norwegian for steady) is a small family of fast, offline-first fitness apps. They don't just chart trends. They tell you what to do next, and every insight ends in a concrete action.
+
+This repository is everything behind them: both apps, the packages that hold their logic, the tests, the build scripts, the App Store listing and the website.
+
+## The apps
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<h3><img src="docs/images/lift-icon.png" width="36" align="top" alt=""> Stadig Lift</h3>
+<p>The training app: every session prescribed, and every set adjusted to how it went.</p>
+<p>On the iPad and the Mac it's also where you study the program, the exercise library and your history. An iPad in the gym runs the session in two panes. The Watch logs and rates sets, and times rest by heart rate.</p>
+<p><a href="https://apps.apple.com/app/stadig-lift/id6824198193">Stadig Lift on the App Store</a> · <a href="docs/lift.md">How it works</a></p>
+</td>
+<td width="50%" valign="top">
+<h3><img src="docs/images/macro-icon.png" width="36" align="top" alt=""> Stadig Macro</h3>
+<p>The nutrition app. It learns your real maintenance from what you log and your weigh-ins, recommends one phase (a cut, a bulk, maintenance and the rest) with its reasons, and adapts your targets each week.</p>
+<p>A visit is a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. On the iPad and the Mac it adds a food table, the meal plan as a week and a history of every day.</p>
+<p><a href="https://apps.apple.com/app/stadig-macro/id6824204323">Stadig Macro on the App Store</a> · <a href="docs/macro.md">How it works</a></p>
+</td>
+</tr>
+</table>
+
+<p align="center">
+  <img src="docs/images/lift-mac.webp" width="49%" alt="Stadig Lift's Today on the Mac: the week, today's session and four scores">
+  <img src="docs/images/macro-mac.webp" width="49%" alt="Stadig Macro's Today on the Mac: calories left, the day's meals and what to do next">
+</p>
+<p align="center">
+  <img src="docs/images/lift-vision.webp" width="72%" alt="Stadig Lift's Today on Apple Vision Pro">
+</p>
+<p align="center"><sub>The same target on the Mac and on Apple Vision Pro. <a href="docs/screenshots.md">Every screen on every device</a>.</sub></p>
+
+## What's in here for a developer
+
+- **One target, five platforms.** Each app is a single multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro, with a Watch app beside it. Screens choose a layout by size class, and what differs between platforms is spelled in one file, not scattered through `#if`.
+- **The logic is in packages, with tests.** Rules, calculations, planning and parsing live in ten local Swift packages; the apps are thin shells of views over them. The packages carry more than 1,000 tests, among them simulated users who train for twelve weeks through the real progression code.
+- **No dependencies and no backend.** Apple frameworks only. A person's data stays on their devices and in their own iCloud, and the two apps share through an App Group container with versioned payloads.
+- **Offline food catalogs.** USDA FoodData Central, Open Food Facts and the NIH supplement label database, built by scripts in this repo, with search, barcodes and label reading on the device.
+- **Apple's models for logging.** A photo or a spoken sentence becomes a meal through Apple's Foundation Models framework, on the device or with Private Cloud Compute. The model only names the foods and the amounts; the nutrients always come from the catalog.
+- **Swift 6, strict concurrency, zero warnings.** Observation for state, and CI treats every warning as an error.
+- **Generated Xcode projects.** `Scripts/generate-project.py` writes the projects, schemes and test plans, and CI fails if they drift.
+- **Built with coding agents, in the open.** The rules they work to, the skills they follow and the notes they keep are all in the repo ([below](#working-with-coding-agents)).
+
+```mermaid
+flowchart TB
+  Lift["Stadig Lift<br/>Apps/LiftTrack"]
+  Macro["Stadig Macro<br/>Apps/MacroTrack"]
+
+  subgraph training["Training"]
+    LiftEngine --> ExerciseLibrary
+  end
+
+  subgraph nutrition["Nutrition"]
+    NutritionEngine
+    MealPlanner --> NutritionEngine
+    MealPlanner --> FoodDatabase
+    FoodIntelligence --> FoodDatabase
+  end
+
+  subgraph shared["Both apps"]
+    SystemStore
+    HealthBridge
+    SystemPurchases --> SystemStore
+  end
+
+  Lift --> training
+  Lift --> shared
+  Macro --> nutrition
+  Macro --> shared
+  training --> SystemCore
+  nutrition --> SystemCore
+  shared --> SystemCore
 ```
-Packages/             Local Swift packages: all the logic, each with its own tests
-  SystemCore/         Shared models and every rule that must give the same answer everywhere, the stats both
-                      apps show (StatsBoard) among them
-  ExerciseLibrary/    332 tagged exercises, substitutions, injury filtering, drills
-  SystemStore/        Each app's CloudKit-synced database, the shared App Group container (and FamilySync, which
-                      carries it to the person's other devices), backups, CSV
-  SystemPurchases/    How each app was paid for (free days, StoreKit, the paywall); switched off, both apps are free
-  HealthBridge/       HealthKit read/write, and the Watch's live workout session
-  LiftEngine/         Stadig Lift's engine: gyms, generator, assessment, session planner, live session, analysis
-  NutritionEngine/    Stadig Macro's engine: weight trend, maintenance, assessment, phase planner, check-ins, targets
-  FoodDatabase/       The offline food catalogs (USDA, Open Food Facts), search, portions, barcodes, label parsing,
-                      and the NIH supplement label catalog with its Supplement Facts parser
-  FoodIntelligence/   Meal photos, descriptions and label photos through Apple's models; nutrients from the catalog
-  MealPlanner/        A week of prep-friendly meals sized to the targets, the grocery list and a timed prep day
-Apps/<App>/           LiftTrack, MacroTrack: thin SwiftUI shells over the packages
-  iOS/                The app for iPhone, iPad, the Mac and Vision Pro (one multiplatform target), one folder
-                      per feature; Platform/Adaptive.swift spells what differs between platforms
-  Tests/              The app's unit and integration tests (Swift Testing, hosted in the app)
-  UITests/            UI tests of first run, the offer and the tabs, and the store screenshots
-  Widgets/, Shared/   Widgets and Live Activities, and the snapshot they share with the app
-  Watch/, WatchWidgets/   Stadig Lift's and Stadig Macro's Watch apps and their complications
-  Records/            Stadig Macro's records that its iPhone and Watch apps both compile
-  Catalogs/           Stadig Macro's bundled catalogs (not in git; see the README there)
-  Config/             Info plists and entitlements (the Mac's in <App>-macOS.entitlements)
-  ci_scripts/         What Xcode Cloud runs around each build (one line each, calling Scripts/xcode-cloud.sh)
-  <App>.xcodeproj, <App>.xctestplan, <App>UI.xctestplan   Written by Scripts/generate-project.py: don't edit
-Scripts/              build.sh (build, lint, test), generate-project.py, xcode-cloud.sh, the catalog builders
-                      and fetch/publish scripts, the icon drawers
-docs/                 How each app maps to the design doc, testing, CI/CD, decisions to check, what's verified
-Site/                 stadig.dev, the marketing site (Astro; its own README)
-Store/                The App Store screenshots: a storeassets project per app and Watch app (its own README)
-.github/workflows/    GitHub Actions: lint and package tests on every push, the site build
-```
 
-The apps talk to each other through the shared container, which reaches the person's other devices through the family iCloud container (so Stadig Macro on the iPad sees what Stadig Lift wrote on the iPhone): Stadig Macro publishes the nutrition phase and day-by-day logging, and Stadig Lift publishes its training calendar, measurements and strength. Each publishes its stats, which either app can read merged with the other's. [docs/shared-container.md](docs/shared-container.md) has the contract, and what the hub app and Stadig Mind, which both left this repo, wrote that may still be on devices.
+What each package holds, and where new code goes: [docs/architecture.md](docs/architecture.md).
 
-## Getting started
+## Build it
 
-You need Xcode 27 (its Swift 6.4 toolchain includes `swift-format`), nothing else: there are no third-party dependencies.
+You need Xcode 27 and nothing else.
 
 ```sh
-Scripts/fetch-catalogs.sh           # once: download the catalogs Stadig Macro bundles (needs gh signed in)
-Scripts/build.sh test               # every package's tests
-open Apps/LiftTrack/LiftTrack.xcodeproj
+git clone https://github.com/swsvindland/the-system.git
+cd the-system
+Scripts/build.sh test                    # every package's tests
+Scripts/fetch-catalogs.sh                # optional: Stadig Macro's packaged foods and supplements (needs gh signed in)
+open Apps/LiftTrack/LiftTrack.xcodeproj  # or Apps/MacroTrack/MacroTrack.xcodeproj
 ```
 
-Each app's scheme builds and runs it on whichever device you pick (an iPhone or iPad, My Mac, Apple Vision Pro); `LiftTrack` and `MacroTrack` also build their widgets and the embedded Watch app, and `LiftTrackWatch` and `MacroTrackWatch` build the Watch apps alone. In Xcode, ⌘U runs the scheme's default test plan (unit and integration); pick the `…UI` plan for the UI tests.
-
-## Everyday commands
-
-```sh
-Scripts/build.sh lint               # swift-format, strict: what CI checks
-Scripts/build.sh format             # fix formatting in place
-Scripts/build.sh test [Package]     # package tests (all, or one)
-Scripts/build.sh unit lift [ipad|vision|mac]   # an app's unit and integration tests (lift or macro)
-Scripts/build.sh ui lift [ipad|vision]         # an app's UI tests
-ONLY=LaunchAndOnboardingUITests Scripts/build.sh ui lift   # one class of them
-Scripts/build.sh ios|watch|macro|macro-watch   # build one app for the iOS simulator (or a Watch app)
-Scripts/build.sh mac|vision lift    # build an app for the Mac (it runs on this Mac) or Vision Pro
-Scripts/build.sh all                # lint, every package's tests, every app build
-Scripts/leaks.sh lift               # after building an app: run `leaks` on its seeded screens
-Scripts/store-screenshots.sh lift   # recapture an app's App Store screenshots into Store/ (then storeassets; Store/README.md)
-python3 Scripts/generate-project.py # rewrite the Xcode projects, schemes and test plans after changing the generator
-swift Scripts/make-icons.swift      # redraw Stadig Lift's icons (make-macro-icons for Stadig Macro's)
-python3 Scripts/build-catalogs.py update|build|validate   # Stadig Macro's catalogs: what's newer upstream, rebuild, check calories against macros
-Scripts/publish-catalogs.sh         # after rebuilding a catalog: upload them all as a new release, then commit the manifest
-```
-
-New Swift files in an app's folders need no project change: the targets use synchronized folders. Only new targets, packages, build settings or Info.plist keys go through `Scripts/generate-project.py`.
-
-Building the catalogs from source instead of downloading them: `Apps/MacroTrack/Catalogs/README.md`.
-
-## Quality bar
-
-- **Formatting and lint:** `swift-format` with the repo's `.swift-format`; CI fails on any finding. Claude Code formats each Swift file it edits.
-- **Zero warnings:** CI builds packages and apps with warnings as errors.
-- **Swift 6 language mode** with strict concurrency everywhere; the app targets default to the main actor.
-- **Tests at every layer:** see [docs/testing.md](docs/testing.md).
-- **CI/CD:** every push is checked; `main` ships to TestFlight; release branches ship to the App Store. See [docs/ci-cd.md](docs/ci-cd.md).
+Simulator builds, and Mac builds through `Scripts/build.sh`, need no developer account. Launch a DEBUG build with `-inMemoryStore -seedSampleData` to see an app with data in it. The rest is in [docs/building.md](docs/building.md).
 
 ## Docs
 
-- [Stadig Lift](docs/lift-track.md), [Stadig Macro](docs/macro-track.md): how the design doc maps to the code, and each app's DEBUG launch arguments
-- [The shared container](docs/shared-container.md): what the apps publish for each other, what the hub and Stadig Mind left behind, and the stats
-- [Testing](docs/testing.md) and [what the package tests cover](docs/package-tests.md)
-- [CI/CD](docs/ci-cd.md): GitHub Actions, Xcode Cloud workflows, branches and releases
-- [Decisions to check](docs/decisions.md): product calls made without sign-off, and what isn't built yet
-- [Verified, and not yet](docs/verification.md)
-- [CLAUDE.md](CLAUDE.md): working rules for Claude Code sessions (and a good checklist for people)
+| | |
+|---|---|
+| [Screenshots](docs/screenshots.md) | Both apps on every device |
+| [Building and running](docs/building.md) | The first build, everyday commands, building without a developer account |
+| [Architecture](docs/architecture.md) | The packages, where code goes, how the apps talk to each other |
+| [Stadig Lift](docs/lift.md) and [Stadig Macro](docs/macro.md) | How each app works, screen by screen and rule by rule |
+| [The design](docs/design.md) | The palette, the numerals, the ruler, and what each device is for |
+| [Testing](docs/testing.md) | What's tested where, and [what the package tests cover](docs/package-tests.md) |
+| [CI/CD](docs/ci-cd.md) | GitHub Actions, Xcode Cloud, branches and releases |
+| [The food catalogs](Apps/MacroTrack/Catalogs/README.md) | Building them from source, and [their licences](Packages/FoodDatabase/Sources/FoodDatabase/Resources/ATTRIBUTION.md) |
 
-## Identifiers
+## Working with coding agents
 
-**Signing:** the generator sets `DEVELOPMENT_TEAM` to `9HAG9PT8LJ` for every target. Identifiers:
+Stadig is built with coding agents (Claude Code), and how that's done is part of the repo:
 
-| | Stadig Lift | Stadig Macro |
-|---|---|---|
-| Bundle ids | `dev.svindland.stadig.lift` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) | `dev.svindland.stadig.macro` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) |
-| iCloud containers | `iCloud.dev.svindland.stadig.lift`, and the family's `iCloud.dev.svindland.stadig` | `iCloud.dev.svindland.stadig.macro`, and the family's |
-| App Group | `group.dev.svindland.stadig`, shared by the whole family | same |
-| In-app purchases (off) | `dev.svindland.stadig.lift.unlock` (non-consumable), `dev.svindland.stadig.lift.monthly` (subscription) | `dev.svindland.stadig.macro.unlock` (non-consumable), `dev.svindland.stadig.macro.monthly` (subscription) |
-| URL scheme | `lifttrack://start` | `macrotrack://log`, `scan`, `camera`, `describe`, `quickadd`, `weigh`, `plan`, `supplements` |
+- [CLAUDE.md](CLAUDE.md) is the rulebook: the commands, where code goes, the conventions, what a change has to pass before it's called done. It's a good checklist for people too. [AGENTS.md](AGENTS.md) points other tools at it.
+- [.claude/skills/](.claude/skills) has the step-by-step skills: build and test, run an app in the simulator, add a feature, review a change, commit beside other sessions, release.
+- [agent-docs/](agent-docs/README.md) is what the agents write down as they go: every product call made without the owner's sign-off, and what was and wasn't checked by hand.
 
-Each bundle id covers the iPhone, iPad, Mac and Vision Pro builds. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).
+## Licence
+
+Stadig Lift and Stadig Macro are copyright © 2026 Sam Svindland, and free software under the [GNU General Public License, version 3](LICENSE).
+
+The licence covers the code. The food data has its own terms: USDA FoodData Central and the NIH Dietary Supplement Label Database are in the public domain, and the Open Food Facts catalog is under the Open Database License ([the notices](Packages/FoodDatabase/Sources/FoodDatabase/Resources/ATTRIBUTION.md)). The SwiftUI skill in `.claude/skills/swiftui-pro` is Paul Hudson's, under the MIT licence.

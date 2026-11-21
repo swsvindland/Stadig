@@ -35,6 +35,6 @@ description: Add a new local Swift package to the repo (for a new engine, or spl
    - `docs/ci-cd.md`: add `Packages/<Name>` to the Xcode Cloud file filter of every app that uses it, and tell the owner to update those workflows (they live in App Store Connect).
    - GitHub's `CI` picks it up through `Scripts/build.sh test`; nothing to change there.
 
-4. **Document it**: a line in the README's layout, and the app doc section that uses it.
+4. **Document it**: a row in `docs/architecture.md`'s package table and its diagram, the same diagram and the package count in the README, and the app doc section that uses it.
 
 5. `Scripts/build.sh test <Name>`, then build each app that links it.
