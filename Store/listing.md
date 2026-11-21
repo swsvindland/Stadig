@@ -11,7 +11,7 @@ Both apps share these:
 | Age rating | 9+ (12+ in Brazil and Vietnam): every content question None or No, except "Health or Wellness Topics", Yes |
 | Regulated medical device | No |
 | Privacy Policy URL | https://stadig.dev/privacy |
-| App Privacy | Data Not Collected (saved, waiting to be published) |
+| App Privacy | Data Not Collected (published) |
 | Support URL | https://stadig.dev/support (the site's support form, which files a GitHub issue; the site gives no email address) |
 | Copyright | 2026 Sam Svindland |
 | Sign-in required | No |
@@ -63,7 +63,7 @@ Stadig Lift is free, all of it. No account, no ads, no analytics and no third-pa
 Stadig is Norwegian for steady.
 ```
 
-**App Review notes** (the answers to App Review's 2.1 "Information Needed" of 2026-11-14, with the screen recording attached; on iOS since 2026-11-18, and on macOS and visionOS once iOS is approved):
+**App Review notes, iOS** (the answers to App Review's 2.1 "Information Needed" of 2026-11-14, with a recording from an iPhone attached; entered 2026-11-18, approved, and released the same day):
 
 ```text
 Stadig Lift is free, with no account, no sign-in and no in-app purchases. Everything works from the first launch.
@@ -75,6 +75,24 @@ Stadig Lift is free, with no account, no sign-in and no in-app purchases. Everyt
 3. Setup and main features: launch the app and answer the onboarding questions (training days, session length, equipment, experience and goals). It writes the first session of a short assessment block. On Today, tap Start: each set comes filled in, and one tap (Easy, Just right or Missed) logs it and starts the rest timer. Plan shows the week and the block, Progress shows the scores, and Body holds measurements. On iPad, the Mac and Apple Vision Pro the sidebar adds Program and the exercise Library. No login, credentials or sample files are needed.
 
 4. External services: none. There is no server of ours, and no third-party SDK, analytics, advertising or AI service. The app uses Apple frameworks only: CloudKit (the person's private iCloud database, to sync their own devices), HealthKit (optional, not on the Mac) and an optional Apple Watch app.
+
+5. Regions: the app works the same in every region. It is in English, with kilograms or pounds.
+
+6. Regulation and third-party material: Stadig Lift is a fitness app, not a medical device, and gives no medical advice. It contains no protected third-party material; its exercise library is our own.
+```
+
+**App Review notes, macOS** (the same answers for the Mac app, with a recording from the Mac attached; submitted 2026-11-21. The visionOS versions still have the notes from before App Review asked):
+
+```text
+Stadig Lift is free, with no account, no sign-in and no in-app purchases. Everything works from the first launch. This is the native Mac version of the same app (one universal purchase), whose iOS version App Review approved and which has been on the App Store since November 18, 2026.
+
+1. Screen recording: attached, captured on a Mac running this Mac app. It starts on Today and follows a whole training session: Start session, the warm-up, each set logged with one click, the rating after a set (Easy, Just right or Missed), the rest timer between sets, and Finish session at the end.
+
+2. Purpose and audience: Stadig Lift is a strength-training app for people who lift weights, from beginners to experienced lifters. It writes their training program, sets every weight, and adjusts each set to how the last one felt, so they don't have to plan their training or work out progression themselves.
+
+3. Setup and main features: launch the app and answer the onboarding questions (training days, session length, equipment, experience and goals). It writes the first session of a short assessment block. The sidebar holds Today; Plan, Program and the exercise Library under Training; and History, Progress and Body under Records. On Today, click Start session: each set comes filled in, and one click logs it and starts the rest timer. Settings is in the app menu (Command-comma). No login, credentials or sample files are needed.
+
+4. External services: none. There is no server of ours, and no third-party SDK, analytics, advertising or AI service. The app uses Apple frameworks only: CloudKit (the person's private iCloud database, to sync their own devices) and notifications (optional, for the rest timer). Apple Health isn't on the Mac, so the Mac app doesn't use HealthKit; its setup and Settings say so.
 
 5. Regions: the app works the same in every region. It is in English, with kilograms or pounds.
 
@@ -128,7 +146,7 @@ Stadig Macro is free, all of it. No account, no ads, no analytics and no third-p
 Food data from USDA FoodData Central, Open Food Facts (ODbL) and the NIH Dietary Supplement Label Database.
 ```
 
-**App Review notes** (the answers to App Review's 2.1 "Information Needed" of 2026-11-14, with the screen recording attached; on iOS since 2026-11-18, and on macOS and visionOS once iOS is approved):
+**App Review notes, iOS** (the answers to App Review's 2.1 "Information Needed" of 2026-11-14, with a recording from an iPhone attached; entered 2026-11-18, approved, and released the same day):
 
 ```text
 Stadig Macro is free, with no account, no sign-in and no in-app purchases. Everything works from the first launch.
@@ -142,6 +160,24 @@ Stadig Macro is free, with no account, no sign-in and no in-app purchases. Every
 4. External services: none of ours. There is no server, and no third-party SDK, analytics or advertising. The app uses Apple frameworks only: CloudKit (the person's private iCloud database, to sync their own devices), HealthKit (optional), the camera (optional, for scanning and photos), Vision (on-device text recognition for labels) and the Foundation Models framework (Apple Intelligence's on-device model, for photo and spoken logging). The model only names the foods and amounts; the nutrients always come from the food data, which comes from USDA FoodData Central (public domain), Open Food Facts (ODbL) and the NIH Dietary Supplement Label Database (public) and ships inside the app. The app makes no network requests for it.
 
 5. Regions: the app works the same in every region, in English, with metric or US units. The one difference is Apple's: photo and spoken logging need Apple Intelligence, which isn't offered on every device or in every region. Where it's missing, those options say why and everything else works.
+
+6. Regulation and third-party material: Stadig Macro is a nutrition app, not a medical device, and gives no medical advice. The food databases are used under their licenses above, credited at the end of the App Store description.
+```
+
+**App Review notes, macOS** (the same answers for the Mac app, with a recording from the Mac attached; submitted 2026-11-21. The visionOS versions still have the notes from before App Review asked):
+
+```text
+Stadig Macro is free, with no account, no sign-in and no in-app purchases. Everything works from the first launch. This is the native Mac version of the same app (one universal purchase), whose iOS version App Review approved and which has been on the App Store since November 18, 2026.
+
+1. Screen recording: attached, captured on a Mac running this Mac app. It starts on Today, then the Log tab: two usual foods logged with one click each, a logged food opened and its amount changed, and a food logged by typing a few letters in the field at the bottom of the window.
+
+2. Purpose and audience: Stadig Macro is a nutrition tracker for adults who want to lose, gain or keep their weight. It works out the person's real maintenance calories from what they log and their weigh-ins, recommends a phase (cut, bulk, maintenance, recomp or a diet break) and adjusts their calorie and protein targets each week, instead of leaving them with a guessed target.
+
+3. Setup and main features: launch the app and answer the onboarding questions about the person and their goal; it opens on Today. The sidebar holds Today, Log and Week; Foods, Meal Plan and Supplements; and Plan, Progress and History. Food is logged by clicking a usual food, by typing in the field at the bottom (for example "chick 200" and Return), from the Foods table, by typing a barcode, from a photo chosen from Photos or a file or dropped on the window, or by describing a meal in a sentence (the Log menu has each). A Nutrition Facts label is read from a photo or file, since the Mac has no camera scanning. Weigh in from Today or the Log menu. Plan shows the phase and targets, and Progress shows the weight trend and the maintenance estimate. No login, credentials or sample files are needed; any photo of a meal or a Nutrition Facts label works.
+
+4. External services: none of ours. There is no server, and no third-party SDK, analytics or advertising. The app uses Apple frameworks only: CloudKit (the person's private iCloud database, to sync their own devices), Vision (on-device text recognition for labels) and the Foundation Models framework (Apple Intelligence's on-device model, for photo and described meals). The model only names the foods and amounts; the nutrients always come from the food data, which comes from USDA FoodData Central (public domain), Open Food Facts (ODbL) and the NIH Dietary Supplement Label Database (public) and ships inside the app. The app makes no network requests for it. Apple Health isn't on the Mac, so the Mac app doesn't use HealthKit; its setup and Settings say so.
+
+5. Regions: the app works the same in every region, in English, with metric or US units. The one difference is Apple's: photo and described meals need Apple Intelligence, which isn't offered on every Mac or in every region. Where it's missing, those options say why and everything else works.
 
 6. Regulation and third-party material: Stadig Macro is a nutrition app, not a medical device, and gives no medical advice. The food databases are used under their licenses above, credited at the end of the App Store description.
 ```
