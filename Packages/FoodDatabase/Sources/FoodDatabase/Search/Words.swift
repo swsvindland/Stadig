@@ -99,6 +99,8 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
         (["fat", "free"], [(0, "nonfat"), (1, "nonfat")]),
         (["crunchy", "peanut"], [(0, "chunk")]),
         (["creamy", "peanut"], [(0, "smooth")]),
+        // A crunchy taco is its taco in a hard shell.
+        (["crunchy", "taco"], [(0, "hard")]),
         // Extra lean ground meat is its 95% lean.
         (["extra", "lean"], [(0, "95")]),
         // Monterey Jack is its "Cheese, monterey".
@@ -163,7 +165,7 @@ let countWords: Set<String> = [
     "serving", "servings", "portion", "portions", "cup", "cups", "bowl", "bowls", "plate", "plates", "side", "sides",
     "order", "orders", "small", "medium", "large", "regular", "jumbo", "mini", "kid", "kids", "tall", "grande", "venti",
     "segment", "segments", "cube", "cubes", "drizzle", "pat", "pats", "scoop", "scoops", "dollop", "sprinkle", "pinch", "dash", "splash",
-    "spoonful", "squeeze",
+    "spoonful", "squeeze", "dozen",
 ]
 
 /// A search can carry its amount: "cup of coffee", "200 g chicken", "2 eggs".
@@ -175,7 +177,7 @@ let unitWords: Set<String> = [
 ]
 
 /// A size before the food says how much of it: "large egg", "grande latte". "Mini" names products.
-let sizeWords: Set<String> = ["small", "medium", "large", "jumbo", "regular", "tall", "grande", "venti"]
+let sizeWords: Set<String> = ["small", "medium", "large", "jumbo", "regular", "tall", "grande", "venti", "dozen"]
 
 /// How a size in inches is written after its number: "14 inch", "14in", "14-inch".
 let inchWords: Set<String> = ["inch", "inches", "in"]
@@ -485,9 +487,12 @@ struct QueryReading: Equatable {
     var words: [String]
     var counts: [(String, String)]
     var sizes: [String] = []
+    /// A last word of one letter with the word before it, which a search waits on (see
+    /// `searchedWords`): a name with the two in a row was asked for by them, as "special k" is.
+    var letter: [String] = []
 
     static func == (a: QueryReading, b: QueryReading) -> Bool {
-        a.words == b.words && a.counts.elementsEqual(b.counts, by: { $0 == $1 }) && a.sizes == b.sizes
+        a.words == b.words && a.counts.elementsEqual(b.counts, by: { $0 == $1 }) && a.sizes == b.sizes && a.letter == b.letter
     }
 }
 
@@ -602,8 +607,15 @@ func readQuery(_ query: String) -> QueryReading {
     {
         counts.append((found[i].word, found[i + 1].word))
     }
-    return QueryReading(words: Array(names.prefix(8)), counts: counts, sizes: sizes)
+    var letter: [String] = []
+    if names.count > 1, names.count <= 8, let last = names.last, length(last) == 1, !isNumber(last) { letter = [names[names.count - 2], last] }
+    return QueryReading(words: Array(names.prefix(8)), counts: counts, sizes: sizes, letter: letter)
 }
+
+/// Whether a word with another typed after it is two letters that are a word of their own:
+/// the "dr" of "dr pepper" isn't dried or dressing begun, nor the "la" of "la croix" lasagna.
+/// Not a number, nor "mc", which starts a name typed apart ("mc flurry").
+func isShortWord(_ word: String) -> Bool { length(word) == 2 && !isNumber(word) && word != "mc" }
 
 /// The words a typed search looks for: a last word of one letter waits for its second, unless it
 /// is a digit ("chicken b" searches chicken).
@@ -677,6 +689,19 @@ struct TypoMeter {
         }
         return found
     }
+}
+
+/// Whether a correction is a long shot for a word that foods people look for have as typed: the
+/// word cut short, a word that starts with another letter (typos rarely touch the first) or one
+/// two typos away. "triscuit" isn't biscuit, nor "skittles" skinless or "cholula" chocolate;
+/// "protien" is still protein, whatever a label or two spell that way.
+func isLongShot(_ fix: String, for word: String) -> Bool {
+    guard fix != word, !fix.contains(" ") else { return false }
+    if word.hasPrefix(fix) || word.unicodeScalars.first != fix.unicodeScalars.first { return true }
+    var meter = TypoMeter()
+    let read = Array(fix.utf16)
+    // A fix is a stem, or the start of a word: as near as the word or its own stem reads it.
+    return [word, stem(word)].allSatisfy { (meter.misread(Array($0.utf16), read)?.edits ?? 2) > 1 }
 }
 
 /// A typed word the catalogs barely know, kept to compare with each food's own words: "gali" is

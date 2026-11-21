@@ -228,6 +228,8 @@ private let everydayVarieties: [String: Usual] = [
     "enchilada": Usual(["cheese"], ["sauce", "seasoning", "kit"]),
     "taco": Usual(["beef"], "shell shells salad seasoning sauce kit chip chips flavor".split(separator: " ").map(String.init)),
     "nacho": Usual(["fast"], "chip chips flavor tortilla sauce dip".split(separator: " ").map(String.init)),
+    "nugget": Usual(
+        ["chicken"], "fish salmon cod tuna pork turkey veggie vegan plant tofu cauliflower chocolate ice".split(separator: " ").map(String.init)),
     "cornbread": Usual(["recipe"], ["mix", "stuffing"]),
     "lettuce": Usual(["iceberg"], "romaine cos butterhead bibb boston leaf salad wrap wraps".split(separator: " ").map(String.init)),
     // Goat cheese is the soft kind; goat's milk and meat are themselves.
@@ -475,6 +477,8 @@ struct FoodText {
     let runs: [Int]
     /// The runs that start with "with": what the food comes with, not what it is.
     let served: Set<Int>
+    /// The runs that start after "or": the "tostada salad" of "Taco or tostada salad".
+    let alternate: Set<Int>
     /// Words in brackets, stemmed, except "(Includes …)".
     let noted: [String]
     /// The words of an "(Includes …)" note, stemmed: other foods the entry stands for.
@@ -529,6 +533,7 @@ struct FoodText {
         var part = 0
         var run = 0
         var served = Set<Int>()
+        var alternate = Set<Int>()
         var next = 0
         var commas: [Int] = []
         for (i, scalar) in scalars.enumerated() {
@@ -547,6 +552,7 @@ struct FoodText {
                 if partWords.contains(found[next].word) {
                     run += 1
                     if found[next].word == "with" { served.insert(run) }
+                    if found[next].word == "or" { alternate.insert(run) }
                 }
                 placed.append((bracket, part, run))
                 next += 1
@@ -613,6 +619,7 @@ struct FoodText {
         self.said = kept.map { said[$0] }
         self.runs = kept.map { runs[$0] }
         self.served = served
+        self.alternate = alternate
         self.noted = noted
         self.included = included
         // USDA files some foods under a group: "Fish, salmon".
@@ -881,8 +888,12 @@ struct CoverageQuery {
                 // So is one typed alone, once it's whole: "curry" isn't currants begun. After
                 // other words the last may still be half of one: the "oat" of "chobani extra
                 // creamy oat" is on its way to Oatmilk.
+                // And two letters with a word after them are a word: the "dr" of "dr pepper"
+                // isn't dried begun. Not "mc", which starts a name typed apart ("mc flurry").
                 finished: prefix && word != "mac"
-                    && (i < words.count - 1 ? EverydayPhrases.isWord(stem(word)) : words.count == 1 && EverydayPhrases.isWritten(word)))
+                    && (i < words.count - 1
+                        ? EverydayPhrases.isWord(stem(word)) || isShortWord(word) : words.count == 1 && EverydayPhrases.isWritten(word))
+            )
         }
         var mentioned: [String] = []
         var entire: [String] = []
@@ -1108,6 +1119,12 @@ struct CoverageQuery {
             modifies = text.said.indices[(at + 1)...].contains { i in
                 let w = text.said[i]
                 return text.runs[i] == text.runs[at] && formWords.contains(w) && !asked(w)
+            }
+            // What follows the food after "or" is said of both: "Taco or tostada salad" is a
+            // salad, where "Bagel or roll" is a bagel.
+            let other = text.said.indices.filter { text.runs[$0] == text.runs[at] + 1 }
+            if !modifies, other.count > 1, let last = other.last, text.alternate.contains(text.runs[last]), at + 1 == other[0] {
+                modifies = formWords.contains(text.said[last]) && !asked(text.said[last])
             }
         }
         // Whether the name has the words in one part of it: "Nuts, coconut milk" for "coconut
@@ -1408,7 +1425,7 @@ func scoreFoods(
     let brandParts = Array(brandForms.joined().joined())
     let mentionForms = target.map(searchForms)
     // Each word as it would name a brand's word, and as corrected ("sracy" names Stacy's).
-    let typedBare = target.map { length($0) > 2 && !isNumber($0) ? bare($0) : "" }
+    let typedBare = target.map { length($0) > 1 && !isNumber($0) ? bare($0) : "" }
     let last = target.count - 1
     let typedFixes = target.map { word in (fixes[word] ?? []).map { $0.split(separator: " ").map(String.init) } }
     let typedMisspelt = target.map { hints.doubted.contains($0) ? Misspelling($0) : nil }
@@ -1470,7 +1487,7 @@ func scoreFoods(
             // bread" isn't Breadsmith begun, nor the "bar" of "protein bar" Barilla, nor the
             // "clove" of "garlic clove" Clover Valley. Unless it was typed twice: "sparkling water
             // water" is on its way to Waterloo.
-            if named == nil, !naming.contains(last), !typedBare[last].isEmpty, starts(written, target[last]),
+            if named == nil, !naming.contains(last), length(target[last]) > 2, !typedBare[last].isEmpty, starts(written, target[last]),
                 target.dropLast().contains(target[last])
                     || (!text.said.contains(stem(target[last])) && !EverydayPhrases.isWord(stem(target[last])) && !isEasable(target[last]))
             {
@@ -1644,14 +1661,22 @@ func scoreFoods(
     // A food people look for has every word as typed: a correction of one is then a long shot.
     // "spam" is Spam, though the catalogs know "spa…" better; "brocoli" is still broccoli,
     // which only labels sold elsewhere and scanned by no one spell that way.
-    // Only where the correction is the word cut short, which is no typo's reading: "protien"
-    // is still protein, whatever a label or two spell that way.
-    let literal =
-        search && target.contains { word in (fixes[word] ?? []).contains { $0 != word && word.hasPrefix($0) } }
-        && rows.contains { row in
-            row.match.missing == 0 && row.match.fixed == 0 && row.match.partial == 0 && !hints.away.contains(row.food.id)
-                && (!row.text.branded || row.food.popularity >= 1.5)
-        }
+    // Only where the correction is a long shot, as the word cut short is: "protien" is still
+    // protein, whatever a label or two spell that way. A chain's item USDA lists is such a
+    // food: a "mcchicken" is McDonald's, not chicken.
+    // A correction of its spelling, that is: another wording of the word (the "hamburger" of
+    // "burger") is the word itself.
+    let longShots = search ? target.filter { word in (fixes[word] ?? []).contains { !hints.respelt.contains($0) && isLongShot($0, for: word) } } : []
+    let cutShort = longShots.allSatisfy { word in (fixes[word] ?? []).contains { $0 != word && word.hasPrefix($0) } }
+    // A label spells a word as it likes, so a scanned label's name only shows that a word
+    // isn't another cut short: "mozerella" on a few of them is still mozzarella. Otherwise the
+    // word is in a name USDA wrote, or is the brand of a food people scan (Skittles, Cholula).
+    let isAsTyped = { (row: Row) in
+        guard row.match.missing == 0, row.match.fixed == 0, row.match.partial == 0, !hints.away.contains(row.food.id) else { return false }
+        if !row.text.branded || row.text.chain { return true }
+        return row.food.popularity >= 1.5 && (cutShort || longShots.allSatisfy { word in row.text.own.contains { same($0, stem(word)) } })
+    }
+    let literal = !longShots.isEmpty && rows.contains(where: isAsTyped)
     let saidStems = target.map(stem)
     // What's eaten cooked is still the raw food where the catalog lists no cooked one: egg
     // whites are USDA's "Egg, white, raw, fresh", which it has no cooked entry for.
@@ -1756,9 +1781,14 @@ func scoreFoods(
             // Only when the food's own name has the word naming the food: Oreo's cookies for "oreo",
             // not the "Flat White" brand's coffee chocolate for "flat white".
             if row.own && match.head && row.only == 0 { score += 2 }
-            if !read.counts.isEmpty || !read.sizes.isEmpty {
+            if !read.counts.isEmpty || !read.sizes.isEmpty || !read.letter.isEmpty {
                 let list = tokens("\(row.food.name) \(row.food.brand ?? "")")
                 for (count, next) in read.counts where counted(list, count, next) { score += 2 }
+                // The letter a search ends with isn't searched for, but a name with it after
+                // the word before was asked for by it: "special k", "vitamin c".
+                if read.letter.count == 2, list.indices.dropLast().contains(where: { list[$0] == read.letter[0] && list[$0 + 1] == read.letter[1] }) {
+                    score += 2
+                }
                 for size in read.sizes where sized(list, size) { score += 2 }
             }
         }
@@ -1803,6 +1833,11 @@ func scoreFoods(
             else { continue }
             if ranked[theirs].score <= ranked[i].score { ranked[theirs].score = ranked[i].score + 0.01 }
         }
+    }
+    // The foods of a long-shot correction come after the best food that has the words as typed,
+    // however that one is named: chicken after "McDONALD'S, McCHICKEN Sandwich" for "mcchicken".
+    if literal, let best = ranked.filter({ isAsTyped(rows[$0.index]) }).map(\.score).max() {
+        for i in ranked.indices where rows[ranked[i].index].match.fixed > 0 && ranked[i].score >= best { ranked[i].score = best - 0.01 }
     }
     ranked.sort { $0.score != $1.score ? $0.score > $1.score : $0.index < $1.index }
     return ranked

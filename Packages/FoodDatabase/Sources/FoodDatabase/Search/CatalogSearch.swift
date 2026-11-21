@@ -480,6 +480,17 @@ extension FoodCatalog {
                     continue
                 }
             }
+            // "Mc" typed apart starts a name the catalogs write as one word, however far the
+            // rest is typed: "mc flurry", "mc donalds", "mc d".
+            if word == "mc", i + 1 < tokens.count, named(i + 1), !isNumber(tokens[i + 1].word),
+                scalars[tokens[i].end..<tokens[i + 1].start].allSatisfy(isSpace)
+            {
+                let next = tokens[i + 1].word
+                write(word + next, over: tokens[i].start..<tokens[i + 1].end)
+                also("\(word) \(stem(next))", for: [word + next])
+                i += 1
+                continue
+            }
             // Halves of three letters or more, as a word typed as one divides: "pea ch" isn't peach.
             guard i + 1 < tokens.count, named(i + 1), length(word) > 2 else { continue }
             let typed = tokens[i + 1].word
@@ -688,7 +699,9 @@ extension FoodCatalog {
             if !spelling.fixes.isEmpty { fixes[word] = spelling.fixes }
             if spelling.doubted { doubted.insert(word) }
         }
-        let term = { (word: String) in searchTerm(word, fixes) }
+        // Two letters with a word after them are a word, not the start of one (see `isShortWord`).
+        let short = Set(searched.dropLast().filter(isShortWord))
+        let term = { (word: String) in short.contains(word) ? "\"\(word)\"" : searchTerm(word, fixes) }
         let expression = searched.map(term).joined(separator: " AND ")
         // Each search below is also made with every name written the other way, as one word or as
         // two. It's a search of its own: among the alternatives of one expression, the rarer
@@ -705,8 +718,10 @@ extension FoodCatalog {
         let lead = { (word: String) in fixes[word]?.first ?? searchForms(word)[0] }
         // The words alone rank 12-grain bread too low to reach it for "12 grain bread", or a chain's
         // 14" pizza among every pepperoni pizza for "14 inch pepperoni pizza".
+        // Nor do the words without the letter they end with reach Special K for "special k".
         let phrases =
             reading.counts.map { "\"\($0.0) \(stem($0.1))\"*" } + reading.sizes.map { "(\"\($0)\" OR \"\($0)in\"*)" }
+            + (reading.letter.isEmpty ? [] : ["\"\(reading.letter[0]) \(reading.letter[1])\""])
         let span = findBrand(searched, fixes)
         let brand = span.map { Array(searched[$0]) } ?? []
         let named = span.map { span in searched.indices.filter { !span.contains($0) }.map { searched[$0] } } ?? []
@@ -741,9 +756,15 @@ extension FoodCatalog {
             // And the usual kind of what was typed, which the first rows found needn't hold:
             // orange juice among every food with "juice" in its name.
             span == nil ? everydayQueries(Named(name: query, brand: "")).flatMap { jobs(catalogs.filter { $0.kind == .generic }, $0, .typed) } : [],
+            // The words as typed, where a correction is a long shot: the foods of a name the
+            // catalogs know come after the correction's, which are many more ("skittles"
+            // beside every skinless chicken breast). Not for a likelier typo, which would
+            // only find the labels that share it.
+            fixes.contains { word, readings in readings.contains { isLongShot($0, for: word) } }
+                ? jobs(catalogs, searched.map { searchTerm($0) }.joined(separator: " AND "), .typed, lead: searchForms(foods[0])[0]) : [],
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7]
+        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7] + found[8]
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").

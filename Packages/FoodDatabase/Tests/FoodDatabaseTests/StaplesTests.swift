@@ -524,6 +524,68 @@ let plates: [(String, String)] = [
     ("Tofu, fried", "^Tofu, fried"),
 ]
 
+/// Popular products and chains' items as people type them, a name and no more, each with a
+/// pattern for the "Name [Brand]" that should come first: the brand's own, or the chain's item
+/// as USDA lists it.
+let products: [(String, String)] = [
+    ("big mac", "^Big Mac"), ("whopper", "^Whopper"), ("quarter pounder", "^Quarter Pounder"), ("mcnuggets", "(?i)mcnuggets|chicken nuggets"),
+    ("mcchicken", "(?i)mcchicken"), ("egg mcmuffin", "Egg McMUFFIN \\["), ("mcflurry", "McFLURRY"),
+    ("chick fil a sandwich", "^CHICK-FIL-A, chicken sandwich"), ("chick fil a nuggets", "(?i)chick-fil-a.*(nugget|strips)|chicken nuggets"),
+    ("chipotle chicken", "^Chipotle chicken"), ("starbucks latte", "(?i)latte.*Starbucks"),
+    ("starbucks frappuccino", "(?i)frappuccino.*Starbucks"), ("pumpkin spice latte", "(?i)pumpkin spice latte"), ("subway footlong", "(?i)subway"),
+    ("taco bell crunchwrap", "(?i)crunchwrap"), ("crunchy taco", "(?i)taco with beef.*hard shell|taco bell"),
+    ("mcdonalds fries", "^McDONALD'S, french fries"), ("kfc chicken", "^KFC"),
+    ("glazed donut", "(?i)^doughnuts?,.*glazed|glazed (donut|doughnut)"), ("dominos pizza", "^DOMINO'S"), ("oreos", "(?i)oreo"),
+    ("cheerios", "(?i)cheerios"), ("honey nut cheerios", "(?i)honey nut cheerios"), ("frosted flakes", "(?i)frosted flakes"),
+    ("doritos", "(?i)doritos"), ("pop tarts", "(?i)pop.tarts"), ("goldfish", "(?i)goldfish"), ("cheez its", "(?i)cheez.its"),
+    ("ritz crackers", "(?i)ritz"), ("nutella", "^Nutella"), ("kind bar", "(?i)\\[kind"), ("clif bar", "(?i)\\[clif"),
+    ("quest bar", "(?i)\\[quest"), ("rxbar", "(?i)rxbar"), ("fairlife", "(?i)\\[fairlife"), ("premier protein", "(?i)\\[premier protein"),
+    ("muscle milk", "(?i)\\[muscle milk"), ("gatorade", "(?i)\\[gatorade"), ("red bull", "(?i)\\[red bull"), ("monster energy", "(?i)\\[monster"),
+    ("celsius", "(?i)\\[celsius"), ("la croix", "(?i)\\[la ?croix"), ("coke zero", "(?i)coke zero|coca.cola zero"),
+    ("diet coke", "(?i)diet coke|diet cola"), ("sprite", "(?i)\\[sprite"), ("dr pepper", "(?i)dr.? pepper"), ("mountain dew", "(?i)mountain dew"),
+    ("halo top", "(?i)\\[halo top"), ("ben and jerrys", "(?i)\\[ben & jerry"), ("haagen dazs", "(?i)\\[h.agen.dazs"),
+    ("chobani", "(?i)\\[chobani"), ("oikos", "(?i)\\[oikos"), ("siggis", "(?i)\\[siggi"), ("yoplait", "(?i)\\[yoplait"),
+    ("activia", "(?i)\\[activia"), ("kraft mac and cheese", "(?i)macaroni.*\\[kraft"), ("velveeta", "(?i)\\[velveeta"), ("spam", "(?i)spam"),
+    ("ramen noodles", "(?i)ramen"), ("cup noodles", "(?i)cup noodle"), ("uncrustables", "(?i)uncrustable"), ("hot pockets", "(?i)\\[hot pockets"),
+    ("lean cuisine", "(?i)\\[lean cuisine"), ("eggo waffles", "(?i)waffle.*\\[eggo"), ("pringles", "(?i)\\[pringles"), ("lays", "(?i)\\[lay.?s"),
+    ("cheetos", "(?i)\\[cheetos"), ("takis", "(?i)\\[takis"), ("skittles", "(?i)skittles"), ("m&ms", "(?i)m&m"), ("snickers", "(?i)snickers"),
+    ("reeses", "(?i)\\[reese"), ("kit kat", "(?i)kit ?kat"), ("twix", "(?i)twix"), ("hersheys", "(?i)\\[hershey"), ("pepsi", "(?i)pepsi"),
+    ("fanta", "(?i)fanta"), ("7up", "(?i)7.?up"), ("arizona iced tea", "(?i)\\[arizona"), ("vitamin water", "(?i)vitamin ?water"),
+    ("body armor", "(?i)body ?armor"), ("liquid iv", "(?i)liquid i\\.?v"), ("ensure", "(?i)\\[ensure"), ("boost", "(?i)^boost"),
+    ("core power", "(?i)core power"), ("orgain", "(?i)\\[orgain"), ("ghost protein", "(?i)\\[ghost"),
+    ("optimum nutrition whey", "(?i)optimum nutrition"), ("quaker oats", "(?i)\\[quaker"), ("special k", "(?i)special k"),
+    ("lucky charms", "(?i)lucky charms"), ("cinnamon toast crunch", "(?i)cinnamon toast crunch"), ("froot loops", "(?i)froot loops"),
+    ("raisin bran", "(?i)raisin bran"), ("cap n crunch", "(?i)cap.?n.? crunch"), ("nature valley", "(?i)\\[nature valley"),
+    ("kashi", "(?i)\\[kashi"), ("daves killer bread", "(?i)\\[dave.?s killer"), ("wonder bread", "(?i)\\[wonder"),
+    ("thomas english muffins", "(?i)english muffin.*\\[thomas"), ("philadelphia cream cheese", "(?i)\\[philadelphia"), ("babybel", "(?i)babybel"),
+    ("laughing cow", "(?i)laughing cow"), ("sargento", "(?i)\\[sargento"), ("kerrygold butter", "(?i)\\[kerrygold"),
+    ("jif peanut butter", "(?i)\\[jif"), ("skippy", "(?i)\\[skippy"), ("smuckers", "(?i)\\[smucker"), ("heinz ketchup", "(?i)\\[heinz"),
+    ("hellmanns mayo", "(?i)\\[hellmann"), ("hidden valley ranch", "(?i)\\[hidden valley"), ("sriracha", "(?i)sriracha"),
+    ("franks red hot", "(?i)frank.?s"), ("tabasco", "(?i)tabasco"), ("cholula", "(?i)cholula"), ("oscar mayer bacon", "(?i)bacon.*\\[oscar mayer"),
+    ("jimmy dean sausage", "(?i)\\[jimmy dean"), ("hillshire farm", "(?i)\\[hillshire"), ("tyson chicken nuggets", "(?i)nugget.*\\[tyson"),
+    ("perdue chicken", "(?i)\\[perdue"), ("beyond burger", "(?i)beyond"), ("impossible burger", "(?i)impossible"),
+    ("morningstar", "(?i)morning ?star"), ("amys burrito", "(?i)burrito.*\\[amy"), ("digiorno pizza", "(?i)\\[digiorno"),
+    ("totinos pizza rolls", "(?i)\\[totino"), ("stouffers lasagna", "(?i)lasagn.*\\[stouffer"), ("healthy choice", "(?i)\\[healthy choice"),
+    ("campbells chicken noodle", "(?i)\\[campbell"), ("progresso", "(?i)\\[progresso"), ("chef boyardee", "(?i)boyardee"),
+    ("barilla", "(?i)\\[barilla"), ("raos marinara", "(?i)\\[rao"), ("prego", "(?i)\\[prego"), ("uncle bens rice", "(?i)ben.?s"),
+    ("kodiak cakes", "(?i)\\[kodiak"), ("bisquick", "(?i)bisquick"), ("nesquik", "(?i)nesquik"), ("swiss miss", "(?i)swiss miss"),
+    ("coffee mate", "(?i)coffee.?mate"), ("international delight", "(?i)\\[international delight"), ("silk almond milk", "(?i)almond.*\\[silk"),
+    ("oatly", "(?i)\\[oatly"), ("califia", "(?i)califia"), ("almond breeze", "(?i)almond breeze"), ("lactaid", "(?i)lactaid"),
+    ("horizon organic milk", "(?i)milk.*\\[horizon"), ("naked juice", "(?i)\\[naked"), ("tropicana", "(?i)\\[tropicana"),
+    ("simply orange", "(?i)\\[simply"), ("capri sun", "(?i)capri.?sun"), ("kool aid", "(?i)kool.?aid"), ("haribo", "(?i)\\[haribo"),
+    ("sour patch kids", "(?i)sour patch"), ("swedish fish", "(?i)swedish fish"), ("starburst", "(?i)starburst"), ("milky way", "(?i)milky ?way"),
+    ("butterfinger", "(?i)butterfinger"), ("ferrero rocher", "(?i)ferrero"), ("lindt", "(?i)\\[lindt"), ("ghirardelli", "(?i)\\[ghirardelli"),
+    ("toblerone", "(?i)toblerone"), ("tic tac", "(?i)tic.?tac"), ("chips ahoy", "(?i)chips ahoy"), ("nutter butter", "(?i)nutter butter"),
+    ("fig newtons", "(?i)newton"), ("teddy grahams", "(?i)teddy graham"), ("nilla wafers", "(?i)nilla"), ("triscuit", "(?i)triscuit"),
+    ("wheat thins", "(?i)wheat thins"), ("tostitos", "(?i)\\[tostitos"), ("fritos", "(?i)frito"), ("ruffles", "(?i)\\[ruffles"),
+    ("sun chips", "(?i)sun ?chips"), ("smartfood popcorn", "(?i)\\[smartfood"), ("skinny pop", "(?i)skinny ?pop"),
+    ("pirates booty", "(?i)pirate.?s booty"), ("slim jim", "(?i)slim jim"), ("jack links", "(?i)\\[jack link"), ("chomps", "(?i)\\[chomps"),
+    ("larabar", "(?i)l.rabar"), ("luna bar", "(?i)\\[luna"), ("pure protein bar", "(?i)\\[pure protein"), ("built bar", "(?i)\\[built"),
+    ("think thin", "(?i)think.?thin"), ("danimals", "(?i)danimals"), ("fage", "(?i)\\[fage"), ("noosa", "(?i)\\[noosa"),
+    ("two good", "(?i)\\[two good"), ("talenti", "(?i)\\[talenti"), ("magnum", "(?i)\\[magnum"), ("klondike", "(?i)\\[klondike"),
+    ("drumstick", "(?i)drumstick"), ("popsicle", "(?i)popsicle|ice pop"),
+]
+
 /// These rank foods made here, so they run without either catalog.
 @Suite("Everyday forms")
 struct EverydayFormTests {
@@ -839,6 +901,71 @@ struct EverydayFormTests {
         #expect(first("aubergine", ["Eggplant, raw"]) == "Eggplant, raw")
     }
 
+    @Test("a correction is a long shot where foods people look for have the word as typed")
+    func longShots() {
+        #expect(isLongShot("biscuit", for: "triscuit"))
+        #expect(isLongShot("skinle", for: "skittles"))
+        #expect(isLongShot("chicken", for: "mcchicken"))
+        #expect(isLongShot("spa", for: "spam"))
+        #expect(!isLongShot("protein", for: "protien"))
+        #expect(!isLongShot("chicken", for: "chiken"))
+        #expect(!isLongShot("strawberri", for: "strawberies"))
+        // The brand of a food people scan is a name of its own.
+        var sauce = OwnWordsTests.food("Original Hot Sauce", brand: "Cholula")
+        sauce.popularity = 3
+        let chocolate = OwnWordsTests.food("Chocolate sauce, ready-to-serve")
+        let hot = RankHints(fixes: ["cholula": ["chocola"]], popularity: true, doubted: ["cholula"])
+        #expect(rankSearch("cholula sauce", [chocolate, sauce], hints: hot).first?.food.id == sauce.id)
+        // A label spells a word as it likes: its name doesn't make a word two typos from a
+        // far commoner one a name.
+        var label = OwnWordsTests.food("Mozerella Light", brand: "Casale")
+        label.popularity = 3
+        let cheese = OwnWordsTests.food("Cheese, mozzarella, whole milk")
+        let typo = RankHints(fixes: ["mozerella": ["mozzarella"]], popularity: true, doubted: ["mozerella"])
+        #expect(rankSearch("mozerella", [label, cheese], hints: typo).first?.food.id == cheese.id)
+        // A chain's item USDA lists by the chain's name for it is that food, wherever its
+        // other words put it.
+        let chicken = ["Chicken, broilers or fryers, meat only, cooked, roasted", "McDONALD'S, McCHICKEN Sandwich"]
+        #expect(
+            first("mcchicken", chicken, hints: RankHints(fixes: ["mcchicken": ["chicken"]], doubted: ["mcchicken"]))
+                == "McDONALD'S, McCHICKEN Sandwich")
+        // Another wording of a word is the word, not a correction of it.
+        let buns = ["Rolls, hamburger or hot dog, plain", "Burger relish"]
+        let wording = RankHints(fixes: ["burgger": ["burger", "hamburger"]], doubted: ["burgger"], respelt: ["hamburger"])
+        let ranked = rankSearch("burgger", buns.map { OwnWordsTests.food($0) }, hints: wording)
+        #expect(ranked.count == 2 && ranked.allSatisfy { $0.score > 0 })
+    }
+
+    @Test("two letters with a word after them are a word, and a letter after a word is part of a name")
+    func shortWords() {
+        var soda = OwnWordsTests.food("Dr Pepper", brand: "Dr Pepper")
+        soda.popularity = 3
+        let dried = OwnWordsTests.food("Peppers, ancho, dried")
+        #expect(rankSearch("dr pepper", [dried, soda], hints: RankHints(popularity: true)).first?.food.id == soda.id)
+        // The last word may still be the start of one.
+        #expect(first("pepper dr", ["Peppers, ancho, dried"]) == "Peppers, ancho, dried")
+        #expect(readQuery("special k").letter == ["special", "k"])
+        #expect(readQuery("special").letter.isEmpty && readQuery("2 k").letter.isEmpty)
+        let cereal = OwnWordsTests.food("Special K Original", brand: "Kellogg's")
+        let cookies = OwnWordsTests.food("Cookies, oatmeal, commercially prepared, special dietary")
+        #expect(rankSearch("special k", [cookies, cereal]).first?.food.id == cereal.id)
+        #expect(rankSearch("special", [cookies, cereal]).first?.food.id == cookies.id)
+        // A dozen of a food is an amount of it.
+        #expect(readQuery("dozen eggs").words == ["eggs"])
+        #expect(readQuery("bakers dozen").words == ["bakers", "dozen"])
+    }
+
+    @Test("what follows the food after \"or\" is said of both, and nuggets are chicken")
+    func alternatives() {
+        let tacos = ["Taco or tostada salad with meat", "Fast foods, taco with beef, cheese and lettuce, soft"]
+        #expect(first("taco", tacos) == "Fast foods, taco with beef, cheese and lettuce, soft")
+        #expect(first("taco salad", tacos) == "Taco or tostada salad with meat")
+        #expect(first("bagel", ["Bagel chips, plain", "Bagel or roll, plain"]) == "Bagel or roll, plain")
+        let nuggets = ["Salmon nuggets, breaded, frozen, heated", "Chicken nuggets, from fast food"]
+        #expect(first("nuggets", nuggets) == "Chicken nuggets, from fast food")
+        #expect(first("salmon nuggets", nuggets) == "Salmon nuggets, breaded, frozen, heated")
+    }
+
     @Test("a group typed alone by its name leads its foods, and a raw food's cooked form is a kind of its own")
     func groups() {
         let nuts = ["Spices, nutmeg, ground", "Nuts, cashew nuts, raw", "Nuts, mixed nuts, dry roasted, with peanuts, with salt added"]
@@ -1023,6 +1150,30 @@ struct StaplesTests {
         #expect(catalog.top("salad", 1).first.map { matches("^Lettuce, salad", $0) } == true)
         // A few letters aren't the start of a brand that isn't sold here.
         #expect(catalog.top("dal", 1).first.map { matches("(?i)^dal\\b", $0) } == true)
+    }
+
+    @Test("a popular product or a chain's item typed by its name comes first")
+    func productsBasket() {
+        var first = 0
+        var missed: [String] = []
+        for (query, pattern) in products {
+            let names = catalog.names(query, 1)
+            if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+        }
+        print("Products: \(first) of \(products.count) first")
+        #expect(Double(first) >= 0.97 * Double(products.count), "\(missed.joined(separator: " | "))")
+        // A name the catalogs know isn't the commoner word a letter or two away, and a chain's
+        // own word for its item isn't the food it's made of.
+        #expect(catalog.names("skittles", 1).first.map { matches("(?i)skittles", $0) } == true)
+        #expect(catalog.names("mcchicken", 1).first.map { matches("McCHICKEN", $0) } == true)
+        #expect(catalog.names("egg mcmuffin", 1).first.map { matches("Egg McMUFFIN", $0) } == true)
+        // A typo is still read: no food people look for is spelt that way.
+        #expect(catalog.top("chiken brest", 1).first.map { matches("^Chicken, .*breast", $0) } == true)
+        #expect(catalog.top("crunchy taco", 1).first.map { matches("taco with beef.*hard shell", $0) } == true)
+        // "Mc" typed apart is the start of the one word.
+        #expect(catalog.respell("mc flurry").text == "mcflurry")
+        #expect(catalog.top("mc flurry", 1).first.map { matches("McFLURRY", $0) } == true)
+        #expect(catalog.searchCatalog("mc donalds fries", known: [:]).brand == ["mcdonalds"])
     }
 
     @Test("pantry foods, dishes and forms come first typed and named as a model would")
