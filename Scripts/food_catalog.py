@@ -39,7 +39,7 @@ OFF_DESTINATION = ROOT / "Apps" / "MacroTrack" / "Catalogs"
 # and the built off.db must be published where this points before a release ships. Each release
 # there holds off.db.gz and, as GitHub's source archive at its tag, the scripts that built it
 # (Scripts/publish-catalogs.sh makes one).
-RECIPE_URL = "https://github.com/swsvindland/the-system/releases"
+RECIPE_URL = "https://github.com/swsvindland/Stadig/releases"
 SCHEMA_VERSION = 3
 USDA_URL = "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip"
 FNDDS_URL = "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip"

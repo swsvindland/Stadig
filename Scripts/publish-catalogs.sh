@@ -9,7 +9,7 @@
 # main by default, or CATALOG_TARGET (a pushed branch or a commit) when they aren't merged yet.
 set -euo pipefail
 cd "${0:A:h}/.."
-REPO=${CATALOG_REPO:-swsvindland/the-system}
+REPO=${CATALOG_REPO:-swsvindland/Stadig}
 TARGET=${CATALOG_TARGET:-main}
 MANIFEST=Scripts/catalogs.manifest
 TAG=catalogs-$(date -u +%Y%m%d-%H%M)

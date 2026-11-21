@@ -105,8 +105,8 @@ What each package holds, and where new code goes: [docs/architecture.md](docs/ar
 You need Xcode 27 and nothing else.
 
 ```sh
-git clone https://github.com/swsvindland/the-system.git
-cd the-system
+git clone https://github.com/swsvindland/Stadig.git
+cd Stadig
 Scripts/build.sh test                    # every package's tests
 Scripts/fetch-catalogs.sh                # optional: Stadig Macro's packaged foods and supplements (needs gh signed in)
 open Apps/LiftTrack/LiftTrack.xcodeproj  # or Apps/MacroTrack/MacroTrack.xcodeproj

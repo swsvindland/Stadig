@@ -10,7 +10,7 @@ struct CatalogNoticeTests {
         "Contains information from Open Food Facts (https://world.openfoodfacts.org), which is made available here under the Open Database "
         + "License (ODbL) 1.0 (https://opendatacommons.org/licenses/odbl/1-0/). Individual contents are available under the Database "
         + "Contents License (https://opendatacommons.org/licenses/dbcl/1-0/). This derived database and the recipe that builds it are "
-        + "published at https://github.com/swsvindland/the-system/releases."
+        + "published at https://github.com/swsvindland/Stadig/releases."
 
     @Test func theOpenFoodFactsNoticeLinksItsSourceItsLicencesAndWhereItsPublished() {
         let links = CatalogNotice.links(in: Self.openFoodFacts)
@@ -19,7 +19,7 @@ struct CatalogNoticeTests {
         #expect(
             links.map(\.url.absoluteString) == [
                 "https://world.openfoodfacts.org", "https://opendatacommons.org/licenses/odbl/1-0/",
-                "https://opendatacommons.org/licenses/dbcl/1-0/", "https://github.com/swsvindland/the-system/releases",
+                "https://opendatacommons.org/licenses/dbcl/1-0/", "https://github.com/swsvindland/Stadig/releases",
             ])
     }
 

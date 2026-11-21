@@ -21,7 +21,7 @@ downloaded November 6, 2026. It is distributed under the ODbL 1.0, and is public
 the method that made it:
 
 - `off.db` — the derivative database exactly as the app ships it: the `off.db.gz` asset on the
-  [GitHub release](https://github.com/swsvindland/the-system/releases) that `Scripts/catalogs.manifest`
+  [GitHub release](https://github.com/swsvindland/Stadig/releases) that `Scripts/catalogs.manifest`
   names. It's about 600 MB, so it isn't in git.
 - `Scripts/build-catalogs.py` with `food_catalog.py` and `food_energy.py` — the complete
   transformation recipe, which rebuilds `off.db` (and `usda.db`) from the source exports.

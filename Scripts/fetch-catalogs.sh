@@ -6,7 +6,7 @@
 # (GitHub Actions), or else a signed-in gh.
 set -euo pipefail
 cd "${0:A:h}/.."
-REPO=${CATALOG_REPO:-swsvindland/the-system}
+REPO=${CATALOG_REPO:-swsvindland/Stadig}
 MANIFEST=Scripts/catalogs.manifest
 API=https://api.github.com/repos/$REPO
 
