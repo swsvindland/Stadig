@@ -125,7 +125,7 @@ export const apps: App[] = [
       "Stadig Lift is a free strength training app for iPhone, iPad, Mac, Apple Vision Pro and Apple Watch. It writes your program, sets every weight, adjusts each set to how the last one felt, and tells you when to push, hold or deload. It learns how honest your effort ratings are, budgets fatigue across lifting and everything else you do, and moves your scores only on real tests.",
     platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro", "Apple Watch"],
     category: "HealthApplication",
-    appStoreUrl: null,
+    appStoreUrl: "https://apps.apple.com/app/stadig-lift/id6824198193",
     headline: "A program that writes itself around you.",
     lede: "Stadig Lift writes your program, adjusts every set to how the last one felt, and tells you when to push, hold or deload.",
     home: {
@@ -243,7 +243,7 @@ export const apps: App[] = [
       "Stadig Macro is a free nutrition app for iPhone, iPad, Mac, Apple Vision Pro and Apple Watch. It works out your actual maintenance calories from what you log and weigh, recommends one phase (cut, bulk or maintenance) with its reasons, and adapts your targets every week. Today is the logger: one tap for what you usually eat around now, or type “chick 200” and press Return. Barcode, label, photo and voice logging are read by Apple's on-device models, over offline food, supplement and drink catalogs.",
     platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro", "Apple Watch"],
     category: "HealthApplication",
-    appStoreUrl: null,
+    appStoreUrl: "https://apps.apple.com/app/stadig-macro/id6824204323",
     headline: "Spend less time in your food app.",
     lede: "Stadig Macro fits your maintenance to what the scale actually did, picks one phase, and moves your targets a little each week. Logging is a tap, or a few letters and Return.",
     home: {
