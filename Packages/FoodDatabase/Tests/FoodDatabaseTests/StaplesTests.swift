@@ -1176,6 +1176,23 @@ struct StaplesTests {
         #expect(catalog.searchCatalog("mc donalds fries", known: [:]).brand == ["mcdonalds"])
     }
 
+    @Test("a product is first before its name is typed out")
+    func productsLetterByLetter() {
+        // Every third product, typed a letter at a time: the share of its letters it takes to come first.
+        var shares: [Double] = []
+        for (query, pattern) in products.enumerated().filter({ $0.offset % 3 == 0 }).map(\.element) {
+            let letters = Array(query)
+            let needed = (2...letters.count).first { count in
+                letters[count - 1] != " " && catalog.names(String(letters[..<count]), 1).first.map { matches(pattern, $0) } == true
+            }
+            shares.append(Double(needed ?? letters.count) / Double(letters.count))
+        }
+        let share = shares.reduce(0, +) / Double(shares.count)
+        print(String(format: "Products typed a letter at a time: first after %.0f%% of their letters", 100 * share))
+        // It was 60% while a brand was only read once typed whole.
+        #expect(share <= 0.60)
+    }
+
     @Test("pantry foods, dishes and forms come first typed and named as a model would")
     func pantryBasket() {
         for seen in [false, true] {

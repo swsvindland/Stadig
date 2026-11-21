@@ -1435,9 +1435,12 @@ func scoreFoods(
     var reorderedLenient: [[Int]: CoverageQuery] = [:]
     // Whether a plain food has every word said, worked out when a food's brand first asks. Not
     // by a brand USDA names in capitals inside a plain food's name ("Yogurt, Greek, plain, CHOBANI").
-    var plainlyNamed: [Bool: Bool] = [:]
-    func isPlainlyNamed(corrected: Bool = false) -> Bool {
-        if let known = plainlyNamed[corrected] { return known }
+    // With `leading`, by a food that leads with them: the mayonnaise that is "cholesterol-free"
+    // doesn't make "chol" a food's word rather than Cholula begun, as "her" is herring's.
+    var plainlyNamed: [Int: Bool] = [:]
+    func isPlainlyNamed(corrected: Bool = false, leading: Bool = false) -> Bool {
+        let key = (corrected ? 1 : 0) + (leading ? 2 : 0)
+        if let known = plainlyNamed[key] { return known }
         let said = target.map(stem)
         let found = unique.values.contains { entry in
             guard !entry.text.branded, !said.contains(where: { word in entry.text.shouted.contains { starts($0, word) } }) else { return false }
@@ -1446,9 +1449,9 @@ func scoreFoods(
             else { return false }
             // As typed, not as a typo of it: "hers" isn't herring.
             let match = query.cover(entry.text)
-            return match.missing == 0 && (corrected || match.fixed == 0)
+            return match.missing == 0 && (corrected || match.fixed == 0) && (!leading || match.leads)
         }
-        plainlyNamed[corrected] = found
+        plainlyNamed[key] = found
         return found
     }
 
@@ -1468,6 +1471,8 @@ func scoreFoods(
         // kas"; "pop" alone is on its way to popcorn as much as to Popchips).
         var naming: [Int] = []
         var halfTyped = false
+        // The letter the search ends with starts the brand's next word: the "d" of "mountain d".
+        var continued = false
         // Every word is the brand's as typed, not as corrected.
         var asTyped = true
         for (j, written) in text.ownWords.enumerated() {
@@ -1493,6 +1498,18 @@ func scoreFoods(
             {
                 named = last
                 halfTyped = true
+            }
+            // A brand of several words is begun by its first, typed alone and whole: "halo" is
+            // on its way to Halo Top, as "hal" isn't yet. Not an everyday food's own word
+            // ("hot" isn't Hot Pockets'), unless a letter typed after it starts the next.
+            // A letter that starts another word says it isn't this brand: "mountain y".
+            if named == nil, j > 0, target.count == 1, naming == [0], !halfTyped, asTyped {
+                let letter = read.flatMap { $0.letter.count == 2 && $0.letter[0] == target[0] ? $0.letter[1] : nil }
+                continued = letter.map { word.hasPrefix($0) } ?? false
+                if continued || (letter == nil && !EverydayPhrases.isWord(stem(target[0])) && !isEasable(target[0])) {
+                    halfTyped = true
+                    break
+                }
             }
             guard let named else { return (whole.cover(text), false, 0) }
             if !halfTyped, typedBare[named] != word { asTyped = false }
@@ -1527,7 +1544,16 @@ func scoreFoods(
         // product ("belvita snack packs" isn't whatever is listed under "belVita SNACK PACKS").
         if naming.count == target.count {
             // Nor for a word read as the brand misspelt: "yogrt" is yogurt before a label listed under "Yogurt".
-            if target.count > 1 || !asTyped || (halfTyped && likely != nil) || isPlainlyNamed() { return (whole.cover(text), !halfTyped, 0) }
+            // One of the most scanned brands is as likely as a plain food that starts the
+            // same, unless the letters are on their way to an everyday food: "tropic" is
+            // Tropicana before a tropical punch, and "cel" is still celery before Celsius.
+            let popular =
+                text.ownWords.count == 1
+                ? popularBrands.contains(bare(text.ownWords[0])) : popularNames.contains(text.ownWords.map(bare).joined(separator: " "))
+            let scanned = halfTyped && likely == nil && (popular || continued)
+            if target.count > 1 || !asTyped || (halfTyped && likely != nil) || (!scanned && isPlainlyNamed(leading: halfTyped)) {
+                return (whole.cover(text), !halfTyped, 0)
+            }
             return (whole.cover(text, own: target.count), !halfTyped, halfTyped ? 1 : 2)
         }
         naming.sort()
@@ -1694,6 +1720,8 @@ func scoreFoods(
         // "Beverages, V8 SPLASH Smoothies, Peach Mango".
         return saidStems.count == 1 || brand + 1 == text.said.count || !wasSaid(text.said[brand + 1])
     }
+    // One of the most scanned brands is begun by what was typed.
+    let begun = rows.contains { $0.only == 1 && !hints.away.contains($0.food.id) && popularBrands.contains(bare($0.text.ownWords[0])) }
     var ranked: [Ranked] = []
     for (index, row) in rows.enumerated() where row.name > 0 {
         let match = row.match
@@ -1756,10 +1784,13 @@ func scoreFoods(
         if row.only == 2 || (row.only == 1 && !hints.away.contains(row.food.id)) {
             // The same for a brand of one word, read from the food itself: "chobani" is Chobani's
             // foods, the most scanned first, not the ones that repeat the brand in their name.
-            // Half typed, they come after a plain food that starts as typed: "her" is herring,
-            // then Hershey's.
+            // Half typed, they come with the plain foods that start as typed, by how much
+            // they're scanned: "her" is Hershey's and herring.
             // A chain's items as USDA analysed them come before what's sold under its name in shops.
-            score = (row.only == 2 ? 5 : 3) + (row.food.source == .usda ? 0.5 : 0)
+            // A brand no one scans, typed whole, is as likely one of the most scanned begun:
+            // "nute" is Nutella before Nutes.
+            let unknown = begun && row.food.popularity < 1.5 && !row.text.chain && !popularBrands.contains(bare(row.text.ownWords[0]))
+            score = (row.only == 2 ? (unknown ? 3.5 : 5) : 3) + (row.food.source == .usda ? 0.5 : 0)
         } else if asked {
             // The brand asked for; then other brands' products, among them the one the search is
             // usually named after ("Kellogg's Mini-Wheats"); then plain foods.
@@ -1786,8 +1817,11 @@ func scoreFoods(
                 for (count, next) in read.counts where counted(list, count, next) { score += 2 }
                 // The letter a search ends with isn't searched for, but a name with it after
                 // the word before was asked for by it: "special k", "vitamin c".
-                if read.letter.count == 2, list.indices.dropLast().contains(where: { list[$0] == read.letter[0] && list[$0 + 1] == read.letter[1] }) {
-                    score += 2
+                // And a little by a word that starts with it there: "two g" is on its way to
+                // Two Good before Twofold.
+                if read.letter.count == 2 {
+                    let after = list.indices.dropLast().filter { list[$0] == read.letter[0] }.map { list[$0 + 1] }
+                    score += after.contains(read.letter[1]) ? 2 : after.contains { $0.hasPrefix(read.letter[1]) } ? 0.5 : 0
                 }
                 for size in read.sizes where sized(list, size) { score += 2 }
             }

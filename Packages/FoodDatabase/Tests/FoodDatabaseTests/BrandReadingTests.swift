@@ -120,6 +120,43 @@ struct OwnWordsTests {
         #expect(drink.distance(to: Profile(center: [log(50), 0, 12, 0], spread: [0.15, 3, 6, 3])) < 2.25)
     }
 
+    @Test("a brand people scan is read while it's still being typed")
+    func brandsBegun() {
+        let scanned = { (name: String, brand: String, popularity: Double) -> Food in
+            var food = Self.food(name, brand: brand)
+            food.popularity = popularity
+            return food
+        }
+        let first = { (query: String, foods: [Food]) in rankSearch(query, foods, hints: RankHints(popularity: true)).first?.food.title ?? "" }
+        // One of the most scanned brands, before a plain food that starts the same.
+        let juice = scanned("Orange Juice No Pulp", "Tropicana", 2)
+        #expect(first("trop", [Self.food("Beverages, Tropical Punch, ready-to-drink"), juice]) == juice.title)
+        // Any other brand comes after a plain food that leads with the letters, and before one
+        // that only has them somewhere.
+        let ham = scanned("Le Bon Paris", "Herta", 2)
+        #expect(first("her", [ham, Self.food("Fish, herring, Atlantic, raw")]) == "Fish, herring, Atlantic, raw")
+        let sauce = scanned("Original Hot Sauce", "Cholula", 3)
+        #expect(first("chol", [Self.food("Mayonnaise, reduced-calorie or diet, cholesterol-free"), sauce]) == sauce.title)
+        // A brand of several words is begun by its first typed whole, and a letter typed after
+        // it that starts the next says so whatever plain food has the word.
+        let pint = scanned("Vanilla Bean", "Halo Top", 2)
+        #expect(first("halo", [Self.food("Halot", brand: "Wegmans"), pint]) == pint.title)
+        let soda = scanned("Baja Blast", "Mountain Dew", 2)
+        let yam = Self.food("Mountain yam, hawaii, raw")
+        #expect(first("mountain d", [yam, soda]) == soda.title)
+        #expect(first("mountain y", [soda, yam]) == yam.name)
+        // An everyday food's own word isn't a brand begun until a letter of its next is typed.
+        let pocket = scanned("Pepperoni Pizza Sandwich", "Hot Pockets", 2)
+        let chile = Self.food("Sauce, hot chile, sriracha")
+        #expect(first("hot", [pocket, chile]) == chile.name)
+        #expect(first("hot p", [chile, pocket]) == pocket.title)
+        // A brand no one scans, typed whole, is as likely one of the most scanned begun.
+        let spread = scanned("Hazelnut Spread", "Nutella", 6)
+        let smoothie = Self.food("Superfood Smoothie", brand: "Nutes")
+        #expect(first("nute", [smoothie, spread]) == spread.title)
+        #expect(first("nutes", [spread, smoothie]) == smoothie.title)
+    }
+
     @Test("the asked brand's food named by exactly the words typed comes before its foods more like the usual")
     func exactlyNamed() {
         // Most chocolate bars are milk chocolate; this brand's "Chocolate Bar" is darker than its others.
@@ -293,7 +330,20 @@ struct CompoundTests {
         // word corrected into one isn't a brand typed.
         #expect(catalog.top("cod", 1).first.map { matches("^Fish, cod", $0) } == true)
         #expect(catalog.top("yogrt", 1).first.map { matches("^Yogurt, ", $0) } == true)
-        #expect(catalog.top("her", 1).first.map { matches("^Fish, herring", $0) } == true)
+        // Half typed, one of the most scanned brands comes before a plain food that starts the
+        // same, unless the letters are on their way to an everyday food.
+        #expect(catalog.search("her").first?.food.brand == "Hershey's")
+        #expect(catalog.search("trop").first?.food.brand == "Tropicana")
+        #expect(catalog.top("cel", 1).first.map { matches("^Celery", $0) } == true)
+        // A brand of several words is begun by its first, and by a letter of its next.
+        #expect(catalog.search("halo").first?.food.brand?.lowercased() == "halo top")
+        #expect(catalog.search("mountain d").first?.food.brand?.lowercased() == "mountain dew")
+        // A name the catalogs know isn't corrected, typed whole or as far as it's typed; a
+        // typo still is, though a brand sold elsewhere starts the same.
+        for name in ["skittles", "triscuit", "cholula", "halo", "skip"] { #expect(catalog.searchCatalog(name, known: [:]).fixes.isEmpty, "\(name)") }
+        #expect(catalog.searchCatalog("bred", known: [:]).fixes["bred"] != nil)
+        #expect(catalog.searchCatalog("protien bar", known: [:]).fixes["protien"] == ["protein"])
+        #expect(catalog.search("cholu").first?.food.brand == "Cholula")
     }
 
     @Test("words still being typed, short halves and everyday pairs are searched as typed")

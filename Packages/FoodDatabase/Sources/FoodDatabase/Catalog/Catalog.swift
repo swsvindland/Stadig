@@ -28,6 +28,7 @@ final class Catalog: Sendable {
     private let barcodeIsInteger: Bool
     private let columns: String
     private let matchSQL: String
+    private let scannedSQL: String
     /// Rows already read this launch, by rowid: each keystroke finds most of the last one's foods.
     private let read = Mutex<[Int64: Entry]>([:])
     /// The generic catalog's rowids by food id, read on the first lookup by id: the file has no
@@ -82,6 +83,9 @@ final class Catalog: Sendable {
             away = "0"
             home = "1"
         }
+        scannedSQL =
+            "SELECT 1 FROM food_search JOIN foods ON foods.rowid = food_search.rowid "
+            + "WHERE food_search MATCH ? AND foods.popularity >= ? AND NOT \(away) LIMIT 1"
         // Names starting with the lead word come before the full-text ranking, then the foods sold
         // in the phone's region, and among packaged foods the ones scanned more often come sooner.
         matchSQL = """
@@ -164,6 +168,15 @@ final class Catalog: Sendable {
                 "SELECT count(*) FROM (SELECT rowid FROM food_search WHERE food_search MATCH ? LIMIT ?)",
                 [.text(expression), .integer(Int64(cap))]
             ) { row in found = Int(row.int(0)) }
+        }
+        return found
+    }
+
+    /// Whether some food an expression matches is one people scan, and not sold only elsewhere.
+    func isScanned(_ expression: String, atLeast popularity: Double) -> Bool {
+        var found = false
+        pool.read { connection in
+            try connection.query(scannedSQL, [.text(expression), .real(popularity)]) { _ in found = true }
         }
         return found
     }

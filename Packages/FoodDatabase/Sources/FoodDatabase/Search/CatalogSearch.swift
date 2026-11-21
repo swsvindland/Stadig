@@ -184,7 +184,7 @@ extension FoodCatalog {
             known = Double(count(range, [.text(form), .text(form + "\u{FFFF}")]).total)
         }
         var fixes: [String] = []
-        let doubted = known < rare || (known < uncommon && size >= 6)
+        var doubted = known < rare || (known < uncommon && size >= 6)
         if doubted {
             let least = (known < rare ? 10 : 75) * (known + 1)
             // A half-typed word is the start of a catalog word; typos rarely touch both of the first
@@ -272,12 +272,40 @@ extension FoodCatalog {
                 if let best, Double(best.foods) >= least, best.foods > nearest?.foods ?? 0 { fixes = ["\(best.left) \(stem(best.right))"] }
             }
         }
+        // A name the catalogs know isn't the commoner word it would be a long shot from:
+        // "skittles" isn't skinless, "triscuit" biscuit, a "mcchicken" chicken or "halo" halibut
+        // begun. A likelier typo is still read ("protien", whatever labels spell it so).
+        if fixes.contains(where: { isLongShot($0, for: word) }), isName(word, whole: whole) {
+            fixes.removeAll { isLongShot($0, for: word) }
+            doubted = !fixes.isEmpty
+        }
         let spelling = Spelling(doubted: doubted, fixes: fixes)
         spellings.withLock { remembered in
             if remembered.count > 500 { remembered.removeAll() }
             remembered[remembering] = spelling
         }
         return spelling
+    }
+
+    /// Whether a word is a name as typed: one in a name USDA wrote, or a word of the brand of a
+    /// food people scan here. Labels' own names don't count, as they spell a word as they like.
+    /// A word still being typed is one that starts such a name, by its letters as typed: "skip"
+    /// is on its way to Skippy, where "bred" isn't a brand sold elsewhere begun.
+    private func isName(_ word: String, whole: Bool) -> Bool {
+        for catalog in catalogs {
+            if catalog.kind == .generic {
+                let found =
+                    whole
+                    ? catalog.terms("SELECT term, foods FROM terms WHERE term IN (?, ?)", [.text(word), .text(stem(word))])
+                    : catalog.terms("SELECT term, foods FROM terms WHERE term >= ? AND term < ? LIMIT 1", [.text(word), .text(word + "\u{FFFF}")])
+                if !found.isEmpty { return true }
+            } else {
+                let forms = whole && stem(word) != word ? [word, stem(word)] : [word]
+                let brands = forms.map { "\"\($0)\"\(whole ? "" : "*")" }.joined(separator: " OR ")
+                if catalog.isScanned("{brand}: (\(brands))", atLeast: 1.5) { return true }
+            }
+        }
+        return false
     }
 
     // MARK: One word or two
@@ -762,9 +790,13 @@ extension FoodCatalog {
             // only find the labels that share it.
             fixes.contains { word, readings in readings.contains { isLongShot($0, for: word) } }
                 ? jobs(catalogs, searched.map { searchTerm($0) }.joined(separator: " AND "), .typed, lead: searchForms(foods[0])[0]) : [],
+            // And the brands that start as a corrected word alone is typed, which the
+            // correction's foods would crowd out: "cholu" is on its way to Cholula, whatever
+            // "chou…" it is also read as.
+            searched.count == 1 && !fixes.isEmpty ? jobs(branded, "{brand}: \(searchTerm(searched[0]))", .typed) : [],
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7] + found[8]
+        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7] + found[8] + found[9]
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").
