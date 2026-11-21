@@ -61,19 +61,21 @@ enum Matching {
         String(name.prefix { $0 != "," && $0 != "(" })
     }
 
-    private static let kindEnd = Pattern(#"\s(?:or|in|with|on)\s.*$"#)
+    private static let kindEnd = Pattern(#"\s(?:or|in|with|on|made (?:from|with))\s.*$"#)
     private static let readyTo = Pattern(#"\bready[- ]to[- ](?:eat|drink|serve|heat)\b"#)
 
     /// The words of that part that say what kind of food it is, the last naming it: not what it
-    /// comes in or with or may also be ("Pulled pork in barbecue sauce" is pulled pork, a "Ham
-    /// sandwich or sub" a ham sandwich), nor how it's sold ("Cereals ready-to-eat" are cereals).
+    /// comes in or with, is made from or may also be ("Pulled pork in barbecue sauce" is pulled
+    /// pork, "Soy sauce made from soy and wheat" soy sauce, a "Ham sandwich or sub" a ham
+    /// sandwich), nor how it's sold ("Cereals ready-to-eat" are cereals).
     static func kind(of food: Food) -> [String] {
         let part = readyTo.replacing(in: kindEnd.replacing(in: firstPart(food.name), with: ""), with: " ")
         return FoodText.words(part).map(FoodText.stem)
     }
 
-    /// Two words for one food in a catalog's name: "Jams and preserves" are jam.
-    private static let sameFood: [String: Set<String>] = ["jam": ["preserve"], "preserve": ["jam"]]
+    /// Two words for one food in a catalog's name: "Jams and preserves" are jam, and "Ginger
+    /// root" is ginger.
+    private static let sameFood: [String: Set<String>] = ["jam": ["preserve"], "preserve": ["jam"], "ginger": ["root"]]
 
     /// The food's name starts with what was seen: "Blueberries, raw" for blueberries.
     static func filedUnder(_ name: String, _ food: Food) -> Bool {

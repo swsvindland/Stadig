@@ -30,6 +30,9 @@ let alternatives: [String: [String]] = [
     "soya": ["soya", "soy"], "skimmed": ["skimmed", "skim", "nonfat"], "prawn": ["prawn", "shrimp"], "prawns": ["prawn", "shrimp"],
     "courgette": ["courgette", "zucchini"], "courgettes": ["courgette", "zucchini"], "aubergine": ["aubergine", "eggplant"],
     "aubergines": ["aubergine", "eggplant"], "beetroot": ["beetroot", "beet"], "sweetcorn": ["sweetcorn", "corn"],
+    // USDA's portobello is "portabella", and a lager, a pilsner or a stout its beer.
+    "portobello": ["portobello", "portabella"], "portabello": ["portabello", "portabella"], "lager": ["lager", "beer"],
+    "pilsner": ["pilsner", "beer"], "stout": ["stout", "beer"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -113,9 +116,21 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
         (["tuna", "steak"], [(1, "fresh")]),
         (["hamburger", "patty"], [(0, "ground")]),
         (["burger", "patty"], [(0, "ground")]),
-        // Cherry and grape tomatoes are its red ones.
+        // Cherry, grape, roma and plum tomatoes are its red ones; a red or white onion its
+        // onion, a green onion its scallions and a Yukon Gold its white potato.
         (["cherry", "tomato"], [(0, "red")]),
         (["grape", "tomato"], [(0, "red")]),
+        (["roma", "tomato"], [(0, "red")]),
+        (["plum", "tomato"], [(0, "red")]),
+        (["red", "onion"], [(0, "raw")]),
+        (["white", "onion"], [(0, "raw")]),
+        (["green", "onion"], [(0, "scallion")]),
+        (["yukon", "gold"], [(0, "white"), (1, "white")]),
+        // Bok choy is its "pak-choi", herbal tea its "herb" tea, and chocolate chips its
+        // semisweet chocolate.
+        (["bok", "choy"], [(0, "pak"), (1, "choi")]),
+        (["herbal", "tea"], [(0, "herb")]),
+        (["chocolate", "chip"], [(1, "semisweet")]),
     ] as [([String], [(Int, String)])] + pastaShapes.map { ([$0, "pasta"], [(0, "pasta")]) }).map {
         (said: $0.0.map(stem), means: $0.1.map { (at: $0.0, word: stem($0.1)) })
     }
@@ -132,7 +147,25 @@ let writtenNames: Set<String> = Set((["jasmine", "basmati"] + pastaShapes).map(s
 /// Names that, typed alone, mean the food named after them, in the words USDA files it under:
 /// "ranch" is its "Salad dressing, ranch dressing", "protein" its protein powder and "salad" its
 /// "Lettuce, salad with assorted vegetables".
-let aloneNames: [String: String] = ["ranch": "ranch salad dressing", "protein": "protein powder", "salad": "lettuce salad"]
+private let aloneMeanings: [String: (name: String, means: String)] = Dictionary(
+    uniqueKeysWithValues: [
+        ("ranch", "ranch salad dressing"), ("protein", "protein powder"), ("salad", "lettuce salad"),
+        // Spirits: USDA lists rum, vodka and whiskey, and the rest under "distilled, all (gin,
+        // rum, vodka, whiskey)". Champagne is its white table wine, an IPA its higher-alcohol beer.
+        ("gin", "distilled gin"), ("tequila", "distilled all"), ("brandy", "distilled all"), ("cognac", "distilled all"),
+        ("mezcal", "distilled all"), ("bourbon", "distilled whiskey"), ("scotch", "distilled whiskey"), ("sake", "sake rice alcoholic"),
+        ("champagne", "white table wine"), ("prosecco", "white table wine"), ("ipa", "beer higher alcohol"),
+        // And a few foods filed where the word alone doesn't reach: agave is the syrup, yeast
+        // the baker's, a habanero a hot chili pepper.
+        ("agave", "agave syrup"), ("yeast", "leavening yeast active dry"), ("habanero", "hot chili pepper red raw"),
+    ].map { (stem($0.0), ($0.0, $0.1)) })
+
+/// What a word typed alone means in USDA's words, if it has a meaning of its own, in the
+/// singular or the plural. The word itself, not any that shares its stem: "brand" isn't brandy.
+func aloneName(_ word: String) -> String? {
+    guard let meaning = aloneMeanings[stem(word)], word == meaning.name || bare(word) == meaning.name else { return nil }
+    return meaning.means
+}
 
 /// What people type for a food instead of its name, as the whole of a search or of what a model
 /// said, by its words: "pb&j" is "pb j".
@@ -156,7 +189,7 @@ let aloneFiled: [String: String] = Dictionary(
 let typedAlternatives: Set<String> = [
     "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
-    "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis",
+    "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

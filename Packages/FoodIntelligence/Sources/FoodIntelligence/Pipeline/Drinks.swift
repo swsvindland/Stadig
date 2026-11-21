@@ -8,14 +8,19 @@ enum Drinks {
         ("water coffee espresso latte cappuccino americano macchiato cortado mocha "
             + "frappuccino tea chai matcha juice lemonade limeade soda cola coke pepsi sprite fanta beer lager ale wine cider cocktail "
             + "smoothie shake milkshake kombucha beverage beverages drink drinks milk gatorade powerade redbull "
-            + "whiskey whisky vodka rum gin tequila bourbon scotch brandy sake champagne soymilk oatmilk almondmilk eggnog kefir")
+            + "whiskey whisky vodka rum gin tequila bourbon scotch brandy sake champagne soymilk oatmilk almondmilk eggnog kefir "
+            + "cognac mezcal liqueur prosecco pilsner stout ipa seltzer tonic colada margarita mojito martini daiquiri sangria mimosa spritz")
             .split(separator: " ")
             .map { FoodText.stem(String($0)) })
     private static let phrases = Pattern(#"\b(?:flat white|hot chocolate|iced tea|soft drink|energy drink|red bull|sports drink)\b"#)
 
+    /// Named after a drink and none: baking soda.
+    private static let foods = Pattern(#"\b(?:baking soda|bicarbonate of soda)\b"#)
+
     /// A drink by its name: what its last word, the head noun, names ("chocolate milk", not
     /// "milk chocolate").
     static func isDrink(_ name: String) -> Bool {
+        if foods.matches(name) { return false }
         if phrases.matches(name) { return true }
         guard let head = FoodText.nameWords(name).last else { return false }
         return words.contains(FoodText.stem(head))
@@ -27,13 +32,16 @@ enum Drinks {
         food.basis == .ml || isDrink(String(food.name.split(separator: ",").first ?? ""))
     }
 
-    /// The match is the same kind of thing as what was seen. A drink's match must be a drink, and
-    /// not a powder or concentrate of one (over 200 kcal per 100 g); food must not match a drink.
+    /// The match is the same kind of thing as what was seen. A drink's match must be a drink as
+    /// poured; food must not match one. A powder or concentrate of a drink (over 200 kcal per
+    /// 100 g) isn't one as poured, so it's no match for the drink and is one for the powder:
+    /// USDA files whey protein powder under "Beverages".
     static func sameKind(_ name: String, _ food: Food) -> Bool {
-        let drink = isDrink(name)
-        guard drink == isDrink(food) else { return false }
         // Spirits are over that as poured: USDA's vodka is 231 kcal per 100 g.
-        return !drink || food.basis != .g || food.nutrients.kcal <= 200 || FoodText.words(Matching.firstPart(food.name)).contains("alcoholic")
+        let poured =
+            isDrink(food)
+            && (food.basis != .g || food.nutrients.kcal <= 200 || FoodText.words(Matching.firstPart(food.name)).contains("alcoholic"))
+        return isDrink(name) == poured
     }
 }
 

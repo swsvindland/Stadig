@@ -93,9 +93,6 @@ private let fatWords = stems("fat milkfat lowfat low reduced nonfat lean")
 /// average", "Soymilk, original and vanilla".
 private let typicalWords = stems("average varieties regular ripe original")
 
-/// What a canned food is packed in.
-private let packings = stems("oil water brine")
-
 /// Words in a name's first part that say nothing of another food.
 private let leadFillers = stems("made from ready eat")
 
@@ -228,6 +225,11 @@ private let everydayVarieties: [String: Usual] = [
     "enchilada": Usual(["cheese"], ["sauce", "seasoning", "kit"]),
     "taco": Usual(["beef"], "shell shells salad seasoning sauce kit chip chips flavor".split(separator: " ").map(String.init)),
     "nacho": Usual(["fast"], "chip chips flavor tortilla sauce dip".split(separator: " ").map(String.init)),
+    // Spirits are 80 proof unless a number says otherwise.
+    "distilled": Usual(["80"], []),
+    // Ginger typed alone is the root; ground, it's the spice.
+    "ginger": Usual(
+        ["root"], "ground ale beer snap snaps bread candied crystallized pickled tea powder spice".split(separator: " ").map(String.init)),
     "nugget": Usual(
         ["chicken"], "fish salmon cod tuna pork turkey veggie vegan plant tofu cauliflower chocolate ice".split(separator: " ").map(String.init)),
     "cornbread": Usual(["recipe"], ["mix", "stuffing"]),
@@ -293,6 +295,17 @@ private let usualPhrases: [(words: [String], usual: Usual)] = [
     ("extra lean", Usual(["95", "96", "97"], [])),
     ("lean ground", Usual(["93"], [])),
     ("egg roll", Usual(["pork", "vegetable", "chicken", "assorted"], ["dinner"])),
+    // Soy sauce is the kind brewed from soy and wheat, and cocoa powder the unsweetened one,
+    // not a cocoa mix.
+    ("soy sauce", Usual(["shoyu"], ["tamari", "low", "reduced", "less", "lite", "light", "hydrolyzed"])),
+    ("cocoa powder", Usual(["unsweetened"], ["mix", "hot", "sweetened"])),
+    // Chocolate chips are its semisweet chocolate, where most foods with the words are cookies.
+    (
+        "chocolate chip",
+        Usual(
+            ["semisweet"],
+            "cookie cookies bar bars muffin muffins pancake pancakes waffle waffles granola ice cream".split(separator: " ").map(String.init))
+    ),
 ].map { ($0.0.split(separator: " ").map { stem(String($0)) }, $0.1) }
 
 /// Searches and seen foods naming these mean the cooked food unless they say "raw": "salmon",
@@ -483,6 +496,8 @@ struct FoodText {
     let noted: [String]
     /// The words of an "(Includes …)" note, stemmed: other foods the entry stands for.
     let included: [String]
+    /// What the food is canned or packed in, stemmed: the "tomato juice" of tomatoes packed in it.
+    let packed: [String]
     /// The words before the name's first comma, after a USDA group ("Fish, salmon"), stemmed.
     let lead: [String]
     /// The words of the name's first two comma-separated parts, after a group, stemmed: "Oil" and
@@ -575,6 +590,8 @@ struct FoodText {
         var noted: [String] = []
         var included: [String] = []
         var parts: [[String]] = [[], [], []]
+        var packedRun = -1
+        var packed: [String] = []
         for (i, token) in found.enumerated() where !stems[i].isEmpty {
             titled.append(stems[i])
             // "With skin", "without skin" and "baked in skin" say how a fruit or a potato comes,
@@ -582,8 +599,11 @@ struct FoodText {
             if stems[i] == "skin", i > 0, ["with", "without", "in"].contains(found[i - 1].word) { continue }
             // "Dry roasted" is how nuts are cooked, not a dried food.
             if stems[i] == "dry", i + 1 < found.count, found[i + 1].word == "roasted" { continue }
-            // Nor is what a food is packed in what it is: sardines "canned in oil" aren't an oil.
-            if i > 1, found[i - 1].word == "in", found[i - 2].word == "canned" || found[i - 2].word == "packed", packings.contains(stems[i]) {
+            // Nor is what a food is packed in what it is: sardines "canned in oil" aren't an oil,
+            // nor tomatoes "packed in tomato juice" a tomato juice.
+            if i > 1, found[i - 1].word == "in", found[i - 2].word == "canned" || found[i - 2].word == "packed" { packedRun = placed[i].run }
+            if placed[i].run == packedRun, placed[i].bracket == 0 {
+                packed.append(stems[i])
                 continue
             }
             if placed[i].bracket == 0 {
@@ -622,6 +642,7 @@ struct FoodText {
         self.alternate = alternate
         self.noted = noted
         self.included = included
+        self.packed = packed
         // USDA files some foods under a group: "Fish, salmon".
         let head = makeString(scalars[..<(commas.first ?? scalars.count)]).trimmingCharacters(in: .whitespaces)
         let secondPart = commas.isEmpty ? 0 : (commas.count > 1 ? commas[1] : scalars.count) - commas[0] - 1
@@ -1017,7 +1038,7 @@ struct CoverageQuery {
         let served = !beside.isEmpty && text.lead.contains { word in beside.contains { same(word, $0) } }
         let leads =
             !served
-            && ((text.lead.contains(where: asked) && text.lead.allSatisfy { asked($0) || leadFillers.contains($0) })
+            && ((text.lead.contains(where: asked) && text.lead.prefix { $0 != "made" }.allSatisfy { asked($0) || leadFillers.contains($0) })
                 || (target.count == 1 && (text.group.first.map(asked) ?? false)))
         var spared: [Bool] = []
         var near = 0.0
@@ -1060,10 +1081,16 @@ struct CoverageQuery {
             let listed =
                 has && i == naming && text.noted.count > 2 && !self.has(word, text.said + text.own + text.included)
                 && target.indices.contains { j in j != i && self.has(target[j], text.said) && !self.has(target[j], text.noted) }
+            // Nor one that is only what the food is packed in: tomatoes "packed in tomato
+            // juice" aren't tomato juice.
             let aside =
-                listed || (prefix && has && i == naming && !text.included.isEmpty && !self.has(word, text.said + text.noted + text.own))
+                listed
+                || (has && i == naming && (!text.included.isEmpty || !text.packed.isEmpty) && !self.has(word, text.said + text.noted + text.own))
             if has {
                 hits += weight * (inBrand || aside ? 0.5 : 1)
+                // So it's another food where some food is named by the word: white bread that
+                // "(includes soft bread crumbs)" isn't bread crumbs.
+                if aside { lacking += 1 }
             } else {
                 missing += 1
                 // A word that says what the food is, not how it comes ("fresh", "organic"). A
@@ -1455,6 +1482,21 @@ func scoreFoods(
         return found
     }
 
+    // The words of the plain foods found as they're written, but for the brands USDA writes in
+    // capitals: worked out when a brand's start first asks. By the word and its plural, not
+    // its stem: "savor" isn't savory.
+    var plainWords: Set<String>?
+    func isPlainWord(_ word: String) -> Bool {
+        if plainWords == nil {
+            var words = Set<String>()
+            for entry in unique.values where !entry.text.branded {
+                for token in tokens(entry.food.name) where !entry.text.shouted.contains(stem(token)) { words.insert(token) }
+            }
+            plainWords = words
+        }
+        return plainWords.map { $0.contains(word) || $0.contains(word + "s") || $0.contains(bare(word)) } ?? false
+    }
+
     /// How a food covers what was said, and whether a search with no brand of its own names the
     /// food's brand. A food whose brand the search names word for word reads those words as its
     /// brand wherever they were typed, so the word naming the food is the last of the others:
@@ -1492,9 +1534,13 @@ func scoreFoods(
             // bread" isn't Breadsmith begun, nor the "bar" of "protein bar" Barilla, nor the
             // "clove" of "garlic clove" Clover Valley. Unless it was typed twice: "sparkling water
             // water" is on its way to Waterloo.
+            // Nor a word some plain food has whole, where none of the brand's was typed before
+            // it: "rum" is the spirit, not Rumford's begun, and "conagra bran" is still Conagra
+            // Brands.
             if named == nil, !naming.contains(last), length(target[last]) > 2, !typedBare[last].isEmpty, starts(written, target[last]),
                 target.dropLast().contains(target[last])
-                    || (!text.said.contains(stem(target[last])) && !EverydayPhrases.isWord(stem(target[last])) && !isEasable(target[last]))
+                    || (!text.said.contains(stem(target[last])) && !EverydayPhrases.isWord(stem(target[last])) && !isEasable(target[last])
+                        && !(naming.isEmpty && isPlainWord(target[last])))
             {
                 named = last
                 halfTyped = true
@@ -1506,7 +1552,7 @@ func scoreFoods(
             if named == nil, j > 0, target.count == 1, naming == [0], !halfTyped, asTyped {
                 let letter = read.flatMap { $0.letter.count == 2 && $0.letter[0] == target[0] ? $0.letter[1] : nil }
                 continued = letter.map { word.hasPrefix($0) } ?? false
-                if continued || (letter == nil && !EverydayPhrases.isWord(stem(target[0])) && !isEasable(target[0])) {
+                if continued || (letter == nil && !EverydayPhrases.isWord(stem(target[0])) && !isEasable(target[0]) && !isPlainWord(target[0])) {
                     halfTyped = true
                     break
                 }

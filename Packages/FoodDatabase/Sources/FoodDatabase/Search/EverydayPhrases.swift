@@ -182,7 +182,7 @@ enum EverydayPhrases {
     static func isWritten(_ word: String) -> Bool { written.contains(word) || isAlone(word) }
 
     /// Whether a word typed alone has a meaning of its own: "meat" is beef, not meatballs begun.
-    private static func isAlone(_ word: String) -> Bool { aloneNames[stem(word)] != nil || aloneFiled[stem(word)] != nil }
+    private static func isAlone(_ word: String) -> Bool { aloneName(word) != nil || aloneFiled[stem(word)] != nil }
     private static let written: Set<String> = Set(all.flatMap(\.words))
     private static let stemmed: [(words: [String], stems: [String])] = all.map { ($0.words, $0.words.map(stem)) }
     private static let brands: [(words: [String], stems: [String])] = PopularBrands.names.map { $0.split(separator: " ").map(String.init) }

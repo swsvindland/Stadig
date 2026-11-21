@@ -124,6 +124,16 @@ struct MatchingTests {
         // Spirits are drinks, and over 200 kcal per 100 g as poured.
         #expect(Matching.fits("vodka", food("Alcoholic beverage, distilled, vodka, 80 proof", kcal: 231)))
         #expect(Drinks.isDrink(food("Soymilk, original and vanilla, unfortified")))
+        // A cocktail is a drink and baking soda isn't; a powder of a drink is a powder, which
+        // USDA files under "Beverages", and no match for the drink.
+        #expect(Matching.fits("pina colada", food("Alcoholic beverage, pina colada, prepared-from-recipe", kcal: 174)))
+        #expect(Matching.fits("baking soda", food("Leavening agents, baking soda", kcal: 0)))
+        #expect(Matching.fits("protein powder", food("Beverages, Whey protein powder isolate", kcal: 359)))
+        #expect(!Matching.fits("hot chocolate", food("Beverages, Cocoa mix, powder", kcal: 398)))
+        // How a food is made says no other food, and ginger root is ginger.
+        #expect(Matching.fits("soy sauce", food("Soy sauce made from soy and wheat (shoyu)")))
+        #expect(Matching.fits("ginger", food("Ginger root, raw")))
+        #expect(!Matching.fits("celery", food("Celery root, raw")))
         // A bowl named last is a dish, as the catalog reads it.
         #expect(FoodText.nameWords("Poke bowl") == ["poke", "bowl"])
         #expect(FoodText.nameWords("Bowl of rice") == ["rice"])

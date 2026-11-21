@@ -284,6 +284,13 @@ extension FoodCatalog {
             fixes.removeAll { isLongShot($0, for: word) }
             doubted = !fixes.isEmpty
         }
+        // And a word USDA wrote, whole, is no typo of any other: "ghee" isn't green.
+        if doubted,
+            catalogs.contains(where: { $0.kind == .generic && !$0.terms("SELECT term, foods FROM terms WHERE term = ?", [.text(word)]).isEmpty })
+        {
+            fixes = []
+            doubted = false
+        }
         let spelling = Spelling(doubted: doubted, fixes: fixes)
         spellings.withLock { remembered in
             if remembered.count > 500 { remembered.removeAll() }
@@ -472,7 +479,7 @@ extension FoodCatalog {
         if only.count == 1 {
             let alone = tokens[only[0]]
             let word = meant[alone.word] ?? likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
-            if let meant = aloneNames[stem(word)] {
+            if let meant = aloneName(word) {
                 write(meant, over: alone.start..<alone.end)
                 text += scalars[copied...]
                 respelt.text = makeString(text[...])
@@ -754,7 +761,9 @@ extension FoodCatalog {
             { (word: String) in respelt.also[word]?.contains(form) == true ? searchTerm(word, [word: [form]], only: true) : term(word) }
         }
         let other = { (word: String) in respelt.also[word].map { searchTerm(word, [word: $0], only: true) } ?? term(word) }
-        let ways = respelt.also.isEmpty ? [term] : wordings.count > 1 ? [term] + others : [term, other]
+        // And with every word by its other wording at once, where each has its own: "bok choy"
+        // is "pak choi".
+        let ways = respelt.also.isEmpty ? [term] : wordings.count > 1 ? [term] + others + [other] : [term, other]
         // USDA names lead with the food ("Chicken, broilers or fryers, breast…"), so those come first.
         let lead = { (word: String) in fixes[word]?.first ?? searchForms(word)[0] }
         // The words alone rank 12-grain bread too low to reach it for "12 grain bread", or a chain's

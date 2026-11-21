@@ -586,6 +586,64 @@ let products: [(String, String)] = [
     ("drumstick", "(?i)drumstick"), ("popsicle", "(?i)popsicle|ice pop"),
 ]
 
+/// Drinks, produce by its variety, condiments, baking ingredients and spices as they're typed,
+/// each with a pattern for the plain food that should come first: a spirit USDA lists only among
+/// "distilled, all (gin, rum, vodka, whiskey)", the scallions for a green onion, the semisweet
+/// chocolate for chocolate chips.
+let kitchen: [(String, String)] = [
+    ("beer", "^Alcoholic beverage, beer, regular, all"), ("light beer", "^Alcoholic beverage, beer, light$"),
+    ("ipa", "^Alcoholic beverages, beer, higher alcohol"), ("lager", "^Alcoholic beverage, beer, regular, all"),
+    ("red wine", "^Alcoholic beverage, wine, table, red$"), ("white wine", "^Alcoholic beverage, wine, table, white$"),
+    ("rose wine", "^Alcoholic beverages, wine, rose"), ("champagne", "^Alcoholic beverage, wine, table, white$"),
+    ("vodka", "^Alcoholic beverage, distilled, vodka"), ("tequila", "^Alcoholic beverage, distilled, all .* 80 proof"),
+    ("rum", "^Alcoholic beverage, distilled, (rum|all .* 80 proof)"), ("gin", "^Alcoholic beverage, distilled, (gin|all .* (80|90) proof)"),
+    ("whiskey", "^Alcoholic beverage, distilled, whiskey"), ("bourbon", "^Alcoholic beverage, distilled, whiskey"),
+    ("scotch", "^Alcoholic beverage, distilled, whiskey"), ("brandy", "^Alcoholic beverage, distilled, all .* 80 proof"),
+    ("sake", "^Alcoholic beverage, rice \\(sake\\)"), ("pina colada", "^Alcoholic beverage, pina colada"), ("hard cider", "hard cider"),
+    ("espresso", "^Beverages, coffee, brewed, espresso"), ("hot chocolate", "(?i)hot cocoa|hot chocolate"),
+    ("green tea", "^Beverages, tea, green, brewed"), ("herbal tea", "^Beverages, tea, herb"),
+    ("chamomile tea", "^Beverages, tea, herb, brewed, chamomile"), ("iced tea", "^Tea, iced, brewed, black, unsweetened"),
+    ("sweet tea", "^Tea, iced, brewed, black, pre-sweetened"), ("lemonade", "^Lemonade|^Beverages, lemonade"), ("apple juice", "^Apple juice"),
+    ("cranberry juice", "^Cranberry juice"), ("grapefruit juice", "^Grapefruit juice"), ("tomato juice", "^Tomato juice"),
+    ("coconut water", "coconut water"), ("tonic water", "^Beverages, carbonated, tonic water"), ("club soda", "^Beverages, carbonated, club soda"),
+    ("ginger ale", "^Beverages, carbonated, ginger ale"), ("root beer", "^Beverages, carbonated, root beer"),
+    ("almond milk", "^Beverages, almond milk"), ("granny smith apple", "^Apples, raw, granny smith"), ("gala apple", "^Apples, raw, gala"),
+    ("fuji apple", "^Apples, raw, fuji"), ("roma tomato", "^Tomatoes, red, ripe, raw"), ("cherry tomatoes", "^Tomatoes, red, ripe, raw"),
+    ("russet potato", "^Potatoes, [Rr]usset"), ("yukon gold potato", "^Potatoes, (white|flesh)"), ("red potato", "^Potatoes, red"),
+    ("sweet onion", "^Onions, sweet, raw"), ("red onion", "^Onions, raw"), ("yellow onion", "^Onions, (raw|yellow)"),
+    ("green onion", "^Onions, spring or scallions"), ("scallions", "^Onions, spring or scallions"), ("shallot", "^Shallots, raw"),
+    ("jalapeno", "^Peppers, jalapeno, raw"), ("serrano pepper", "^Peppers, serrano, raw"), ("habanero", "^Peppers, hot chili"),
+    ("romaine lettuce", "^Lettuce, cos or romaine"), ("arugula", "^Arugula, raw"), ("kale", "^Kale"),
+    ("bok choy", "^Cabbage, chinese \\(pak-choi\\)"), ("napa cabbage", "^Cabbage, napa"), ("brussels sprouts", "^Brussels sprouts"),
+    ("butternut squash", "^Squash, winter, butternut"), ("acorn squash", "^Squash, winter, acorn"),
+    ("spaghetti squash", "^Squash, winter, spaghetti"), ("zucchini", "^Squash, summer, zucchini"), ("eggplant", "^Eggplant"),
+    ("portobello mushroom", "^Mushrooms, portabella"), ("shiitake mushrooms", "^Mushrooms, shiitake"), ("navel orange", "^Oranges, raw, navels"),
+    ("clementine", "^Clementines, raw"), ("mandarin", "^Tangerines"), ("pink grapefruit", "^Grapefruit, raw, pink"),
+    ("medjool dates", "^Dates, medjool"), ("dried apricots", "^Apricots, dried"), ("raisins", "^Raisins"),
+    ("dried cranberries", "^Cranberries, dried"), ("ketchup", "^Catsup"), ("mustard", "^Mustard, prepared, yellow"),
+    ("yellow mustard", "^Mustard, prepared, yellow"), ("mayo", "^Salad dressing, mayonnaise, regular"),
+    ("sriracha", "^Sauce, hot chile, sriracha"), ("hot sauce", "^Sauce, ready-to-serve, pepper or hot"),
+    ("soy sauce", "^Soy sauce made from soy and wheat \\(shoyu\\)$"), ("teriyaki sauce", "^Sauce, teriyaki"),
+    ("worcestershire sauce", "^Sauce, worcestershire"), ("fish sauce", "^Sauce, fish"), ("oyster sauce", "^Sauce, oyster"),
+    ("hoisin sauce", "^Sauce, hoisin"), ("bbq sauce", "^Sauce, barbecue"), ("ranch dressing", "^Salad dressing, ranch dressing, regular"),
+    ("caesar dressing", "^Salad dressing, caesar dressing, regular"), ("italian dressing", "^Salad dressing, italian dressing"),
+    ("olive oil", "^Oil, olive"), ("avocado oil", "^Oil, avocado"), ("coconut oil", "^Oil, coconut"), ("sesame oil", "^Oil, sesame"),
+    ("vegetable oil", "^Oil, (vegetable|soybean|canola)"), ("butter", "^Butter, salted"), ("ghee", "^Butter, Clarified butter \\(ghee\\)"),
+    ("honey", "^Honey"), ("maple syrup", "^Syrups, maple"), ("agave", "^Sweetener, syrup, agave"), ("brown sugar", "^Sugars, brown"),
+    ("powdered sugar", "^Sugars, powdered"), ("all purpose flour", "^Wheat flour, white, all-purpose"),
+    ("whole wheat flour", "^Wheat flour, whole-grain"), ("cornstarch", "^Cornstarch"), ("baking soda", "^Leavening agents, baking soda"),
+    ("baking powder", "(?i)baking powder"), ("vanilla extract", "^Vanilla extract"), ("cocoa powder", "^Cocoa, dry powder, unsweetened$"),
+    ("chocolate chips", "^Candies, semisweet chocolate"), ("yeast", "^Leavening agents, yeast"),
+    ("breadcrumbs", "^Bread, crumbs, dry, grated, plain"), ("bread crumbs", "^Bread, crumbs, dry, grated, plain"), ("salt", "^Salt, table"),
+    ("black pepper", "^Spices, pepper, black"), ("garlic powder", "^Spices, garlic powder"), ("onion powder", "^Spices, onion powder"),
+    ("paprika", "^Spices, paprika"), ("cumin", "^Spices, cumin seed"), ("cinnamon", "^Spices, cinnamon"), ("oregano", "^Spices, oregano"),
+    ("basil", "^Basil, fresh"), ("cilantro", "^Coriander \\(cilantro\\) leaves"), ("parsley", "^Parsley, fresh"), ("ginger", "^Ginger root, raw"),
+    ("ground ginger", "^Spices, ginger, ground"), ("garlic", "^Garlic, raw"), ("turmeric", "^Spices, turmeric"), ("chia seeds", "^Seeds, chia"),
+    ("flax seeds", "^Seeds, flaxseed"), ("hemp seeds", "^Seeds, hemp"), ("pumpkin seeds", "^Seeds, pumpkin"),
+    ("sunflower seeds", "^Seeds, sunflower"), ("whey protein", "(?i)whey protein"), ("protein powder", "(?i)protein powder"),
+    ("fish oil", "^Fish oil"),
+]
+
 /// These rank foods made here, so they run without either catalog.
 @Suite("Everyday forms")
 struct EverydayFormTests {
@@ -966,6 +1024,40 @@ struct EverydayFormTests {
         #expect(first("salmon nuggets", nuggets) == "Salmon nuggets, breaded, frozen, heated")
     }
 
+    @Test("what a food is packed in or only includes isn't the food, and a word typed alone can mean a food of its own")
+    func packedAndAlone() {
+        let juice = ["Tomatoes, red, ripe, canned, packed in tomato juice", "Tomato juice, canned, with salt added"]
+        #expect(first("tomato juice", juice) == "Tomato juice, canned, with salt added")
+        #expect(first(seen: "tomato juice", juice) == "Tomato juice, canned, with salt added")
+        // The packing still tells two of a food apart.
+        let tuna = ["Fish, tuna, light, canned in oil, drained solids", "Fish, tuna, light, canned in water, drained solids"]
+        #expect(first("tuna in water", tuna) == "Fish, tuna, light, canned in water, drained solids")
+        let crumbs = ["Bread, white, commercially prepared (includes soft bread crumbs)", "Bread, crumbs, dry, grated, plain"]
+        #expect(first("bread crumbs", crumbs) == "Bread, crumbs, dry, grated, plain")
+        #expect(first(seen: "bread crumbs", crumbs) == "Bread, crumbs, dry, grated, plain")
+        // How a food is made says no other food, whatever it's made from.
+        let soy = ["Soy sauce made from soy (tamari)", "Soy sauce made from soy and wheat (shoyu)"]
+        #expect(first("soy sauce", soy) == "Soy sauce made from soy and wheat (shoyu)")
+        // Chocolate chips are the chocolate, cocoa powder isn't a cocoa mix, and ginger is the root.
+        let chips = ["Cookie, chocolate chip", "Cookies, chocolate chip, commercially prepared", "Candies, semisweet chocolate"]
+        #expect(
+            first("chocolate chips", chips, hints: RankHints(fixes: ["chips": ["semisweet"]], respelt: ["semisweet"]))
+                == "Candies, semisweet chocolate")
+        #expect(first("chocolate chip cookies", chips) != "Candies, semisweet chocolate")
+        #expect(first("cocoa powder", ["Beverages, Cocoa mix, powder", "Cocoa, dry powder, unsweetened"]) == "Cocoa, dry powder, unsweetened")
+        #expect(first("ginger", ["Spices, ginger, ground", "Ginger root, raw"]) == "Ginger root, raw")
+        #expect(first("ground ginger", ["Ginger root, raw", "Spices, ginger, ground"]) == "Spices, ginger, ground")
+        // A word typed alone, by the word itself: "brand" isn't brandy.
+        #expect(aloneName("gin") == "distilled gin" && aloneName("salads") == "lettuce salad" && aloneName("brandy") != nil)
+        #expect(aloneName("brand") == nil && aloneName("ginger") == nil)
+        // Spirits are 80 proof unless a number says otherwise.
+        let spirits = [
+            "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 86 proof",
+            "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 80 proof",
+        ]
+        #expect(first(seen: "distilled gin", spirits) == "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 80 proof")
+    }
+
     @Test("a group typed alone by its name leads its foods, and a raw food's cooked form is a kind of its own")
     func groups() {
         let nuts = ["Spices, nutmeg, ground", "Nuts, cashew nuts, raw", "Nuts, mixed nuts, dry roasted, with peanuts, with salt added"]
@@ -1174,6 +1266,27 @@ struct StaplesTests {
         #expect(catalog.respell("mc flurry").text == "mcflurry")
         #expect(catalog.top("mc flurry", 1).first.map { matches("McFLURRY", $0) } == true)
         #expect(catalog.searchCatalog("mc donalds fries", known: [:]).brand == ["mcdonalds"])
+    }
+
+    @Test("drinks, produce, condiments and baking ingredients come first typed and named as a model would")
+    func kitchenBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in kitchen {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Kitchen foods \(seen ? "as a model names them" : "typed"): \(first) of \(kitchen.count) first")
+            #expect(Double(first) >= 0.95 * Double(kitchen.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // A word some plain food has whole is that food, not a brand that starts with it.
+        #expect(catalog.top("rum", 1).first.map { matches("distilled, rum", $0) } == true)
+        // And a word USDA wrote is no typo of a commoner one.
+        #expect(catalog.searchCatalog("ghee", known: [:]).fixes.isEmpty)
+        // What a food is packed in isn't what it is.
+        #expect(catalog.top("tomato juice", 1).first.map { matches("^Tomato juice", $0) } == true)
+        #expect(catalog.top("tuna in water", 1).first.map { matches("(?i)tuna.*canned in water", $0) } == true)
     }
 
     @Test("a product is first before its name is typed out")
