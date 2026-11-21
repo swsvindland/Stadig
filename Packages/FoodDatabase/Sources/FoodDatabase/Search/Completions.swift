@@ -89,8 +89,13 @@ public enum FoodCompletions {
                 return compared != wanted[0] && typos(wanted[0], compared, limit: allowedTypos(wanted[0])) <= allowedTypos(wanted[0])
             }), allowedTypos(wanted[0]) > 0
         {
+            // With what does read as typed among the other foods: "cholu" may be a typo, and
+            // is as far as Cholula is typed.
+            let asTyped = tally.ranked(without: wanted, limit: limit)
             let onward = suggest(meant, from: matches, limit: limit - 1, label: label)
-            return [meant] + onward.filter { $0 != meant }
+            var offered = [meant]
+            for phrase in asTyped + onward where !offered.contains(phrase) { offered.append(phrase) }
+            return Array(offered.prefix(limit))
         }
         var phrases = tally.ranked(without: wanted, limit: limit)
         // Nothing reads as what's typed, but the search found foods: it took it for a typo.
@@ -115,6 +120,8 @@ public enum FoodCompletions {
         var leads = true
         /// It ends on an everyday food.
         var named = false
+        /// The whole of a chain's item as USDA lists it, found by a later word of its name.
+        var item = false
     }
 
     private static let everyday = Set(EverydayPhrases.all.map { Tally.key($0.words) })
@@ -132,6 +139,7 @@ public enum FoodCompletions {
         }
         // A name still written as a catalog files it ("McDONALD'S, BIG MAC", "Babyfood, GERBER,
         // banana with orange") is read a part at a time: "big m" is on its way to a Big Mac.
+        let chain = food.source == .usda && !brandWords(name: food.name, brand: "").isEmpty
         if said.contains(",") {
             for part in said.split(separator: ",") {
                 let partWords = phraseWords(String(part))
@@ -139,6 +147,16 @@ public enum FoodCompletions {
                     (words, found) = (partWords, place)
                     break
                 }
+            }
+        }
+        // A chain typed whole goes on to its items as the catalog lists them: "kfc" to KFC
+        // biscuit, where the name as it's said is the chain alone.
+        var chainWords = 0
+        if chain, let place = found, place.last == words.count - 1 {
+            let parts = food.name.split(separator: ",")
+            if parts.count > 1, phraseWords(String(parts[0])).map(plain) == words.map(plain) {
+                chainWords = words.count
+                words += phraseWords(String(parts[1]))
             }
         }
         // "fage yog": the brand was typed too, so it's part of what's searched for.
@@ -149,6 +167,7 @@ public enum FoodCompletions {
             found = place(of: typed, in: words.map(plain))
         }
         guard let found else { return [] }
+        let own = (food.brand.map(phraseWords) ?? []).map(plain)
         let last = found.last
         var ends = [last + 1, last + 2]
         if words.count <= 4 { ends.append(words.count) }
@@ -160,14 +179,18 @@ public enum FoodCompletions {
             while let tail = phrase.last, connectors.contains(tail), phrase.count > last + 1 { phrase.removeLast() }
             // A label that says a word twice ("Apple Apple") isn't a phrase.
             guard !cuts.contains(where: { $0.words == phrase }), Set(phrase.map(plain)).count == phrase.count else { continue }
-            // A brand by itself is a whole thing to search for, as a whole name is.
-            let whole = phrase.count == words.count || (!brand.isEmpty && phrase == brand)
+            // A brand by itself is a whole thing to search for, as a whole name is, wherever
+            // it was found: the "Wheat Thins" a name starts with are the brand's.
+            let whole = phrase.count == words.count || phrase.count == chainWords || (!own.isEmpty && phrase.map(plain) == own)
             // Part of a name is a phrase where it ends on a food: "kirkland signature almonds".
             var named = false
             if !whole, phrase.count > 1 {
                 named = (1...min(3, phrase.count - 1)).contains { everyday.contains(Tally.key(Array(phrase.suffix($0)))) }
             }
-            cuts.append(Cut(words: phrase, whole: whole, fit: found.fit, leads: found.leads, named: named))
+            // A chain's own word for its item is one to search by, though the name starts
+            // otherwise: "mcnug" is on its way to Chicken McNuggets.
+            let item = chain && whole && !found.leads && typed.count == 1 && typed[0].count >= 4
+            cuts.append(Cut(words: phrase, whole: whole, fit: found.fit, leads: found.leads, named: named, item: item))
         }
         return cuts + kinds(of: food, typed: typed, label: label).filter { kind in !cuts.contains { $0.words == kind.words } }
     }
@@ -202,7 +225,13 @@ public enum FoodCompletions {
     private static func place(of typed: [String], in words: [String]) -> (last: Int, fit: Double, leads: Bool, ordered: Bool)? {
         var places: [Int] = []
         for word in typed {
-            guard let index = words.indices.first(where: { !places.contains($0) && reads(words[$0], as: word) }) else { return nil }
+            guard let index = words.indices.first(where: { !places.contains($0) && reads(words[$0], as: word) }) else {
+                // Typed apart, a name written as one word: "chick f" is on its way to
+                // Chick-fil-A, "cap n" to Cap'n Crunch.
+                let joined = typed.joined()
+                guard typed.count > 1, let index = words.firstIndex(where: { $0.count > typed[0].count && $0.hasPrefix(joined) }) else { return nil }
+                return (index, index == 0 ? 1 : laterWord, index == 0, true)
+            }
             places.append(index)
         }
         guard let first = places.first, let last = places.max() else { return nil }
@@ -272,6 +301,8 @@ public enum FoodCompletions {
             var popularity = 0.0
             /// It ends on an everyday food: "chobani greek yogurt", from the flavours' names.
             var named = false
+            /// A chain's item, found by its own word for it.
+            var item = false
         }
 
         private var rows: [String: Row] = [:]
@@ -293,6 +324,7 @@ public enum FoodCompletions {
             if match.food.source != .off { row.plain = true }
             row.popularity = max(row.popularity, match.food.popularity)
             if cut.named { row.named = true }
+            if cut.item { row.item = true }
             rows[Self.key(cut.words)] = row
         }
 
@@ -314,7 +346,7 @@ public enum FoodCompletions {
         private func worth(_ row: Row) -> Bool {
             if row.own || row.listed { return true }
             // A word found later in a name or two is a stretch: "tun" isn't a tunnel-boned leg of lamb.
-            guard row.leads || row.foods >= 3 else { return false }
+            guard row.leads || row.foods >= 3 || row.item else { return false }
             if row.whole { return row.foods >= 2 || row.plain || row.popularity >= popular }
             return row.named && (row.foods >= 2 || row.plain)
         }

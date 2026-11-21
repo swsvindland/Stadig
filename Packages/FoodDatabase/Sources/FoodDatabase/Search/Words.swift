@@ -607,8 +607,13 @@ func readQuery(_ query: String) -> QueryReading {
     {
         counts.append((found[i].word, found[i + 1].word))
     }
+    // The letter may be a small word of its own: the "a" of "chips a" is as far as Ahoy is typed.
     var letter: [String] = []
-    if names.count > 1, names.count <= 8, let last = names.last, length(last) == 1, !isNumber(last) { letter = [names[names.count - 2], last] }
+    if names.count <= 8, found.count > 1, let last = found.last?.word, length(last) == 1, !isNumber(last),
+        roles[found.count - 1] != .amount, roles[found.count - 2] == .name
+    {
+        letter = [found[found.count - 2].word, last]
+    }
     return QueryReading(words: Array(names.prefix(8)), counts: counts, sizes: sizes, letter: letter)
 }
 

@@ -29,6 +29,7 @@ final class Catalog: Sendable {
     private let columns: String
     private let matchSQL: String
     private let scannedSQL: String
+    private let begunSQL: String
     /// Rows already read this launch, by rowid: each keystroke finds most of the last one's foods.
     private let read = Mutex<[Int64: Entry]>([:])
     /// The generic catalog's rowids by food id, read on the first lookup by id: the file has no
@@ -83,6 +84,16 @@ final class Catalog: Sendable {
             away = "0"
             home = "1"
         }
+        // The foods of the brands that start a given way, the most scanned first.
+        begunSQL = """
+            SELECT \(columns), \(away) AS away, \(home) AS home FROM (
+              SELECT rowid FROM food_search WHERE food_search MATCH ? LIMIT ?
+            ) AS hit
+            JOIN foods ON foods.rowid = hit.rowid
+            WHERE foods.brand LIKE ?
+            ORDER BY away, foods.popularity DESC
+            LIMIT ?
+            """
         scannedSQL =
             "SELECT 1 FROM food_search JOIN foods ON foods.rowid = food_search.rowid "
             + "WHERE food_search MATCH ? AND foods.popularity >= ? AND NOT \(away) LIMIT 1"
@@ -131,16 +142,20 @@ final class Catalog: Sendable {
 
     /// Runs a full-text expression. Names starting with `lead` come first.
     func match(_ expression: String, limit: Int, lead: String = "") -> [Hit] {
+        hits(matchSQL, [.text(expression), .integer(Int64(candidates)), .text(lead.isEmpty ? "" : "\(lead)%"), .integer(Int64(limit))])
+    }
+
+    /// The foods an expression matches whose brand starts as `begun` does, the most scanned
+    /// first: the brands with the word "swiss" that go on with an "m".
+    func match(_ expression: String, limit: Int, brandBegun begun: String) -> [Hit] {
+        hits(begunSQL, [.text(expression), .integer(Int64(candidates)), .text("\(begun)%"), .integer(Int64(limit))])
+    }
+
+    private func hits(_ sql: String, _ parameters: [SQLValue]) -> [Hit] {
         var hits: [Hit] = []
         var fresh: [(Int64, Entry)] = []
         pool.read { connection in
-            try connection.query(
-                matchSQL,
-                [
-                    .text(expression), .integer(Int64(candidates)), .text(lead.isEmpty ? "" : "\(lead)%"),
-                    .integer(Int64(limit)),
-                ]
-            ) { row in
+            try connection.query(sql, parameters) { row in
                 let rowid = row.int(0)
                 if let entry = read.withLock({ $0[rowid] }) {
                     hits.append(Hit(entry: entry, away: row.int(10) == 1, home: row.int(11) == 1))

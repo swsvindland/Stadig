@@ -120,6 +120,12 @@ struct MatchJob: Sendable {
     var expression: String
     var limit: Int
     var lead: String
+    /// How the brands of the foods wanted start, in place of a lead: "swiss m".
+    var begun = ""
+
+    func run() -> [Catalog.Hit] {
+        begun.isEmpty ? catalog.match(expression, limit: limit, lead: lead) : catalog.match(expression, limit: limit, brandBegun: begun)
+    }
 }
 
 extension FoodCatalog {
@@ -136,11 +142,10 @@ extension FoodCatalog {
         let all = groups.flatMap { $0 }
         let results = Mutex<[[Catalog.Hit]]>(Array(repeating: [], count: all.count))
         if all.count == 1 {
-            results.withLock { $0[0] = all[0].catalog.match(all[0].expression, limit: all[0].limit, lead: all[0].lead) }
+            results.withLock { $0[0] = all[0].run() }
         } else if all.count > 1 {
             DispatchQueue.concurrentPerform(iterations: all.count) { i in
-                let job = all[i]
-                let hits = job.catalog.match(job.expression, limit: job.limit, lead: job.lead)
+                let hits = all[i].run()
                 results.withLock { $0[i] = hits }
             }
         }
@@ -292,20 +297,25 @@ extension FoodCatalog {
     /// A word still being typed is one that starts such a name, by its letters as typed: "skip"
     /// is on its way to Skippy, where "bred" isn't a brand sold elsewhere begun.
     private func isName(_ word: String, whole: Bool) -> Bool {
-        for catalog in catalogs {
+        let key = "name \(whole ? "whole" : "begun") \(word)"
+        if let remembered = brandish.withLock({ $0[key] }) { return remembered }
+        let named = catalogs.contains { catalog in
             if catalog.kind == .generic {
                 let found =
                     whole
                     ? catalog.terms("SELECT term, foods FROM terms WHERE term IN (?, ?)", [.text(word), .text(stem(word))])
                     : catalog.terms("SELECT term, foods FROM terms WHERE term >= ? AND term < ? LIMIT 1", [.text(word), .text(word + "\u{FFFF}")])
-                if !found.isEmpty { return true }
-            } else {
-                let forms = whole && stem(word) != word ? [word, stem(word)] : [word]
-                let brands = forms.map { "\"\($0)\"\(whole ? "" : "*")" }.joined(separator: " OR ")
-                if catalog.isScanned("{brand}: (\(brands))", atLeast: 1.5) { return true }
+                return !found.isEmpty
             }
+            let forms = whole && stem(word) != word ? [word, stem(word)] : [word]
+            let brands = forms.map { "\"\($0)\"\(whole ? "" : "*")" }.joined(separator: " OR ")
+            return catalog.isScanned("{brand}: (\(brands))", atLeast: 1.5)
         }
-        return false
+        brandish.withLock { remembered in
+            if remembered.count > 500 { remembered.removeAll() }
+            remembered[key] = named
+        }
+        return named
     }
 
     // MARK: One word or two
@@ -696,6 +706,9 @@ extension FoodCatalog {
         for (i, token) in tokens.enumerated() where names.contains(token.word) && length(token.word) >= 4 && !stopWords.contains(token.word) {
             let spelling = spell(token.word, whole: i < tokens.count - 1 || token.end < scalars.count)
             guard spelling.doubted else { continue }
+            // A name the catalogs know, or the start of one, is no typo to read by another
+            // word's names: "noos" may be noodles, and is as far as Noosa is typed.
+            guard !isName(token.word, whole: i < tokens.count - 1 || token.end < scalars.count) else { continue }
             // Of two readings, the one that makes one word with the word before it: after
             // "flax", "sends" is seeds.
             var readings = spelling.fixes
@@ -794,9 +807,18 @@ extension FoodCatalog {
             // correction's foods would crowd out: "cholu" is on its way to Cholula, whatever
             // "chou…" it is also read as.
             searched.count == 1 && !fixes.isEmpty ? jobs(branded, "{brand}: \(searchTerm(searched[0]))", .typed) : [],
+            // And the brands that go on from a word with the letter typed after it, which the
+            // word alone needn't reach: "swiss m" is on its way to Swiss Miss among every
+            // Swiss cheese. A phrase that ends on one letter is too slow to search for.
+            searched.count == 1 && !reading.letter.isEmpty
+                ? branded.map {
+                    MatchJob(
+                        catalog: $0, expression: "{brand}: \"\(reading.letter[0])\"", limit: MatchLimits.few.branded, lead: "",
+                        begun: "\(reading.letter[0]) \(reading.letter[1])")
+                } : [],
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7] + found[8] + found[9]
+        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7] + found[8] + found[9] + found[10]
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").

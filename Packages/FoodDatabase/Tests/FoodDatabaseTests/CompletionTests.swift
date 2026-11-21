@@ -183,6 +183,41 @@ struct CompletionTests {
         #expect(FoodCompletions.suggest("big m", from: [mac]) == ["big mac"])
     }
 
+    @Test func aChainGoesOnToItsItems() {
+        let chain = { (name: String) in
+            FoodMatch(
+                food: Food(
+                    id: name, name: name, brand: nil, basis: .g, nutrients: Nutrients(kcal: 1, protein: 0, carbs: 0, fat: 0), source: .usda),
+                score: 1, personal: false)
+        }
+        // The app says each by its chain alone; what the chain sells is in the catalog's name.
+        let said = { (food: Food) in String(food.name.prefix { $0 != "," }) }
+        let items = ["KFC, biscuit", "KFC, Coleslaw", "KFC, Popcorn Chicken"].map(chain)
+        let typed = FoodCompletions.suggest("kfc", from: items, label: said)
+        #expect(typed.contains("kfc biscuit") && typed.contains("kfc coleslaw") && !typed.contains("kfc"))
+        // The chain alone while it's still being typed, then its items.
+        #expect(FoodCompletions.suggest("kf", from: items, label: said).first == "kfc")
+        // A chain's own word for an item is one to search by, though the name starts otherwise.
+        let nuggets = [chain("McDONALD'S, Chicken McNUGGETS")]
+        #expect(FoodCompletions.suggest("mcnug", from: nuggets) { _ in "McDONALD'S" } == ["chicken mcnuggets"])
+        // Not a few letters of an everyday word found later in an item's name.
+        #expect(FoodCompletions.suggest("chi", from: nuggets) { _ in "McDONALD'S" }.contains("chicken mcnuggets") == false)
+    }
+
+    @Test func aNameTypedApartOrInsideAProductsIsOffered() {
+        // Typed apart, a name written as one word.
+        let sauce = [label("Chick-fil-A Sauce", brand: "Chick-fil-A", popularity: 3), label("Chick-fil-A Polynesian Sauce", brand: "Chick-fil-A")]
+        #expect(FoodCompletions.suggest("chick fi", from: sauce).first == "chick-fil-a")
+        let cereal = [label("Cap'n Crunch", brand: "Quaker", popularity: 3), label("Cap'n Crunch Berries", brand: "Quaker")]
+        #expect(FoodCompletions.suggest("cap n", from: cereal).first == "cap'n crunch")
+        // The brand a product's name starts with is a whole thing to search for.
+        let crackers = [label("Wheat Thins Original", brand: "Wheat Thins"), label("Wheat Thins Sundried Tomato", brand: "Wheat Thins")]
+        #expect(FoodCompletions.suggest("wheat t", from: crackers).contains("wheat thins"))
+        // The word the search took a typo for is offered with what reads as typed among the rest.
+        let begun = [food("Chou, raw"), label("Hot Sauce", brand: "Cholula"), label("Salsa Verde", brand: "Cholula")]
+        #expect(Array(FoodCompletions.suggest("cholu", from: begun).prefix(2)) == ["chou", "cholula"])
+    }
+
     @Test func theCatalogsResultsComplete() {
         let found = Catalogs.usda.search("chick", limit: 60)
         #expect(FoodCompletions.suggest("chick", from: found).contains("chicken"))

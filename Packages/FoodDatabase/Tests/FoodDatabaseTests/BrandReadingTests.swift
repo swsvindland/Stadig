@@ -344,6 +344,13 @@ struct CompoundTests {
         #expect(catalog.searchCatalog("bred", known: [:]).fixes["bred"] != nil)
         #expect(catalog.searchCatalog("protien bar", known: [:]).fixes["protien"] == ["protein"])
         #expect(catalog.search("cholu").first?.food.brand == "Cholula")
+        // The brands that go on from a word with the letter typed after it are found among the
+        // word's own foods, and offered; a small word typed last is such a letter.
+        let begun = catalog.search("swiss m", limit: 60)
+        #expect(begun.prefix(3).contains { $0.food.brand?.lowercased().hasPrefix("swiss miss") == true })
+        #expect(FoodCompletions.suggest("swiss m", from: begun).first == "swiss miss")
+        #expect(readQuery("chips a").letter == ["chips", "a"] && readQuery("2 a").letter.isEmpty)
+        #expect(FoodCompletions.suggest("chips a", from: catalog.search("chips a", limit: 60)).first == "chips ahoy")
     }
 
     @Test("words still being typed, short halves and everyday pairs are searched as typed")
