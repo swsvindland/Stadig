@@ -150,14 +150,17 @@ public struct CatalogInfo: Hashable, Sendable {
     public var version: String
     public var license: String
     public var attribution: String
+    /// The addresses in the attribution, to open: the source, its licences, and where a derived database is published.
+    public var links: [CatalogLink]
     public var source: String
     public var foods: Int
 
-    public init(name: String, version: String, license: String, attribution: String, source: String, foods: Int) {
+    public init(name: String, version: String, license: String, attribution: String, links: [CatalogLink], source: String, foods: Int) {
         self.name = name
         self.version = version
         self.license = license
         self.attribution = attribution
+        self.links = links
         self.source = source
         self.foods = foods
     }

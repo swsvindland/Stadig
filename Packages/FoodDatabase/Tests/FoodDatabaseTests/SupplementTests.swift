@@ -211,6 +211,7 @@ struct SupplementTests {
         let url = Self.catalogURL
         let catalog = try SupplementCatalog(url: url)
         #expect(catalog.count > 100_000)
+        #expect(catalog.links.map(\.url.absoluteString) == ["https://dsld.od.nih.gov"])
         // Nature Made Omega-3 Fish Oil 1200 mg, scanned as its UPC-A.
         let fish = try #require(catalog.supplement(barcode: "031604010539"))
         #expect(fish.brand == "Nature Made")

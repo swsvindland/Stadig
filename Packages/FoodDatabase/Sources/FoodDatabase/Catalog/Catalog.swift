@@ -17,6 +17,8 @@ final class Catalog: Sendable {
     let version: String
     let license: String
     let attribution: String
+    /// The addresses in the notice, read once here: Settings draws them on every pass.
+    let links: [CatalogLink]
     let source: String
     /// Rows, counted by the last rowid: catalogs are written once, in order.
     let foods: Int
@@ -58,6 +60,7 @@ final class Catalog: Sendable {
         self.version = version
         license = meta["license"] ?? ""
         attribution = meta["attribution"] ?? ""
+        links = CatalogNotice.links(in: attribution)
         source = meta["source"] ?? ""
         self.foods = foods
         order = meta["nutrients"].flatMap { JSONValue.parse($0)?.array?.compactMap(\.string) }

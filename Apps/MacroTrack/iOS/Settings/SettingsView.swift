@@ -324,6 +324,7 @@ struct SettingsView: View {
                     Text("\(source.foods.formatted()) foods · \(source.license)").font(.caption).foregroundStyle(Ink.text2)
                     Text(source.attribution).font(.caption2).foregroundStyle(Ink.text3)
                 }
+                CatalogLinkRows(links: source.links)
             }
             if let supplements = model.supplementCatalog {
                 VStack(alignment: .leading, spacing: 2) {
@@ -331,6 +332,7 @@ struct SettingsView: View {
                     Text("\(supplements.count.formatted()) supplement labels · Public domain").font(.caption).foregroundStyle(Ink.text2)
                     Text(supplements.attribution).font(.caption2).foregroundStyle(Ink.text3)
                 }
+                CatalogLinkRows(links: supplements.links)
             }
             if !model.catalog.hasPackagedFoods {
                 Text("Packaged foods and barcodes aren't installed in this build.").font(.footnote).foregroundStyle(Ink.text3)

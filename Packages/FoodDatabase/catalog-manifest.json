@@ -1,11 +1,11 @@
 {
   "schemaVersion": 3,
   "usda": {
-    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-5acc4644",
+    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-aabf210c",
     "sourceUrl": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip",
-    "recipeSha256": "5acc4644b3f07735b3ceeb613e075711d48bc2d1eba61c99770c9a381d318b2d",
+    "recipeSha256": "aabf210c7b142d3b88f04ed776dde88991b8e146a8b0216aa205815ffd84cbcd",
     "sourceSha256": "0fe8ae486a2c8eb42cb96413f058deb51863a46c8fb8eeb4b1fb45006dd338ef",
-    "sha256": "86fb74940948dfe04ba77d38500b228180ae4bc2426eebf9726b44aabad3422f",
+    "sha256": "e45067c99021c8a07ee5bdcf7fc65d3f74ed5175bb306740da7d16134fd7f85b",
     "bytes": 3252224,
     "license": "CC0-1.0",
     "developmentSample": false,
@@ -32,11 +32,11 @@
     "fnddsSha256": "dfb06ae7ddc397ccd570b91c14b75438ab2ba39f64f22d321f61d4a52a77f3eb"
   },
   "off": {
-    "version": "off-v3-b23b1393887e-4b7ac824",
+    "version": "off-v3-b23b1393887e-aabf210c",
     "sourceUrl": "https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz",
-    "recipeSha256": "4b7ac8249bbcc6894f8bff7a0b44692f1b832d6179d700cd555fa2c0529941c5",
+    "recipeSha256": "aabf210c7b142d3b88f04ed776dde88991b8e146a8b0216aa205815ffd84cbcd",
     "sourceSha256": "b23b1393887e2dc8ac152b6542644ad656ea6dce58284587ee3e3d93ffbec3db",
-    "sha256": "637a7fb32e3419758b71b5d9b4a8e603cdf73ba21c6eef363a23fca5458ff68a",
+    "sha256": "71bb5367fa7773658b0797a9ebea27c7753c12e45de024d9f6d147b8806e87b9",
     "bytes": 601759744,
     "license": "ODbL-1.0",
     "developmentSample": false,
@@ -70,11 +70,11 @@
     "terms": 389937
   },
   "dsld": {
-    "version": "dsld-v1-058ce9867ad1-eb332b30",
+    "version": "dsld-v1-058ce9867ad1-c0259b60",
     "sourceUrl": "https://api.ods.od.nih.gov/dsld/s3/data/DSLD-full-database-CSV.zip",
-    "recipeSha256": "eb332b30181bb84c0d0d8daab41bf996a80d17b2ee5175164668ee117e2dcee1",
+    "recipeSha256": "c0259b600ad83cf017a05598dd7409e8c6f3f744908f371537b93761a56c7424",
     "sourceSha256": "058ce9867ad13c66d51a56fdaaa2015747cea2c27f55aaa6631e9d5e831fb05a",
-    "sha256": "f2145aaa1810627e95f57fc85911bf0c0fe7e8faffa0bf23aff99600099bb589",
+    "sha256": "8d9013b952d67739cd7b73e9c2b17f80d32fdc0734224f39431e2201cf1f4456",
     "bytes": 43081728,
     "license": "Public domain",
     "sourceRecords": 214780,

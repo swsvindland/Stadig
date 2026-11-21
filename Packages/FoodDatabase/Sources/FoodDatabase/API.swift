@@ -58,7 +58,7 @@ public final class FoodCatalog: Sendable {
         catalogs.map { catalog in
             CatalogInfo(
                 name: catalog.kind == .generic ? "USDA FoodData Central" : "Open Food Facts",
-                version: catalog.version, license: catalog.license, attribution: catalog.attribution,
+                version: catalog.version, license: catalog.license, attribution: catalog.attribution, links: catalog.links,
                 source: catalog.source, foods: catalog.foods)
         }
     }

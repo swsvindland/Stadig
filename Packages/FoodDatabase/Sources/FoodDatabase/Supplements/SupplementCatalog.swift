@@ -7,6 +7,8 @@ import SystemCore
 public final class SupplementCatalog: Sendable {
     public let version: String
     public let attribution: String
+    /// The addresses in the attribution, to open.
+    public let links: [CatalogLink]
     /// Labels in the file.
     public let count: Int
     private let pool: ConnectionPool
@@ -29,6 +31,7 @@ public final class SupplementCatalog: Sendable {
         guard let version = meta["version"] else { throw SQLiteError(code: 0, message: "\(url.lastPathComponent) has no catalog version") }
         self.version = version
         attribution = meta["attribution"] ?? ""
+        links = CatalogNotice.links(in: attribution)
         self.count = count
     }
 

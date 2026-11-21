@@ -181,6 +181,7 @@ struct CatalogTests {
         #expect(info.license == "CC0-1.0")
         #expect(info.foods == 8031, "SR Legacy's 7,793, FNDDS's 191 restaurant foods and 47 it files chains' items under")
         #expect(info.attribution.contains("USDA") && info.attribution.contains("FNDDS"))
+        #expect(info.links.isEmpty, "public domain, and its notice names no address")
         let apples = try #require(catalog.search("apples").first)
         #expect(apples.food.name.hasPrefix("Apples, raw"))
         #expect(apples.food.source == .usda && !apples.personal)
@@ -266,6 +267,9 @@ struct CatalogTests {
         #expect(info.license == "ODbL-1.0")
         #expect(info.foods > 3_000_000)
         #expect(info.attribution.contains("Open Database License"))
+        // What Settings lists under the notice: the source, both licences, and where this database is published.
+        #expect(
+            info.links.map(\.title) == ["Open Food Facts", "Open Database License", "Database Contents License", "This database and how it's built"])
         // The most scanned row, whose id the catalog leaves for the app to derive.
         let food = try #require(catalog.food(barcode: "6111246721261"))
         #expect(food.id == "off:06111246721261")
