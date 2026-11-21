@@ -134,6 +134,9 @@ struct MatchingTests {
         #expect(Matching.fits("soy sauce", food("Soy sauce made from soy and wheat (shoyu)")))
         #expect(Matching.fits("ginger", food("Ginger root, raw")))
         #expect(!Matching.fits("celery", food("Celery root, raw")))
+        #expect(Matching.fits("taco seasoning", food("Seasoning mix, dry, taco, original")))
+        #expect(!Matching.fits("pancakes", food("Pancake mix, dry")))
+        #expect(Matching.fits("buttermilk", food("Milk, buttermilk, fluid, whole", kcal: 62)))
         // A bowl named last is a dish, as the catalog reads it.
         #expect(FoodText.nameWords("Poke bowl") == ["poke", "bowl"])
         #expect(FoodText.nameWords("Bowl of rice") == ["rice"])

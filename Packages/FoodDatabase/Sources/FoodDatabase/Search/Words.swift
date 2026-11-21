@@ -33,6 +33,8 @@ let alternatives: [String: [String]] = [
     // USDA's portobello is "portabella", and a lager, a pilsner or a stout its beer.
     "portobello": ["portobello", "portabella"], "portabello": ["portabello", "portabella"], "lager": ["lager", "beer"],
     "pilsner": ["pilsner", "beer"], "stout": ["stout", "beer"],
+    // Venison is its deer, calamari its squid and crawfish its crayfish.
+    "venison": ["venison", "deer"], "calamari": ["calamari", "squid"], "crawfish": ["crawfish", "crayfish"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -131,6 +133,12 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
         (["bok", "choy"], [(0, "pak"), (1, "choi")]),
         (["herbal", "tea"], [(0, "herb")]),
         (["chocolate", "chip"], [(1, "semisweet")]),
+        // Collard greens are its collards, snap and snow peas its edible-podded peas, and bean
+        // sprouts its sprouted mung beans.
+        (["collard", "green"], [(1, "collard")]),
+        (["snap", "pea"], [(0, "podded")]),
+        (["snow", "pea"], [(0, "podded")]),
+        (["bean", "sprout"], [(0, "mung")]),
     ] as [([String], [(Int, String)])] + pastaShapes.map { ([$0, "pasta"], [(0, "pasta")]) }).map {
         (said: $0.0.map(stem), means: $0.1.map { (at: $0.0, word: stem($0.1)) })
     }
@@ -175,6 +183,9 @@ let shortNames: [String: String] = [
     "oj": "orange juice", "evoo": "extra virgin olive oil",
     "sunny side up egg": "fried egg", "sunny side up eggs": "fried egg", "over easy egg": "fried egg", "over easy eggs": "fried egg",
     "corn on the cob": "sweet corn cooked",
+    // Red pepper flakes are its red or cayenne pepper.
+    "red pepper flakes": "spices pepper red cayenne", "crushed red pepper": "spices pepper red cayenne",
+    "cayenne pepper": "spices pepper red cayenne", "cayenne": "spices pepper red cayenne",
 ]
 
 /// Names that, typed alone, are also the word USDA files them under: "spaghetti" is its "Pasta,
@@ -190,6 +201,7 @@ let typedAlternatives: Set<String> = [
     "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
+    "venison", "calamari", "crawfish",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

@@ -9,7 +9,8 @@ enum Drinks {
             + "frappuccino tea chai matcha juice lemonade limeade soda cola coke pepsi sprite fanta beer lager ale wine cider cocktail "
             + "smoothie shake milkshake kombucha beverage beverages drink drinks milk gatorade powerade redbull "
             + "whiskey whisky vodka rum gin tequila bourbon scotch brandy sake champagne soymilk oatmilk almondmilk eggnog kefir "
-            + "cognac mezcal liqueur prosecco pilsner stout ipa seltzer tonic colada margarita mojito martini daiquiri sangria mimosa spritz")
+            + "cognac mezcal liqueur prosecco pilsner stout ipa seltzer tonic colada margarita mojito martini daiquiri sangria mimosa spritz "
+            + "buttermilk horchata lassi")
             .split(separator: " ")
             .map { FoodText.stem(String($0)) })
     private static let phrases = Pattern(#"\b(?:flat white|hot chocolate|iced tea|soft drink|energy drink|red bull|sports drink)\b"#)

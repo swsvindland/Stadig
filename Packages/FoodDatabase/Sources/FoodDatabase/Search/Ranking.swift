@@ -225,6 +225,15 @@ private let everydayVarieties: [String: Usual] = [
     "enchilada": Usual(["cheese"], ["sauce", "seasoning", "kit"]),
     "taco": Usual(["beef"], "shell shells salad seasoning sauce kit chip chips flavor".split(separator: " ").map(String.init)),
     "nacho": Usual(["fast"], "chip chips flavor tortilla sauce dip".split(separator: " ").map(String.init)),
+    // Liver is beef liver, pastrami beef, mackerel the Atlantic one, frosting vanilla, custard
+    // the egg custard, shortening the household kind and gravy beef gravy.
+    "liver": Usual(["beef"], "chicken goose duck pork lamb veal turkey cod calf pate".split(separator: " ").map(String.init)),
+    "pastrami": Usual(["beef"], ["turkey"]),
+    "mackerel": Usual(["atlantic"], "salted canned king spanish jack pacific smoked".split(separator: " ").map(String.init)),
+    "frosting": Usual(["vanilla"], "chocolate cheese coconut glaze white fluffy".split(separator: " ").map(String.init)),
+    "custard": Usual(["egg"], "apple pie filled puff flan frozen pudding mix".split(separator: " ").map(String.init)),
+    "shortening": Usual(["household"], "frying industrial confectionery bread cake special".split(separator: " ").map(String.init)),
+    "gravy": Usual(["beef"], "chicken turkey mushroom pork onion au jus sausage country white brown".split(separator: " ").map(String.init)),
     // Spirits are 80 proof unless a number says otherwise.
     "distilled": Usual(["80"], []),
     // Ginger typed alone is the root; ground, it's the spice.
@@ -299,6 +308,7 @@ private let usualPhrases: [(words: [String], usual: Usual)] = [
     // not a cocoa mix.
     ("soy sauce", Usual(["shoyu"], ["tamari", "low", "reduced", "less", "lite", "light", "hydrolyzed"])),
     ("cocoa powder", Usual(["unsweetened"], ["mix", "hot", "sweetened"])),
+    ("corn syrup", Usual(["light"], ["dark", "high", "fructose"])),
     // Chocolate chips are its semisweet chocolate, where most foods with the words are cookies.
     (
         "chocolate chip",
@@ -498,6 +508,9 @@ struct FoodText {
     let included: [String]
     /// What the food is canned or packed in, stemmed: the "tomato juice" of tomatoes packed in it.
     let packed: [String]
+    /// The word each word is joined to by a hyphen, both stemmed: "apple" for the "custard" of
+    /// "Custard-apple", "flavor" for the "taco" of "taco-flavor".
+    let joined: [String: String]
     /// The words before the name's first comma, after a USDA group ("Fish, salmon"), stemmed.
     let lead: [String]
     /// The words of the name's first two comma-separated parts, after a group, stemmed: "Oil" and
@@ -592,8 +605,12 @@ struct FoodText {
         var parts: [[String]] = [[], [], []]
         var packedRun = -1
         var packed: [String] = []
+        var joined: [String: String] = [:]
         for (i, token) in found.enumerated() where !stems[i].isEmpty {
             titled.append(stems[i])
+            if i + 1 < found.count, !stems[i + 1].isEmpty, token.end < scalars.count, scalars[token.end] == "-", found[i + 1].start == token.end + 1 {
+                joined[stems[i]] = stems[i + 1]
+            }
             // "With skin", "without skin" and "baked in skin" say how a fruit or a potato comes,
             // not that the food is its skin, as "Chicken, skin only" is.
             if stems[i] == "skin", i > 0, ["with", "without", "in"].contains(found[i - 1].word) { continue }
@@ -643,6 +660,7 @@ struct FoodText {
         self.noted = noted
         self.included = included
         self.packed = packed
+        self.joined = joined
         // USDA files some foods under a group: "Fish, salmon".
         let head = makeString(scalars[..<(commas.first ?? scalars.count)]).trimmingCharacters(in: .whitespaces)
         let secondPart = commas.isEmpty ? 0 : (commas.count > 1 ? commas[1] : scalars.count) - commas[0] - 1
@@ -1147,6 +1165,9 @@ struct CoverageQuery {
                 let w = text.said[i]
                 return text.runs[i] == text.runs[at] && formWords.contains(w) && !asked(w)
             }
+            // A word joined to the food's by a hyphen names what it is: a "Custard-apple" is a
+            // fruit, "taco-flavor" chips are chips.
+            if !modifies, let other = text.joined[text.said[at]], !asked(other) { modifies = true }
             // What follows the food after "or" is said of both: "Taco or tostada salad" is a
             // salad, where "Bagel or roll" is a bagel.
             let other = text.said.indices.filter { text.runs[$0] == text.runs[at] + 1 }

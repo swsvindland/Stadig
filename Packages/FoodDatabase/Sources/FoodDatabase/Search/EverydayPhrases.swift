@@ -65,6 +65,45 @@ enum EverydayPhrases {
         "breakfast sandwich", "breakfast burrito",
     ]
 
+    /// Foods from the kitchen, the bar and the deli that are logged less often than those: the
+    /// drinks, produce by its variety, condiments, baking ingredients and spices that a search
+    /// finds by these names. They're offered after the rest, and a word is only read as one of
+    /// them begun from its fourth letter: "cha" isn't champagne yet.
+    static let third: [String] = [
+        // Drinks.
+        "light beer", "ipa", "lager", "rose wine", "champagne", "prosecco", "tequila", "rum", "gin", "bourbon", "scotch", "brandy", "sake",
+        "pina colada", "hard cider", "herbal tea", "chamomile tea", "sweet tea", "cranberry juice", "grapefruit juice", "tomato juice",
+        "grape juice", "tonic water", "club soda", "ginger ale", "root beer", "eggnog", "buttermilk", "evaporated milk",
+        // Fruit and vegetables.
+        "granny smith apple", "gala apple", "fuji apple", "roma tomato", "russet potato", "yukon gold potato", "red potato", "sweet onion",
+        "yellow onion", "green onion", "scallions", "shallot", "serrano pepper", "habanero", "bok choy", "napa cabbage", "acorn squash",
+        "spaghetti squash", "portobello mushroom", "shiitake mushrooms", "navel orange", "mandarin", "pink grapefruit", "medjool dates",
+        "dried apricots", "plantain", "leeks", "radishes", "artichoke", "okra", "collard greens", "swiss chard", "snap peas", "snow peas",
+        "bean sprouts", "ginger", "basil", "cilantro", "parsley", "kimchi", "sauerkraut",
+        // Meat and fish.
+        "bratwurst", "chorizo", "pastrami", "corned beef", "liver", "chicken liver", "lamb", "duck", "venison", "bison", "anchovies",
+        "mackerel", "trout", "halibut", "swordfish", "catfish", "clams", "mussels", "oysters", "calamari", "octopus", "crawfish",
+        "tempeh",
+        // Grains and pasta.
+        "barley", "bulgur", "oat bran", "wheat germ", "cornmeal", "rice cakes", "rice noodles", "egg noodles", "soba", "ravioli",
+        "tortellini",
+        // Condiments and sauces.
+        "yellow mustard", "honey mustard", "sriracha", "teriyaki sauce", "worcestershire sauce", "fish sauce", "oyster sauce",
+        "hoisin sauce", "enchilada sauce", "tartar sauce", "ranch dressing", "balsamic vinegar", "pesto", "relish", "gravy", "tahini", "capers",
+        "horseradish", "wasabi", "miso",
+        // Fats and oils.
+        "avocado oil", "sesame oil", "ghee", "lard", "margarine", "shortening", "cooking spray",
+        // Baking and sweets.
+        "brown sugar", "powdered sugar", "agave", "molasses", "corn syrup", "all purpose flour", "cornstarch",
+        "baking soda", "baking powder", "vanilla extract", "cocoa powder", "chocolate chips", "yeast", "bread crumbs", "gelatin", "frosting",
+        "whipped topping", "custard", "pudding", "frozen yogurt",
+        // Spices and seeds.
+        "salt", "black pepper", "garlic powder", "onion powder", "chili powder", "curry powder", "paprika", "cumin", "cinnamon", "oregano",
+        "turmeric", "nutmeg", "ground ginger", "cayenne pepper", "red pepper flakes", "taco seasoning", "sesame seeds", "hemp seeds",
+        // Supplements.
+        "whey protein", "fish oil",
+    ]
+
     /// Everyday foods as they're said with how they're cooked, kept, trimmed or made: what
     /// "grilled", "fat free" or "baby" most often goes on to, the likeliest first. Each is a
     /// search that finds its food, mostly the plain one the ranking reads it as (see `Ease`):
@@ -145,13 +184,18 @@ enum EverydayPhrases {
         if let word = completing(typed) { return word }
         guard last.utf8.count >= 2, !last.utf8.contains(where: { $0 >= 0x30 && $0 <= 0x39 }) else { return nil }
         // The foods that start as typed come before the ones that have the word later.
+        // The foods logged less often only from four letters.
+        let often = last.utf8.count >= 4 ? stemmed.count : common
         for leading in [true, false] {
-            for phrase in stemmed {
+            for phrase in stemmed.prefix(often) {
                 if let word = phrase.words.enumerated().first(where: { $1.hasPrefix(last) && ($0 == 0) == leading })?.element { return word }
             }
         }
         return nil
     }
+
+    /// How many of the phrases are the foods most people log: all but `third`.
+    private static let common = top.count + first.count + second.count
 
     /// The same, read only from a food or a brand whose earlier words are the ones typed before:
     /// "chicken b" is chicken breast, "trader j" Trader Joe's. One letter is enough to go on.
@@ -171,8 +215,13 @@ enum EverydayPhrases {
         return nil
     }
 
-    /// Every word of the everyday foods, as searched.
-    private static let known: Set<String> = Set(all.flatMap { $0.words.map(stem) })
+    /// The words that are foods of their own: every word of the foods most people log, and of
+    /// the rest only the ones that are a food alone. The "roma" of a roma tomato may still be
+    /// romaine begun, and the "grape" of grape juice a grapefruit.
+    private static let own: [String] = all.prefix(common).flatMap(\.words) + all.dropFirst(common).filter { $0.words.count == 1 }.flatMap(\.words)
+
+    /// Those, as searched.
+    private static let known: Set<String> = Set(own.map(stem))
 
     /// Whether a word, as searched, is one of an everyday food's: "bar", "bread", "water".
     static func isWord(_ stem: String) -> Bool { known.contains(stem) }
@@ -183,7 +232,7 @@ enum EverydayPhrases {
 
     /// Whether a word typed alone has a meaning of its own: "meat" is beef, not meatballs begun.
     private static func isAlone(_ word: String) -> Bool { aloneName(word) != nil || aloneFiled[stem(word)] != nil }
-    private static let written: Set<String> = Set(all.flatMap(\.words))
+    private static let written: Set<String> = Set(own)
     private static let stemmed: [(words: [String], stems: [String])] = all.map { ($0.words, $0.words.map(stem)) }
     private static let brands: [(words: [String], stems: [String])] = PopularBrands.names.map { $0.split(separator: " ").map(String.init) }
         .filter { $0.count > 1 }.map { ($0, $0.map(stem)) }
@@ -221,4 +270,5 @@ enum EverydayPhrases {
         top.map { Phrase(words: $0.split(separator: " ").map(String.init), weight: 14) }
         + first.map { Phrase(words: $0.split(separator: " ").map(String.init), weight: 11) }
         + second.map { Phrase(words: $0.split(separator: " ").map(String.init), weight: 7) }
+        + third.map { Phrase(words: $0.split(separator: " ").map(String.init), weight: 4) }
 }

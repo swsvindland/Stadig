@@ -73,9 +73,11 @@ enum Matching {
         return FoodText.words(part).map(FoodText.stem)
     }
 
-    /// Two words for one food in a catalog's name: "Jams and preserves" are jam, and "Ginger
-    /// root" is ginger.
-    private static let sameFood: [String: Set<String>] = ["jam": ["preserve"], "preserve": ["jam"], "ginger": ["root"]]
+    /// Two words for one food in a catalog's name: "Jams and preserves" are jam, "Ginger root"
+    /// is ginger and a "Seasoning mix" a seasoning.
+    private static let sameFood: [String: Set<String>] = [
+        "jam": ["preserve"], "preserve": ["jam"], "ginger": ["root"], "seasoning": ["mix"],
+    ]
 
     /// The food's name starts with what was seen: "Blueberries, raw" for blueberries.
     static func filedUnder(_ name: String, _ food: Food) -> Bool {

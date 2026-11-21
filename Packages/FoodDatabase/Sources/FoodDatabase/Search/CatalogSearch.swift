@@ -284,9 +284,12 @@ extension FoodCatalog {
             fixes.removeAll { isLongShot($0, for: word) }
             doubted = !fixes.isEmpty
         }
-        // And a word USDA wrote, whole, is no typo of any other: "ghee" isn't green.
+        // And a word USDA wrote, whole or in the plural, is no typo of any other: "ghee" isn't
+        // green, nor a "collard" Holland.
         if doubted,
-            catalogs.contains(where: { $0.kind == .generic && !$0.terms("SELECT term, foods FROM terms WHERE term = ?", [.text(word)]).isEmpty })
+            catalogs.contains(where: {
+                $0.kind == .generic && !$0.terms("SELECT term, foods FROM terms WHERE term IN (?, ?)", [.text(word), .text(word + "s")]).isEmpty
+            })
         {
             fixes = []
             doubted = false
@@ -310,7 +313,7 @@ extension FoodCatalog {
             if catalog.kind == .generic {
                 let found =
                     whole
-                    ? catalog.terms("SELECT term, foods FROM terms WHERE term IN (?, ?)", [.text(word), .text(stem(word))])
+                    ? catalog.terms("SELECT term, foods FROM terms WHERE term IN (?, ?, ?)", [.text(word), .text(stem(word)), .text(word + "s")])
                     : catalog.terms("SELECT term, foods FROM terms WHERE term >= ? AND term < ? LIMIT 1", [.text(word), .text(word + "\u{FFFF}")])
                 return !found.isEmpty
             }
