@@ -146,6 +146,21 @@ struct MatchingTests {
         // A drink by the name it's ordered by.
         #expect(Drinks.isDrink("cold brew") && Drinks.isDrink("boba") && Drinks.isDrink("cafe con leche"))
         #expect(Matching.fits("frozen coffee", food("Frozen coffee drink", kcal: 70)))
+        // A second name after "or" is as long as the first, and what follows is said of both:
+        // a taco or tostada salad is a salad, a chicken or turkey salad no chicken, and a ham
+        // sandwich or sub still a ham sandwich.
+        #expect(Matching.kinds(of: food("Taco or tostada salad with meat")) == [["taco", "salad"], ["tostada", "salad"]])
+        #expect(Matching.qualifies("tostada", food("Taco or tostada salad with meat")))
+        #expect(Matching.qualifies("chicken", food("Chicken or turkey salad")))
+        #expect(!Matching.qualifies("turkey salad", food("Chicken or turkey salad")))
+        #expect(!Matching.qualifies("ham sandwich", food("Ham sandwich or sub, restaurant")))
+        #expect(Matching.fits("mac and cheese", FoodMatch(food: food("Macaroni or noodles with cheese"), score: 4, personal: false, named: true)))
+        // What the catalog also calls by exactly the name seen is that, though its own name
+        // says more: a grilled cheese sandwich is a grilled cheese, where a tuna salad
+        // sandwich isn't tuna salad.
+        let grilled = food("Grilled cheese sandwich")
+        #expect(!Matching.fits("grilled cheese", FoodMatch(food: grilled, score: 4, personal: false, named: true)))
+        #expect(Matching.fits("grilled cheese", FoodMatch(food: grilled, score: 4, personal: false, named: true, called: true)))
         // A bowl named last is a dish, as the catalog reads it.
         #expect(FoodText.nameWords("Poke bowl") == ["poke", "bowl"])
         #expect(FoodText.nameWords("Bowl of rice") == ["rice"])

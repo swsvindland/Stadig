@@ -142,15 +142,19 @@ public struct FoodMatch: Hashable, Sendable, Identifiable {
     /// it comes with ("toast with butter" is toast), and whatever way it's cooked or cut where
     /// that's left unsaid. Wider than comparing the words of the two names.
     public var named: Bool
+    /// The catalog keeps exactly what was asked for as another name for the food: "Grilled
+    /// cheese" for its grilled cheese sandwich, "Chicken parmesan" for its parmigiana.
+    public var called: Bool
 
     public var id: String { food.id }
 
-    public init(food: Food, score: Double, personal: Bool, away: Bool = false, named: Bool = false) {
+    public init(food: Food, score: Double, personal: Bool, away: Bool = false, named: Bool = false, called: Bool = false) {
         self.food = food
         self.score = score
         self.personal = personal
         self.away = away
         self.named = named
+        self.called = called
     }
 }
 

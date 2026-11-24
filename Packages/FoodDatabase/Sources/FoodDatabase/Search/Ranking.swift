@@ -34,6 +34,8 @@ struct Ranked {
     var score: Double
     var index: Int
     var name: Double
+    /// The catalog keeps exactly what was said as another name for the food.
+    var called = false
 }
 
 // MARK: - Word lists
@@ -55,6 +57,11 @@ private let neutral = stems(
         + "trimmed lean choice select prime grades boneless "
         // How a canned soup is made up, what a canned dish is called and how corn comes.
         + "equal volume entree kernel no")
+
+/// Where a dish is from, which says nothing more of what it is: a burger is a burger "from fast
+/// food" or a restaurant. A plain food from one is cooked their way: green beans "from
+/// restaurant" have the butter.
+private let fromWords = stems("restaurant fast food")
 
 /// Words that mark a less common form or part; the model should name these if it means them.
 private let variationWords = stems(
@@ -155,6 +162,13 @@ private let everydayVarieties: [String: Usual] = [
         ("skim nonfat reduced lowfat almond soy oat chocolate buttermilk coconut rice cashew hemp pea goat sheep condensed "
             + "evaporated powder powdered dry shake human malted").split(separator: " ").map(String.init)),
     "egg": Usual(["whole"], ["white", "yolk"]),
+    // Clam chowder is the New England one.
+    "chowder": Usual(["england"], ["manhattan", "corn", "fish", "potato", "seafood"]),
+    // A pizza is a cheese pizza, where no more is said.
+    "pizza": Usual(
+        ["cheese"],
+        "pepperoni meat sausage vegetable veggie fruit bean white extra no stuffed topping roll breakfast dessert mexican school frozen"
+            .split(separator: " ").map(String.init)),
     // Toast and a slice of bread are white or wheat; any other kind named is that kind.
     "toast": Usual(["white", "wheat"], breadKinds),
     "bread": Usual(["white", "wheat"], breadKinds),
@@ -221,7 +235,8 @@ private let everydayVarieties: [String: Usual] = [
     "soup": Usual(["canned"], "dry mix dehydrated homemade home stock broth bouillon cube powder ramen".split(separator: " ").map(String.init)),
     "stew": Usual(["canned"], ["chuck", "meat", "raw"]),
     // A dish by its usual filling, not the sauce, shell or chips named after it.
-    "lasagna": Usual(["meat"], "vegetable cheese spinach noodle noodles sheets".split(separator: " ").map(String.init)),
+    "lasagna": Usual(
+        ["meat"], "vegetable cheese spinach noodle noodles sheets meatless chicken turkey whole".split(separator: " ").map(String.init)),
     "enchilada": Usual(["cheese"], ["sauce", "seasoning", "kit"]),
     "taco": Usual(["beef"], "shell shells salad seasoning sauce kit chip chips flavor".split(separator: " ").map(String.init)),
     "nacho": Usual(["fast"], "chip chips flavor tortilla sauce dip".split(separator: " ").map(String.init)),
@@ -504,6 +519,8 @@ struct FoodText {
     let served: Set<Int>
     /// The runs that start after "or": the "tostada salad" of "Taco or tostada salad".
     let alternate: Set<Int>
+    /// The runs that start after "and": the onions of "Liver and onions".
+    let joint: Set<Int>
     /// Words in brackets, stemmed, except "(Includes …)".
     let noted: [String]
     /// The words of an "(Includes …)" note, stemmed: other foods the entry stands for.
@@ -564,6 +581,7 @@ struct FoodText {
         var run = 0
         var served = Set<Int>()
         var alternate = Set<Int>()
+        var joint = Set<Int>()
         var next = 0
         var commas: [Int] = []
         for (i, scalar) in scalars.enumerated() {
@@ -577,12 +595,14 @@ struct FoodText {
                 commas.append(i)
             } else if scalar == "&" || scalar == "+" || scalar == "/" {
                 run += 1
+                if scalar != "/" { joint.insert(run) }
             }
             while next < found.count && found[next].start == i {
                 if partWords.contains(found[next].word) {
                     run += 1
                     if found[next].word == "with" { served.insert(run) }
                     if found[next].word == "or" { alternate.insert(run) }
+                    if found[next].word == "and" { joint.insert(run) }
                 }
                 placed.append((bracket, part, run))
                 next += 1
@@ -659,6 +679,7 @@ struct FoodText {
         self.runs = kept.map { runs[$0] }
         self.served = served
         self.alternate = alternate
+        self.joint = joint
         self.noted = noted
         self.included = included
         self.packed = packed
@@ -689,12 +710,15 @@ struct Entry: Sendable {
     let key: String
     /// The numbers hang together (see `Food.problem`); worked out once, as catalogs keep entries.
     let plausible: Bool
+    /// The catalog files it as a dish of several foods: a sandwich, a casserole, a stir-fry.
+    let dish: Bool
 
     /// `also` is the catalog's other names for the food, one a line.
-    init(_ food: Food, also: String = "") {
+    init(_ food: Food, also: String = "", dish: Bool = false) {
         self.food = food
         text = FoodText(food)
         self.also = also.isEmpty ? [] : also.split(separator: "\n").map { OtherName(String($0), source: food.source) }
+        self.dish = dish
         plausible = food.isPlausible
         key = food.source == .usda || food.source == .off ? "\(food.name)|\(food.brand ?? "")".lowercased() : food.id
     }
@@ -877,7 +901,17 @@ struct Coverage {
     var served: Bool
     /// How near the food's way of cooking is to one said that it doesn't list (see `Ease`).
     var near: Double
+    /// The food leads with what was said once what its first part says it comes with is left
+    /// out: "Lasagna with meat" leads with lasagna. And by those words whole.
+    var heads: Bool
+    var headsWhole: Bool
     var others: Int
+    /// The words counted in `others`, and the ones of them the name adds after "with" or "and":
+    /// other foods the dish comes with.
+    var extra: [String]
+    var mixed: [String]
+    /// The name says nothing but what was said.
+    var exact: Bool
     var notes: Int
     var leads: Bool
     var brand: Bool?
@@ -1056,10 +1090,47 @@ struct CoverageQuery {
         // A food that leads with what was said to come with the one named is that food, not
         // the one named: the sauce of "pasta with marinara sauce", the dressing of a salad.
         let served = !beside.isEmpty && text.lead.contains { word in beside.contains { same(word, $0) } }
+        // Another name for the food said, on the other side of an "or", is no word it wasn't
+        // asked by: the "noodles" of "Macaroni or noodles with cheese", the "turkey" of
+        // "Chicken or turkey salad" and its "chicken" for a turkey salad. The second name is as
+        // long as the first, and what follows it is said of both: the "salad", and the
+        // "parmigiana" of "Chicken or turkey parmigiana", which isn't chicken.
+        // By the word whole, as said or as corrected: the "cups" of "peanut butter cups"
+        // aren't the cupcake of "Cake or cupcake", nor is "cheeese" a cheeseburger.
+        let wholly = { (w: String) in
+            self.target.contains { word in
+                word.options.contains { same(w, $0) } || word.fixParts.contains { $0.contains { same(w, $0) } }
+                    || word.respelt.contains { $0.contains { same(w, $0) } }
+            } || self.entire.contains { same(w, $0) }
+        }
+        var spare: [String] = []
+        if !text.alternate.isEmpty {
+            var words: [Int: [String]] = [:]
+            for (i, w) in text.said.enumerated() { words[text.runs[i], default: []].append(w) }
+            for run in text.alternate {
+                guard let after = words[run], let before = words[run - 1], let first = after.first, let last = before.last else { continue }
+                if wholly(last) {
+                    spare += after.prefix(before.count).filter { !asked($0) }
+                } else if wholly(first) {
+                    spare += before.filter { !asked($0) }
+                }
+            }
+        }
+        let leading = { (word: String) in self.asked(word) || leadFillers.contains(word) || spare.contains(word) }
         let leads =
             !served
-            && ((text.lead.contains(where: asked) && text.lead.prefix { $0 != "made" }.allSatisfy { asked($0) || leadFillers.contains($0) })
+            && ((text.lead.contains(where: asked) && text.lead.prefix { $0 != "made" }.allSatisfy(leading))
                 || (target.count == 1 && (text.group.first.map(asked) ?? false)))
+        var heads = leads
+        // And by whole words, which is how a dish is told from a food its name only starts
+        // like: "ch" on its way to chicken isn't a chimichanga's.
+        var headsWhole = false
+        if !served {
+            let first = text.said.indices.filter { !text.served.contains(text.runs[$0]) }.map { text.said[$0] }.filter(text.lead.contains)
+            if !leads, !text.served.isEmpty { heads = first.contains(where: asked) && first.allSatisfy(leading) }
+            headsWhole =
+                heads && first.contains(where: wholly) && first.allSatisfy { wholly($0) || leadFillers.contains($0) || spare.contains($0) }
+        }
         var spared: [Bool] = []
         var near = 0.0
         // The kinds of heat said that this food is spared the word for.
@@ -1127,6 +1198,8 @@ struct CoverageQuery {
         let needed = spared.isEmpty ? target : target.indices.filter { !spared[$0] }.map { target[$0] }
         var variations = 0.0
         var others = 0
+        var extra: [String] = []
+        var mixed: [String] = []
         // Where the name last has the word naming the food, which is where it says what it is.
         let named = needed.last.flatMap { last in text.said.lastIndex { reads($0, as: last) } }
         var filed: [String] = []
@@ -1138,6 +1211,7 @@ struct CoverageQuery {
         let legume = text.said.contains("mature") || text.said.contains("immature")
         for (i, w) in text.said.enumerated() where !isNumber(w) && !(level && fatWords.contains(w)) && !asked(w) {
             if w == "seed" && legume { continue }
+            if spare.contains(w) { continue }
             // Nor is the food's own way of cooking, the same kind as the one said, a less common
             // form of it: stewed chicken for "boiled chicken".
             if variationWords.contains(w), let kind = heats[w], heated.contains(kind) { continue }
@@ -1147,8 +1221,19 @@ struct CoverageQuery {
                 // As far off as a label's food is from a plain one: the real thing by any brand comes first.
                 variations += insteadWords.contains(w) ? 3 : 1
                 forms.append(w)
+            } else if i > 0,
+                (text.said[i - 1] == "no" && w != "dressing" && w != "sauce" && !neutral.contains(w))
+                    || (w == "white" && text.said[i - 1] == "egg")
+            {
+                // A dish without what it usually has is the less common one: a chili dog with
+                // "no bun", a gumbo with "no rice". Not a salad's dressing, which is logged apart.
+                // So is one made with egg whites, where "white" says little of bread.
+                variations += 1
+                forms.append(w)
             } else if !neutral.contains(w) {
                 others += 1
+                extra.append(w)
+                if text.served.contains(text.runs[i]) || text.joint.contains(text.runs[i]) { mixed.append(w) }
             } else {
                 continue
             }
@@ -1250,7 +1335,12 @@ struct CoverageQuery {
             sides: sides.isEmpty || served ? 0 : sides.filter { side in found.contains { same($0, side) } }.count,
             served: served,
             near: near,
+            heads: heads,
+            headsWhole: headsWhole,
             others: others,
+            extra: extra,
+            mixed: mixed,
+            exact: missing == 0 && partial == 0 && text.noted.isEmpty && text.said.allSatisfy(wholly),
             notes: notes,
             leads: leads,
             brand: brand.isEmpty ? nil : brand.allSatisfy { has($0, found) },
@@ -1499,7 +1589,9 @@ func scoreFoods(
             else { return false }
             // As typed, not as a typo of it: "hers" isn't herring.
             let match = query.cover(entry.text)
-            return match.missing == 0 && (corrected || match.fixed == 0) && (!leading || match.leads)
+            if match.missing == 0 && (corrected || match.fixed == 0) && (!leading || match.leads) { return true }
+            // Or by another name the catalog keeps for it, when that's all that was said.
+            return entry.also.contains { query.cover($0.text).exact }
         }
         plainlyNamed[key] = found
         return found
@@ -1641,6 +1733,8 @@ func scoreFoods(
         var match: Coverage
         /// The catalog's other name for the food that matched, when its own name matched less.
         var other: FoodText?
+        /// That name is exactly what was said.
+        var called: Bool
         var mine: Bool
         /// The brand is the one asked for and no longer: Papa John's, not Papa John's Salads & Produce.
         var exact: Bool
@@ -1653,8 +1747,10 @@ func scoreFoods(
         var name: Double
         var like: Double
         var plausible: Bool
+        var dish: Bool
     }
     let isForm = { (word: String, form: String) in isNumber(form) ? word == form : starts(word, form) }
+    let saidStems = target.map(stem)
     var rows: [Row] = []
     rows.reserveCapacity(keys.count)
     for key in keys {
@@ -1665,12 +1761,29 @@ func scoreFoods(
         // A food is also found by a chain's name for it ("mcnuggets" finds chicken nuggets from
         // fast food), when that name says more of what was asked than its own and names what was asked.
         var other: FoodText?
+        // The other name is all that was said, in the order said: "tea with milk" isn't the
+        // bubble tea also called "Milk tea".
+        var called = false
         if match.name < 1 {
             for name in entry.also where mentionForms.contains(where: { $0.contains { starts(name.head, $0) } }) {
                 let named = query.cover(name.text)
                 if named.name > match.name {
                     match = named
                     other = name.text
+                    called = named.exact && name.text.titled == saidStems
+                }
+            }
+        } else if !match.exact, !entry.also.isEmpty {
+            // And by another name that is exactly what was said, though its own has the words
+            // too: "manicotti" is the one the catalog also calls "Manicotti", among the four
+            // it lists.
+            for name in entry.also where name.text.titled == saidStems {
+                let named = query.cover(name.text)
+                if named.exact {
+                    match = named
+                    other = name.text
+                    called = true
+                    break
                 }
             }
         }
@@ -1705,8 +1818,9 @@ func scoreFoods(
         let said = mine && name == 1 && match.others == 0 && match.variations == 0
         rows.append(
             Row(
-                food: food, text: text, match: match, other: other, mine: mine, exact: exact, own: own, only: only, said: said, name: name,
-                like: hints.profile.map { said ? 1 : likeness(food, $0) } ?? 0, plausible: entry.plausible))
+                food: food, text: text, match: match, other: other, called: called, mine: mine, exact: exact, own: own, only: only, said: said,
+                name: name,
+                like: hints.profile.map { said ? 1 : likeness(food, $0) } ?? 0, plausible: entry.plausible, dish: entry.dish))
     }
     let sold = rows.contains { $0.mine && $0.name == 1 && $0.like > 0 }
     // A brand that makes nothing like what the other words usually name means its own food by
@@ -1724,7 +1838,9 @@ func scoreFoods(
     do {
         // The foods that have the words whole, where the last is still being typed and enough
         // do: "ch" on its way to chicken is filed as chicken is.
-        let every = rows.filter { $0.match.missing == 0 && !$0.text.branded }
+        // Not the dishes a food is in: a taco made with a flour tortilla doesn't file flour
+        // tortillas under tacos.
+        let every = rows.filter { $0.match.missing == 0 && !$0.text.branded && !$0.dish }
         // Of several words, the foods that have them in one part of the name: a coconut cream
         // pudding "prepared with whole milk" isn't a coconut milk.
         let one = every.filter { $0.match.together }
@@ -1774,7 +1890,6 @@ func scoreFoods(
         return row.food.popularity >= 1.5 && (cutShort || longShots.allSatisfy { word in row.text.own.contains { same($0, stem(word)) } })
     }
     let literal = !longShots.isEmpty && rows.contains(where: isAsTyped)
-    let saidStems = target.map(stem)
     // What's eaten cooked is still the raw food where the catalog lists no cooked one: egg
     // whites are USDA's "Egg, white, raw, fresh", which it has no cooked entry for.
     let listsCooked = !cooked || rows.contains { !$0.text.branded && $0.match.lacking == 0 && $0.name > 0 && $0.match.cooked > 0 }
@@ -1793,30 +1908,56 @@ func scoreFoods(
     }
     // One of the most scanned brands is begun by what was typed.
     let begun = rows.contains { $0.only == 1 && !hints.away.contains($0.food.id) && popularBrands.contains(bare($0.text.ownWords[0])) }
+    // A food leads with what was said by its own name or by where it's filed.
+    let filedWhole = { (match: Coverage) in match.missing == 0 && !match.filed.isEmpty && match.filed.allSatisfy(shelf.contains) }
+    // Some plain food that isn't a dish has every word, as typed: then a dish that doesn't lead
+    // with them is a dish made with the food, and one that adds another food to it is that
+    // food with more. "Parmesan" is the cheese before an eggplant parmesan casserole, "flour
+    // tortilla" the tortilla before a taco in one, "liver" liver before liver and onions. Where
+    // such a food leads with the words, so is any dish that says more: green beans before
+    // Szechuan-style ones.
+    let plain = rows.filter { row in
+        !row.dish && !row.text.branded && row.match.missing == 0 && row.match.partial == 0 && !row.match.modifies && !row.match.garnish
+    }
+    let plainly = plain.contains { $0.match.leads || filedWhole($0.match) }
+    // Whether the words name a food more than a dish: as many plain foods have them as dishes
+    // lead with them. "Liver" does, so liver and onions is liver with more; "chow mein"
+    // doesn't, so chow mein with noodles is chow mein.
+    let dishes = rows.filter { $0.dish && $0.match.missing == 0 && $0.match.partial == 0 && $0.match.headsWhole }.count
+    let food = plain.count >= dishes
     var ranked: [Ranked] = []
     for (index, row) in rows.enumerated() where row.name > 0 {
         let match = row.match
         var filedUnder = 0.0
-        var leads = match.leads
+        // A dish leads with what it is, whatever it comes with.
+        var leads = row.dish ? match.heads : match.leads
         if !shelf.isEmpty && !row.text.branded {
             for word in match.filed where shelf.contains(word) {
                 filedUnder += variationWords.contains(word) ? (insteadWords.contains(word) ? 1.2 : 0.8) : 0.25
             }
             // A form counted wherever it comes in the name, once.
             for word in match.forms where shelf.contains(word) && !match.filed.contains(word) { filedUnder += 0.8 }
-            if match.missing == 0 && !match.filed.isEmpty && match.filed.allSatisfy(shelf.contains) { leads = true }
+            if filedWhole(match) { leads = true }
         }
         let theirs = asked && row.mine && row.name == 1 && !makesKind
         let like = theirs ? max(0, row.like) : row.like
+        // A plain food named by nothing but what was said is the usual one, before the kind
+        // that usually stands for it: "Soup, tomato" before the canned one. Not where more
+        // was said to come with it: mashed potatoes with gravy are the ones that have it.
+        let exact = !row.text.branded && match.exact && row.other == nil
         var score =
             3 * row.name + (leads ? 0.75 : 0)
             // A generic food USDA names by exactly the words said, inverted, ranks above a blend or
             // dish that only has them.
-            + (match.named && !row.text.branded ? 0.5 : 0)
+            // So does one the catalog keeps exactly those words for as another name.
+            + ((match.named || row.called) && !row.text.branded ? 0.5 : 0)
             // A food not usually cooked is the raw one, between two that match as well, and its
             // cooked form is a kind of its own: roasted walnuts, cooked apples.
+            // A dish is cooked, whether its name says how: chicken and rice as much as fried
+            // rice with chicken.
             + (cooked && listsCooked
-                ? 0.4 * Double(match.cooked) - (match.fried ? 0.2 : 0) : match.cooked < 0 ? 0.1 : match.cooked > 0 && !saidCooked ? -0.3 : 0)
+                ? 0.4 * Double(row.dish ? max(1, match.cooked) : match.cooked) - (match.fried ? 0.2 : 0)
+                : match.cooked < 0 ? 0.1 : match.cooked > 0 && !saidCooked ? -0.3 : 0)
             // The brand's food named by exactly the words said is as usual as its kind that says
             // so (Great Value's "Cottage Cheese Small Curd" beside its lowfat one), and "typical"
             // is USDA's word for its own entries: a label's "Original" is another product.
@@ -1825,20 +1966,24 @@ func scoreFoods(
             // KRAFT, original".
             + (match.missing > 0
                 ? 0
-                : (match.usual || (row.said && query.asksUsual) ? 0.6 : 0)
+                : (match.usual || (row.said && query.asksUsual) ? 0.6 : exact && query.asksUsual && hints.sides.isEmpty ? 0.65 : 0)
                     + (match.typical && !row.text.branded && row.text.shouted.isEmpty ? 0.3 : 0))
             // A longer word than the one being typed is likely on its way to counts a little more
             // against a food: "sal" is salmon before salsify.
             - (likely == nil ? 0.5 : 0.75) * Double(match.partial) - 0.4 * Double(match.fixed) - 0.8 * match.variations
             // A note in brackets says more about the same food, however long it is.
-            - 0.25 * Double(match.others) - min(0.1, 0.05 * Double(match.notes)) + filedUnder + match.near
+            - 0.25 * Double(match.others - (row.dish ? match.extra.filter(fromWords.contains).count : 0))
+            - min(0.1, 0.05 * Double(match.notes)) + filedUnder + match.near
             // Of two foods that are the food named, the one that has what a model said of it
             // or beside it: the buffalo wings, the mashed potatoes with gravy. No more than
             // that: at 0.75 a word, spaghetti with tomato sauce was a restaurant's whole grain
             // pasta with tomato-based sauce.
             + (match.missing == 0 ? 0.5 * Double(match.sides) : 0) - (match.served ? 1.5 : 0)
-            // A food found by another name ranks a little below one its own name matches as well.
-            - (row.other == nil ? 0 : 0.5)
+            // And between two that match as well, not the one with none of it.
+            - (hints.sides.isEmpty || match.sides > 0 ? 0 : 0.05)
+            // A food found by another name ranks a little below one its own name matches as
+            // well, unless the other name is all that was said.
+            - (row.other == nil || row.called ? 0 : 0.5)
             // A food named after the one asked for: cake pretzels and cake fries for "cake". Not a
             // brand's own food by those words when it makes nothing like the food: Papa John's
             // pepperoni is its pepperoni pizza.
@@ -1849,6 +1994,15 @@ func scoreFoods(
         // that other food with some of this in it: "Potato salad with egg" isn't an egg salad.
         // Not where the word before is only what the food is filed under.
         if !row.text.branded, !leads, match.garnish || match.added.contains(where: { !shelf.contains($0) }) { score -= 1.5 }
+        // A dish made with the food, or the food with more (see `plain`). Not one already
+        // counted as named after the food ("Gyro sandwich" for "gyro"), nor a chain's own
+        // item, which is asked for by the chain.
+        if row.dish, !row.text.branded, !plain.isEmpty, !match.modifies {
+            let more = { (word: String) in !shelf.contains(word) && !row.text.group.contains(word) && !fromWords.contains(word) }
+            // It leads by its own words, whole, or by where it's filed.
+            let itself = match.headsWhole || (leads && !match.heads)
+            if !itself || (food && match.mixed.contains(where: more)) || (plainly && match.extra.contains(where: more)) { score -= 1.5 }
+        }
         // Every food of a brand searched for alone answers it as well as any other.
         if alone && row.mine { score = 3 }
         // Not half typed for a brand that isn't sold here: "dal" isn't Dallmayr's coffee begun.
@@ -1919,15 +2073,17 @@ func scoreFoods(
         // Numbers that can't be right (kilojoules as calories, a powder's values on a drink) rank
         // below every plausible food that matches as well.
         if !row.plausible { score -= 1.5 }
-        ranked.append(Ranked(food: row.food, score: score, index: index, name: row.name))
+        ranked.append(Ranked(food: row.food, score: score, index: index, name: row.name, called: row.called))
     }
     // A generic food found by a chain's name for it stands in for the chain's item, so the chain's
     // own comes just before it though no brand was typed: SR Legacy's McDonald's McNuggets, then
     // chicken nuggets from fast food; a Starbucks mocha Frappuccino, then a frozen mocha coffee
     // drink. The chain's own has the name's every word outside brackets, so a Big Mac "(without
     // Big Mac Sauce)" isn't Big Mac sauce.
+    // A chain's name for an item, that is: a label listed under "Carnita" isn't whose
+    // carnitas the catalog's other name "Carnitas" means.
     let isTheirs = { (row: Row, other: FoodText) in
-        row.other == nil && row.name == 1 && !row.text.own.isEmpty
+        row.other == nil && row.name == 1 && !row.text.own.isEmpty && other.titled.count > row.text.own.count
             && row.text.own.allSatisfy { w in other.titled.contains { same($0, w) } }
             && other.titled.allSatisfy { w in row.text.own.contains { same(w, $0) } || row.text.said.contains { same(w, $0) } }
     }

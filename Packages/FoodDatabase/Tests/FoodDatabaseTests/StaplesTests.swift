@@ -57,7 +57,7 @@ let staples: [(String, String)] = [
     ("sour cream", "^Cream, sour, cultured"),
     ("heavy cream", "^Cream, fluid, heavy"),
     ("half and half", "^Cream, fluid, half and half"),
-    ("ice cream", "^Ice creams, vanilla"),
+    ("ice cream", "^Ice creams, vanilla|^Ice cream$"),
     ("whipped cream", "^Cream, whipped"),
     // Grains and bread.
     ("rice", "^Rice, white, long-grain, .*cooked"),
@@ -77,10 +77,10 @@ let staples: [(String, String)] = [
     ("granola", "^Cereals ready-to-eat, granola"),
     ("quinoa", "^Quinoa, cooked"),
     ("couscous", "^Couscous, cooked"),
-    ("pancake", "^Pancakes, plain"),
-    ("waffle", "^Waffles?, plain"),
+    ("pancake", "^Pancakes, plain|^Pancakes$"),
+    ("waffle", "^Waffles?, plain|^Waffle$"),
     ("english muffin", "^Muffins, English, plain"),
-    ("croissant", "^Croissants, butter"),
+    ("croissant", "^Croissants, butter|^Croissant$"),
     ("crackers", "^Crackers, "),
     ("pita", "^Bread, pita"),
     ("noodles", "^Noodles, egg, .*cooked"),
@@ -152,10 +152,10 @@ let staples: [(String, String)] = [
     ("coconut oil", "^Oil, coconut$"),
     ("mayo", "^Salad dressing, mayonnaise, regular"),
     ("mayonnaise", "^Salad dressing, mayonnaise, regular"),
-    ("ketchup", "^Catsup$"),
+    ("ketchup", "^Catsup$|^Ketchup$"),
     ("mustard", "^Mustard, prepared, yellow"),
     ("soy sauce", "^Soy sauce made from soy"),
-    ("salsa", "^Sauce, salsa, ready-to-serve"),
+    ("salsa", "^Sauce, salsa, ready-to-serve|^Salsa$"),
     ("ranch", "^Salad dressing, ranch dressing, regular"),
     ("honey", "^Honey$"),
     ("maple syrup", "^Syrups, maple"),
@@ -174,8 +174,8 @@ let staples: [(String, String)] = [
     ("coke", "(?i)^(Beverages, carbonated, cola|coca.cola|coke)"),
     ("beer", "^Alcoholic beverage, beer, regular"),
     ("wine", "^Alcoholic beverage, wine, table"),
-    ("red wine", "^Alcoholic beverage, wine, table, red"),
-    ("white wine", "^Alcoholic beverage, wine, table, white"),
+    ("red wine", "^Alcoholic beverage, wine, table, red|^Wine, red$"),
+    ("white wine", "^Alcoholic beverage, wine, table, white|^Wine, white$"),
     ("vodka", "^Alcoholic beverage, distilled, vodka|^Vodka$"),
     ("whiskey", "^Alcoholic beverage, distilled, whiskey|^Whiskey$"),
     ("espresso", "^Beverages, coffee, brewed, espresso|^Coffee, espresso$"),
@@ -186,11 +186,11 @@ let staples: [(String, String)] = [
     ("tortilla chips", "^(Snacks, )?[Tt]ortilla chips"),
     ("popcorn", "^Snacks, popcorn, (air-popped|oil-popped|home-prepared)"),
     ("pretzels", "^(Snacks, pretzels|Pretzels)"),
-    ("cookie", "^Cookies?, "),
+    ("cookie", "^Cookies?, |^Cookie$"),
     ("chocolate", "^(Chocolate|Candies, milk chocolate)"),
     ("dark chocolate", "^Chocolate, dark"),
-    ("brownie", "^Cookies, brownies"),
-    ("donut", "^Doughnuts"),
+    ("brownie", "^Cookies, brownies|^Cookie, brownie$"),
+    ("donut", "^Doughnuts|^Doughnut$"),
     ("muffin", "^Muffins, (blueberry|plain)"),
     ("granola bar", "granola bars?"),
     // Dishes.
@@ -199,9 +199,9 @@ let staples: [(String, String)] = [
     ("burger", "^(Hamburger|Cheeseburger)"),
     ("hamburger", "^Hamburger"),
     ("cheeseburger", "^Cheeseburger"),
-    ("burrito", "^(Fast foods, burrito, with beans$|Burrito, beef and bean, microwaved)"),
-    ("mac and cheese", "^Macaroni and [Cc]heese"),
-    ("fried rice", "(?i)fried rice"),
+    ("burrito", "^(Fast foods, burrito, with beans$|Burrito, beef and bean, microwaved)|^Burrito$"),
+    ("mac and cheese", "^Macaroni and [Cc]heese|^Macaroni or noodles with cheese$"),
+    ("fried rice", "(?i)fried rice|^Rice, fried$"),
 ]
 
 /// Foods from the pantry, dishes and the forms foods come in, measured after the staples: what a
@@ -216,13 +216,13 @@ let pantry: [(String, String)] = [
     ("tomato sauce", "^Tomato (sauce|products), canned"),
     ("tomato paste", "^Tomato products, canned, paste"),
     ("taco", "(?i)^(TACO BELL, Original Taco|Fast foods, taco|Taco)"),
-    ("nachos", "^Fast foods, nachos"),
+    ("nachos", "^Fast foods, nachos|^Nachos$"),
     ("chili", "^Chili"),
     ("egg roll", "^(Egg rolls|Restaurant, Chinese, egg rolls)"),
-    ("enchiladas", "(?i)cheese enchilada"),
-    ("beef stew", "^Beef stew"),
-    ("tomato soup", "^Soup, tomato, canned, prepared"),
-    ("chicken noodle soup", "^Soup, chicken noodle, canned, prepared"),
+    ("enchiladas", "(?i)cheese enchilada|^Enchilada$"),
+    ("beef stew", "^Beef stew|^Stew, beef$"),
+    ("tomato soup", "^Soup, tomato, canned, prepared|^Soup, tomato$"),
+    ("chicken noodle soup", "^Soup, chicken noodle, canned, prepared|^Soup, chicken noodle$"),
     ("pickles", "^Pickles, cucumber, dill"),
     ("sardines", "^Fish, sardine"),
     ("tuna", "^Fish, tuna, (light|white), canned"),
@@ -261,7 +261,7 @@ let pantry: [(String, String)] = [
     ("turkey bacon", "^Bacon, turkey"),
     ("pulled pork", "^Pulled pork"),
     ("pork tenderloin", "^Pork, fresh, loin, tenderloin, .*cooked"),
-    ("tuna salad", "^Fish, tuna salad"),
+    ("tuna salad", "^Fish, tuna salad|^Tuna salad$"),
     ("crab", "^Crustaceans, crab, .*cooked"),
     ("lobster", "^Crustaceans, lobster, .*cooked"),
     ("2% milk", "^Milk, reduced fat, fluid, 2% milkfat"),
@@ -269,8 +269,8 @@ let pantry: [(String, String)] = [
     ("provolone", "^Cheese, provolone"),
     ("goat cheese", "^Cheese, goat"),
     ("ricotta", "^Cheese, ricotta"),
-    ("pancakes", "^Pancakes, plain"),
-    ("waffles", "^Waffles, plain"),
+    ("pancakes", "^Pancakes, plain|^Pancakes$"),
+    ("waffles", "^Waffles, plain|^Waffle$"),
     ("french toast", "^French toast"),
     ("naan", "^Bread, naan"),
     ("biscuit", "^Biscuits, plain"),
@@ -285,8 +285,8 @@ let pantry: [(String, String)] = [
     ("jalapeno", "^Peppers, jalapeno"),
     ("coleslaw", "^Coleslaw"),
     ("baked potato", "^Potatoes, baked"),
-    ("mashed potatoes", "^Potatoes, mashed"),
-    ("hash browns", "^Potatoes, hash brown"),
+    ("mashed potatoes", "^Potatoes, mashed|^Potato, mashed$"),
+    ("hash browns", "^Potatoes, hash brown|^Potato, hash brown$"),
     ("potato salad", "^Potato salad"),
     ("pecans", "^Nuts, pecans"),
     ("flax seeds", "^Seeds, flaxseed"),
@@ -471,7 +471,7 @@ let plates: [(String, String)] = [
     ("Tortilla chips with salsa", "^(Snacks, t|T)ortilla chips"),
     ("Black beans (canned)", "^Beans, black.*canned"),
     ("Chicken thigh, roasted, with skin", "^Chicken, .*thigh, meat and skin, cooked, roasted"),
-    ("Chicken wings (buffalo)", "^Chicken, .*wing.*cooked"),
+    ("Chicken wings (buffalo)", "^Chicken, .*wing.*cooked|^Chicken .wings. with hot sauce"),
     ("Ground beef, cooked", "^Beef, ground, .*cooked"),
     ("Ground turkey (93% lean)", "^Turkey, ground, 93% lean"),
     ("Pan-seared salmon fillet", "^Fish, salmon, .*cooked, dry heat"),
@@ -509,7 +509,7 @@ let plates: [(String, String)] = [
     ("Olive oil drizzle", "^Oil, olive"),
     ("Butter pat", "^Butter, salted"),
     ("Bagel with cream cheese", "^Bagels, plain"),
-    ("Pancakes with syrup", "^Pancakes, plain"),
+    ("Pancakes with syrup", "^Pancakes, plain|^Pancakes$"),
     ("French toast with syrup", "^French toast"),
     ("Oatmeal with banana", "^Cereals, oats, .*cooked"),
     ("Oatmeal (cooked)", "^Cereals, oats, .*cooked"),
@@ -536,7 +536,7 @@ let products: [(String, String)] = [
     ("subway footlong", "(?i)subway"),
     ("taco bell crunchwrap", "(?i)crunchwrap"), ("crunchy taco", "(?i)taco with beef.*hard shell|taco bell"),
     ("mcdonalds fries", "^McDONALD'S, french fries"), ("kfc chicken", "^KFC"),
-    ("glazed donut", "(?i)^doughnuts?,.*glazed|glazed (donut|doughnut)"), ("dominos pizza", "^DOMINO'S"), ("oreos", "(?i)oreo"),
+    ("glazed donut", "(?i)^doughnuts?,.*glazed|glazed (donut|doughnut)|^Doughnut, yeast type"), ("dominos pizza", "^DOMINO'S"), ("oreos", "(?i)oreo"),
     ("cheerios", "(?i)cheerios"), ("honey nut cheerios", "(?i)honey nut cheerios"), ("frosted flakes", "(?i)frosted flakes"),
     ("doritos", "(?i)doritos"), ("pop tarts", "(?i)pop.tarts"), ("goldfish", "(?i)goldfish"), ("cheez its", "(?i)cheez.its"),
     ("ritz crackers", "(?i)ritz"), ("nutella", "^Nutella"), ("kind bar", "(?i)\\[kind"), ("clif bar", "(?i)\\[clif"),
@@ -623,7 +623,7 @@ let kitchen: [(String, String)] = [
     ("portobello mushroom", "^Mushrooms, portabella"), ("shiitake mushrooms", "^Mushrooms, shiitake"), ("navel orange", "^Oranges, raw, navels"),
     ("clementine", "^Clementines, raw"), ("mandarin", "^Tangerines"), ("pink grapefruit", "^Grapefruit, raw, pink"),
     ("medjool dates", "^Dates, medjool"), ("dried apricots", "^Apricots, dried"), ("raisins", "^Raisins"),
-    ("dried cranberries", "^Cranberries, dried"), ("ketchup", "^Catsup"), ("mustard", "^Mustard, prepared, yellow"),
+    ("dried cranberries", "^Cranberries, dried"), ("ketchup", "^Catsup|^Ketchup$"), ("mustard", "^Mustard, prepared, yellow"),
     ("yellow mustard", "^Mustard, prepared, yellow"), ("mayo", "^Salad dressing, mayonnaise, regular"),
     ("sriracha", "^Sauce, hot chile, sriracha"), ("hot sauce", "^Sauce, ready-to-serve, pepper or hot"),
     ("soy sauce", "^Soy sauce made from soy and wheat \\(shoyu\\)$"), ("teriyaki sauce", "^Sauce, teriyaki"),
@@ -649,9 +649,10 @@ let kitchen: [(String, String)] = [
     ("artichoke", "^Artichokes"), ("okra", "^Okra"), ("collard greens", "^Collards"), ("swiss chard", "^Chard, swiss"),
     ("snap peas", "^Peas, edible-podded"), ("snow peas", "^Peas, edible-podded"), ("bean sprouts", "^Mung beans, mature seeds, sprouted"),
     ("pesto", "^Sauce, pesto"), ("relish", "^Pickle relish"), ("tartar sauce", "^Sauce, tartar"), ("honey mustard", "(?i)honey mustard"),
-    ("enchilada sauce", "^Sauce, enchilada"), ("gravy", "^Gravy, (beef|HEINZ Home Style, savory beef)"), ("lard", "^Lard"),
+    ("enchilada sauce", "^Sauce, enchilada"), ("gravy", "^Gravy, (beef|HEINZ Home Style, savory beef)|^Gravy$"), ("lard", "^Lard"),
     ("margarine", "^Margarine"), ("shortening", "^Shortening,? (vegetable, )?household"), ("cooking spray", "(?i)cooking spray"),
-    ("molasses", "^Molasses"), ("corn syrup", "^Syrups, corn, light"), ("cornmeal", "^Cornmeal"), ("gelatin", "^Gelatins, dry powder"),
+    ("molasses", "^Molasses"), ("corn syrup", "^Syrups, corn, light"), ("cornmeal", "^Cornmeal"),
+    ("gelatin", "^Gelatins, dry powder|^Gelatin dessert$"),
     ("frosting", "^Frostings, vanilla"), ("chili powder", "^Spices, chili powder"), ("nutmeg", "^Spices, nutmeg"),
     ("curry powder", "^Spices, curry powder"), ("red pepper flakes", "^Spices, pepper, red or cayenne"),
     ("cayenne pepper", "^Spices, pepper, red or cayenne"), ("taco seasoning", "^Seasoning mix, dry, taco"), ("sesame seeds", "^Seeds, sesame"),
@@ -667,8 +668,9 @@ let kitchen: [(String, String)] = [
     ("swordfish", "^Fish, swordfish"), ("catfish", "^Fish, catfish"), ("clams", "^Mollusks, clam"), ("mussels", "^Mollusks, mussel"),
     ("oysters", "^Mollusks, oyster"), ("calamari", "^Mollusks, squid"), ("octopus", "^Mollusks, octopus"), ("crawfish", "^Crustaceans, crayfish"),
     ("egg noodles", "^Noodles, egg"), ("whipped topping", "(?i)whipped.*topping|topping"), ("evaporated milk", "^Milk, canned, evaporated"),
-    ("buttermilk", "^Milk, buttermilk"), ("eggnog", "^Eggnog|^Eggnog"), ("custard", "^Desserts, egg custard|^Egg custards|^Pie, egg custard"),
-    ("pudding", "^Puddings"), ("frozen yogurt", "^Frozen yogurts"),
+    ("buttermilk", "^Milk, buttermilk"), ("eggnog", "^Eggnog|^Eggnog"),
+    ("custard", "^Desserts, egg custard|^Egg custards|^Pie, egg custard|^Custard$"),
+    ("pudding", "^Puddings|^Pudding, (chocolate|vanilla)"), ("frozen yogurt", "^Frozen yogurts|^Frozen yogurt$"),
 ]
 
 /// What's ordered at a coffee shop or a bar, each with a pattern for the drink that should come
@@ -714,6 +716,133 @@ let bar: [(String, String)] = [
     ("baileys", "^Liqueur, cream|(?i)baileys"), ("jello shot", "^Gelatin shot, alcoholic"), ("shot of tequila", "^Tequila$"),
     ("glass of red wine", "^Wine, red$|^Alcoholic beverage, wine, table, red$"),
     ("pint of beer", "^Beer$|^Alcoholic beverage, beer, regular, all"),
+]
+
+/// Dishes as they're cooked, ordered and logged: a sandwich, a burrito, a plate of pad thai, a
+/// slice of pie. Each with a pattern for the dish that should come first: FNDDS's, by its own
+/// name or the one the catalog keeps for it ("chicken parmesan", "fettuccine alfredo", "tater
+/// tots"), or a label's where USDA lists none ("poke bowl").
+let dishes: [(String, String)] = [
+    ("turkey sandwich", "(?i)turkey.*sandwich|sandwich.*turkey"), ("ham sandwich", "(?i)ham.*sandwich|sandwich.*ham"),
+    ("ham and cheese sandwich", "(?i)ham.*cheese.*sandwich|sandwich.*ham.*cheese|(?i)^ham sandwich.*with cheese"),
+    ("blt", "(?i)bacon, lettuce|\\bBLT\\b"), ("grilled cheese", "(?i)grilled cheese|cheese sandwich.*grilled"),
+    ("grilled cheese sandwich", "(?i)grilled cheese|cheese sandwich.*grilled"),
+    ("peanut butter and jelly sandwich", "(?i)peanut butter and jelly sandwich"), ("pb&j", "(?i)peanut butter and jelly"),
+    ("tuna sandwich", "(?i)tuna.*sandwich|sandwich.*tuna"), ("tuna melt", "(?i)tuna melt|^Tuna salad sandwich on white, with cheese$"),
+    ("egg salad sandwich", "(?i)egg salad sandwich"), ("chicken salad sandwich", "(?i)chicken salad sandwich"),
+    ("club sandwich", "(?i)club sandwich|sandwich.*club"), ("reuben", "(?i)reuben"),
+    ("philly cheesesteak", "(?i)cheesesteak|cheese steak|steak and cheese"), ("cheesesteak", "(?i)cheesesteak|cheese steak|steak and cheese"),
+    ("pulled pork sandwich", "(?i)pulled pork sandwich|pork.*barbecue.*sandwich|pork sandwich"), ("meatball sub", "(?i)meatball.*(sub|sandwich)"),
+    ("italian sub", "(?i)(italian|cold cut).*(sub|sandwich)"), ("chicken sandwich", "(?i)chicken.*sandwich"),
+    ("fried chicken sandwich", "(?i)chicken.*sandwich.*fried|fried chicken.*sandwich|chicken fillet.*sandwich|crispy chicken"),
+    ("grilled chicken sandwich", "(?i)chicken.*sandwich.*grilled|grilled chicken.*sandwich"), ("fish sandwich", "(?i)fish sandwich"),
+    ("breakfast sandwich", "(?i)(egg|breakfast).*sandwich|sandwich.*egg"),
+    ("bacon egg and cheese", "(?i)bacon.*egg.*cheese|egg.*cheese.*bacon|^Egg sandwich on English muffin, with bacon$"),
+    ("sausage egg and cheese", "(?i)sausage.*egg.*cheese|egg.*cheese.*sausage|^Egg sandwich on English muffin, with sausage$"),
+    ("egg sandwich", "(?i)egg.*sandwich"), ("cheeseburger", "(?i)^cheeseburger|cheeseburger"), ("hamburger", "(?i)^hamburger"),
+    ("double cheeseburger", "(?i)double.*cheeseburger|cheeseburger.*double|2 patties"),
+    ("bacon cheeseburger", "(?i)bacon.*cheeseburger|cheeseburger.*bacon"),
+    ("veggie burger", "(?i)veggie burger|vegetarian burger|vegetable burger|veggieburger"),
+    ("turkey burger", "(?i)turkey burger|turkey.*patt|^Turkey or chicken burger"),
+    ("chili dog", "(?i)chili dog|frankfurter.*chili|hot dog.*chili|^Chili hot dog sandwich"), ("corn dog", "(?i)corn ?dog"), ("gyro", "(?i)gyro"),
+    ("french dip", "(?i)french dip|roast beef sandwich.*(dipped|au jus|gravy)"), ("sloppy joe", "(?i)sloppy joe"),
+    ("quesadilla", "(?i)^quesadilla"), ("chicken quesadilla", "(?i)quesadilla.*chicken|chicken quesadilla"), ("burrito", "(?i)^burrito"),
+    ("bean burrito", "(?i)burrito.*bean|bean burrito"), ("chicken burrito", "(?i)burrito.*chicken|chicken burrito"),
+    ("breakfast burrito", "(?i)breakfast burrito|burrito.*egg"), ("burrito bowl", "(?i)burrito bowl"), ("taco", "(?i)^taco\\b"),
+    ("fish taco", "(?i)taco.*fish|fish taco"), ("chicken taco", "(?i)taco.*chicken|chicken taco"), ("beef taco", "(?i)taco.*(beef|meat)|beef taco"),
+    ("enchilada", "(?i)^enchilada"), ("chicken enchilada", "(?i)enchilada.*chicken|chicken enchilada"), ("tamale", "(?i)^tamale"),
+    ("nachos", "(?i)^nachos"), ("fajitas", "(?i)^fajita"), ("chicken fajitas", "(?i)fajita.*chicken|chicken fajita"),
+    ("chimichanga", "(?i)^chimichanga"), ("tostada", "(?i)^tostada"), ("taquitos", "(?i)^taquito|flauta"), ("lasagna", "(?i)^lasagna"),
+    ("spaghetti and meatballs", "(?i)spaghetti.*meatballs|pasta.*meatballs"),
+    ("fettuccine alfredo", "(?i)fettuccine.*alfredo|pasta.*(alfredo|cream sauce)"),
+    ("chicken alfredo", "(?i)chicken.*alfredo|alfredo.*chicken|pasta.*cream sauce.*(chicken|poultry)"),
+    ("mac and cheese", "(?i)^macaroni (and|or noodles with) cheese"), ("ravioli", "(?i)^ravioli"), ("pad thai", "(?i)pad thai"),
+    ("lo mein", "(?i)lo mein"), ("chow mein", "(?i)chow mein"), ("fried rice", "(?i)^(rice, )?fried(, |\\s)?rice|^fried rice|rice, fried"),
+    ("chicken fried rice", "(?i)fried rice.*chicken|chicken fried rice|rice, fried, with chicken"), ("general tso chicken", "(?i)general tso"),
+    ("orange chicken", "(?i)orange chicken"), ("kung pao chicken", "(?i)kung pao"), ("sweet and sour chicken", "(?i)sweet and sour chicken"),
+    ("beef and broccoli", "(?i)beef (and|with) broccoli|beef.*vegetables.*(soy|stir)"), ("sesame chicken", "(?i)sesame chicken"),
+    ("spring roll", "(?i)spring roll|egg roll|^Roll with meat and/or shrimp, vegetables and rice paper"),
+    ("dumplings", "(?i)^dumpling|^Wonton, dumpling or pot sticker"),
+    ("potstickers", "(?i)potsticker|dumpling.*(fried|meat)|wonton.*fried|dumpling"), ("wonton soup", "(?i)wonton soup|soup, wonton"),
+    ("sushi", "(?i)^sushi"), ("california roll", "(?i)california roll|sushi.*(crab|avocado|vegetable)|^Sushi roll, California$"),
+    ("ramen", "(?i)ramen"), ("pho", "(?i)\\bpho\\b"), ("miso soup", "(?i)miso soup|soup, miso"),
+    ("chicken noodle soup", "(?i)chicken noodle soup|soup, chicken noodle"), ("tomato soup", "(?i)tomato soup|soup, tomato"),
+    ("clam chowder", "(?i)clam chowder|chowder, clam"), ("minestrone", "(?i)minestrone"),
+    ("french onion soup", "(?i)onion soup|soup, onion|^Soup, French onion$"), ("chicken pot pie", "(?i)chicken pot ?pie|pot ?pie.*chicken"),
+    ("shepherds pie", "(?i)shepherd'?s pie"), ("meatloaf", "(?i)meat ?loaf"), ("pot roast", "(?i)pot roast"),
+    ("chicken parmesan", "(?i)chicken parm|^Chicken or turkey parmigiana$"), ("eggplant parmesan", "(?i)eggplant parm"),
+    ("chicken tikka masala", "(?i)tikka masala|^Chicken curry$"),
+    ("butter chicken", "(?i)butter chicken|chicken.*(makhani|tikka masala)|^Chicken curry$"), ("chicken curry", "(?i)chicken curry|curry.*chicken"),
+    ("jambalaya", "(?i)jambalaya"), ("gumbo", "(?i)gumbo"), ("paella", "(?i)paella"), ("risotto", "(?i)risotto"),
+    ("stuffed peppers", "(?i)stuffed pepper|pepper.*stuffed"), ("beef stroganoff", "(?i)stroganoff"),
+    ("chicken and rice", "(?i)chicken (and|with) rice|rice (and|with) chicken|^Chicken or turkey and rice$"),
+    ("rice and beans", "(?i)rice (and|with) beans|beans (and|with) rice"),
+    ("red beans and rice", "(?i)red beans and rice|beans (and|with) rice|(?i)rice and red beans"), ("falafel", "(?i)^falafel"),
+    ("caesar salad", "(?i)caesar salad"), ("greek salad", "(?i)greek salad"), ("cobb salad", "(?i)cobb salad"),
+    ("chef salad", "(?i)chef'?s? salad"), ("garden salad", "(?i)garden salad|lettuce.*salad|salad.*lettuce|tossed"),
+    ("chicken caesar salad", "(?i)caesar salad.*chicken|chicken caesar|^Chicken or turkey caesar garden salad"),
+    ("taco salad", "(?i)taco( or tostada)? salad"), ("potato salad", "(?i)^potato salad"), ("macaroni salad", "(?i)macaroni.*salad"),
+    ("pasta salad", "(?i)pasta salad|macaroni or pasta salad"), ("tuna salad", "(?i)^tuna salad|^salad.*tuna"), ("egg salad", "(?i)^egg salad"),
+    ("chicken salad", "(?i)^chicken salad|^salad.*chicken|chicken.*salad"), ("omelet", "(?i)omelet"),
+    ("cheese omelet", "(?i)omelet.*cheese|cheese omelet"),
+    ("western omelet", "(?i)omelet.*(western|ham|pepper|vegetable)|western omelet|denver|^Egg omelet or scrambled egg"),
+    ("eggs benedict", "(?i)benedict"), ("quiche", "(?i)quiche"), ("frittata", "(?i)frittata|omelet"), ("pancakes", "(?i)^pancake"),
+    ("waffles", "(?i)^waffle"), ("french toast", "(?i)^french toast"), ("crepes", "(?i)^crepe"),
+    ("biscuits and gravy", "(?i)biscuits? (and|with) gravy"), ("hash browns", "(?i)hash ?brown"), ("home fries", "(?i)home fries|potato.*home fri"),
+    ("sweet potato fries", "(?i)sweet potato.*fries"), ("onion rings", "(?i)onion rings"), ("mashed potatoes", "(?i)potato.*mashed|mashed potato"),
+    ("baked potato", "(?i)potato.*baked|baked potato"), ("scalloped potatoes", "(?i)scalloped"),
+    ("tater tots", "(?i)tater tots|potato (puffs|tots)"), ("mozzarella sticks", "(?i)mozzarella sticks|cheese.*sticks.*fried|fried.*mozzarella"),
+    ("buffalo wings", "(?i)wing"), ("chicken wings", "(?i)chicken.*wing"), ("chicken tenders", "(?i)chicken (tenders|strips|fingers)|tenders"),
+    ("cheese pizza", "(?i)pizza.*cheese|cheese pizza"), ("calzone", "(?i)calzone"), ("stromboli", "(?i)stromboli|calzone"),
+    ("garlic bread", "(?i)garlic bread|bread, garlic"), ("chocolate cake", "(?i)cake, chocolate|chocolate cake"), ("cheesecake", "(?i)cheesecake"),
+    ("carrot cake", "(?i)carrot cake|cake.*carrot"), ("apple pie", "(?i)pie, apple|apple pie"), ("pumpkin pie", "(?i)pie, pumpkin|pumpkin pie"),
+    ("pecan pie", "(?i)pie, pecan|pecan pie"), ("key lime pie", "(?i)key lime pie|pie.*lime"), ("brownie", "(?i)brownie"),
+    ("chocolate chip cookie", "(?i)cookies?, chocolate chip|chocolate chip cookie"), ("oatmeal cookie", "(?i)cookies?, oatmeal|oatmeal cookie"),
+    ("sugar cookie", "(?i)cookies?, sugar|sugar cookie"), ("peanut butter cookie", "(?i)cookies?, peanut butter|peanut butter cookie"),
+    ("donut", "(?i)doughnut|donut"), ("glazed donut", "(?i)(doughnut|donut).*glazed|glazed (doughnut|donut)|^Doughnut, yeast type$"),
+    ("chocolate donut", "(?i)(doughnut|donut).*chocolate|chocolate.*(doughnut|donut)"),
+    ("cinnamon roll", "(?i)cinnamon (roll|bun)|sweet roll.*cinnamon"), ("blueberry muffin", "(?i)muffin.*blueberry|blueberry muffin"),
+    ("banana bread", "(?i)banana bread|bread, banana"), ("croissant", "(?i)^croissant"), ("danish", "(?i)danish"),
+    ("cupcake", "(?i)cupcake|cake.*cupcake"), ("tiramisu", "(?i)tiramisu"),
+    ("vanilla ice cream", "(?i)ice creams?, vanilla|vanilla ice cream|^ice cream$"),
+    ("chocolate ice cream", "(?i)ice creams?, chocolate|chocolate ice cream"), ("frozen yogurt", "(?i)frozen yogurt"),
+    ("sorbet", "(?i)sorbet|sherbet"), ("chocolate pudding", "(?i)pudding.*chocolate|chocolate pudding"),
+    ("rice pudding", "(?i)rice pudding|pudding.*rice"), ("jello", "(?i)gelatin|jell-?o"), ("ice cream sandwich", "(?i)ice cream sandwich"),
+    ("milkshake", "(?i)milk ?shake|shake"), ("banana split", "(?i)banana split"), ("sundae", "(?i)sundae"), ("churro", "(?i)churro"),
+    ("baklava", "(?i)baklava"), ("flan", "(?i)flan"), ("bread pudding", "(?i)bread pudding|pudding, bread"),
+    ("apple crisp", "(?i)apple crisp|crisp, apple|apple.*cobbler"), ("peach cobbler", "(?i)cobbler.*peach|peach cobbler"),
+    ("funnel cake", "(?i)funnel cake"), ("pound cake", "(?i)pound ?cake|^Cake, pound$"), ("angel food cake", "(?i)angel ?food"),
+    ("coffee cake", "(?i)coffee ?cake"), ("chicken soup", "(?i)chicken.*soup|soup.*chicken"),
+    ("vegetable soup", "(?i)vegetable soup|soup, vegetable"), ("lentil soup", "(?i)lentil soup|soup, lentil"),
+    ("split pea soup", "(?i)pea soup|soup, pea|^Soup, split pea$"), ("black bean soup", "(?i)black bean soup|soup, black bean|soup, bean"),
+    ("broccoli cheddar soup", "(?i)broccoli.*(cheese|cheddar).*soup|soup.*broccoli.*chees"), ("potato soup", "(?i)potato soup|soup, potato"),
+    ("beef barley soup", "(?i)beef.*barley|barley.*beef"), ("tortilla soup", "(?i)tortilla soup|soup.*tortilla"), ("egg drop soup", "(?i)egg drop"),
+    ("hot and sour soup", "(?i)hot and sour"), ("chicken teriyaki", "(?i)teriyaki"), ("teriyaki chicken", "(?i)teriyaki"),
+    ("chicken stir fry", "(?i)chicken.*(stir|vegetables)|stir.*chicken"), ("beef stir fry", "(?i)beef.*(stir|vegetables)|stir.*beef"),
+    ("vegetable stir fry", "(?i)vegetable.*stir|stir.*vegetable|^Tofu and vegetables, with soy-based sauce$"),
+    ("chicken nuggets", "(?i)chicken nuggets"), ("fish and chips", "(?i)fish and chips|fish.*(battered|fried)|(?i)^fish (&|and) chips$"),
+    ("fish sticks", "(?i)fish sticks?"), ("crab cake", "(?i)crab cake|^Crab, cake$"), ("shrimp scampi", "(?i)scampi|^Shrimp in garlic sauce"),
+    ("fried shrimp", "(?i)shrimp.*(fried|breaded)"), ("shrimp cocktail", "(?i)shrimp cocktail"),
+    ("lobster roll", "(?i)lobster.*(roll|sandwich|salad)"), ("poke bowl", "(?i)poke"),
+    ("stuffed cabbage", "(?i)cabbage.*(stuffed|roll)|stuffed cabbage"), ("pierogi", "(?i)pierog"), ("samosa", "(?i)samosa"),
+    ("empanada", "(?i)empanada"), ("pupusa", "(?i)pupusa"), ("arepa", "(?i)arepa"), ("hummus", "(?i)^hummus"), ("guacamole", "(?i)^guacamole"),
+    ("spinach dip", "(?i)spinach.*dip"), ("queso", "(?i)queso|cheese dip|cheese sauce"), ("salsa", "(?i)^salsa|sauce, salsa"),
+    ("bruschetta", "(?i)bruschetta"), ("deviled eggs", "(?i)devil"), ("creamed spinach", "(?i)spinach.*cream|creamed spinach"),
+    ("green bean casserole", "(?i)green bean casserole|beans.*casserole"), ("sweet potato casserole", "(?i)sweet potato.*(casserole|candied)"),
+    ("stuffing", "(?i)stuffing|dressing"), ("cornbread", "(?i)corn ?bread"), ("collard greens", "(?i)collard"),
+    ("baked ziti", "(?i)ziti|baked.*pasta|pasta.*baked|^Pasta with tomato-based sauce and cheese$"),
+    ("stuffed shells", "(?i)stuffed shells|shells.*stuffed|manicotti|pasta.*cheese.*filled"), ("manicotti", "(?i)manicotti"),
+    ("gnocchi", "(?i)gnocchi"), ("carbonara", "(?i)carbonara|^Pasta with cream sauce and meat"),
+    ("spaghetti bolognese", "(?i)spaghetti.*meat sauce|pasta.*meat sauce|bolognese|^Pasta with tomato-based sauce and meat"),
+    ("penne vodka", "(?i)vodka sauce|penne.*vodka|pasta.*vodka"), ("tuna casserole", "(?i)tuna.*casserole|tuna noodle"),
+    ("chicken casserole", "(?i)chicken.*casserole"), ("enchiladas", "(?i)^enchilada"), ("carnitas", "(?i)carnitas|pork.*(shredded|pulled)"),
+    ("carne asada", "(?i)carne asada|beef.*steak"), ("al pastor", "(?i)pastor"), ("huevos rancheros", "(?i)huevos rancheros"),
+    ("chilaquiles", "(?i)chilaquiles"), ("elote", "(?i)elote|corn.*(mexican|mayonnaise|cotija)"), ("pozole", "(?i)pozole"),
+    ("menudo", "(?i)menudo"), ("chicken shawarma", "(?i)shawarma"), ("kebab", "(?i)kebab|kabob"), ("tabbouleh", "(?i)tabbouleh|tabouli"),
+    ("biryani", "(?i)biryani"), ("dal", "(?i)\\bdal\\b|dahl|lentil"), ("naan", "(?i)^naan|bread, naan"), ("saag paneer", "(?i)paneer"),
+    ("chana masala", "(?i)chana|chickpea.*(curry|sauce)"), ("bibimbap", "(?i)bibimbap"), ("bulgogi", "(?i)bulgogi"),
+    ("kimchi fried rice", "(?i)kimchi.*rice|fried rice"), ("tonkatsu", "(?i)katsu|pork.*cutlet.*(breaded|fried)"), ("tempura", "(?i)tempura"),
+    ("edamame", "(?i)edamame"), ("seaweed salad", "(?i)seaweed"),
 ]
 
 /// These rank foods made here, so they run without either catalog.
@@ -950,6 +1079,70 @@ struct EverydayFormTests {
         // A bowl named last is a dish; a bowl of something is how much of it.
         #expect(nameWords("Poke bowl") == ["poke", "bowl"])
         #expect(nameWords("Bowl of rice") == ["rice"])
+    }
+
+    @Test("a dish made with a food comes after the food, and one named by all that was said before its kinds")
+    func madeWith() {
+        func top(_ query: String, plain: [String], dishes: [String]) -> String {
+            let entries = plain.map { Entry(OwnWordsTests.food($0)) } + dishes.map { Entry(OwnWordsTests.food($0), dish: true) }
+            return rankSearch(query, entries).first?.food.name ?? ""
+        }
+        // A dish that doesn't lead with what was said is made with it or named after it.
+        #expect(
+            top("parmesan", plain: ["Cheese, parmesan, shredded"], dishes: ["Eggplant parmesan casserole, regular"]) == "Cheese, parmesan, shredded")
+        #expect(
+            top("flour tortilla", plain: ["Tortillas, ready-to-bake or -fry, flour"], dishes: ["Taco, flour tortilla, beef, cheese"])
+                == "Tortillas, ready-to-bake or -fry, flour")
+        // One that leads with it and adds another food is the food with more, where the
+        // words name a food more than a dish.
+        let livers = ["Liver, beef, cooked", "Liver, chicken, cooked"]
+        #expect(top("liver", plain: livers, dishes: ["Liver, beef or calves, and onions"]) == livers[0])
+        // Where they name a dish, what it comes with is part of it: chow mein has noodles.
+        let mein = ["Chow mein or chop suey, with noodles", "Beef chow mein or chop suey with noodles", "Chow mein or chop suey, no noodles"]
+        #expect(top("chow mein", plain: ["Noodles, chinese, chow mein"], dishes: mein) == "Chow mein or chop suey, with noodles")
+        // And where a plain food leads with the words, so is a dish that says more of any kind.
+        #expect(
+            top("green beans", plain: ["Beans, snap, green, cooked, boiled"], dishes: ["Green beans, cooked, Szechuan-style"])
+                == "Beans, snap, green, cooked, boiled")
+        // With no plain food by those words, the dishes are ranked as they were: the sauce a
+        // pizza is made with isn't one.
+        #expect(
+            top("pizza", plain: ["Sauce, pizza, canned, ready-to-serve"], dishes: ["Pizza, cheese, from restaurant or fast food", "Pizza rolls"])
+                == "Pizza, cheese, from restaurant or fast food")
+        // Where a dish is from says nothing more of what it is; a plain food from a
+        // restaurant is cooked their way.
+        #expect(top("burrito", plain: [], dishes: ["Burrito, with beans, cheese", "Burrito, from fast food"]) == "Burrito, from fast food")
+        #expect(
+            first("green beans", ["Green beans, cooked, from restaurant", "Beans, snap, green, cooked, boiled"])
+                == "Beans, snap, green, cooked, boiled")
+        // The food named by nothing but what was said is the usual one, before the kind
+        // that usually stands for it; by whole words, so a typo's start doesn't name a longer one.
+        #expect(first("tomato soup", ["Soup, tomato, canned", "Soup, tomato"]) == "Soup, tomato")
+        #expect(first("pizza", ["Pizza, cheese, stuffed crust", "Pizza, no cheese, thin crust", "Pizza, cheese"]) == "Pizza, cheese")
+        // A dish without what it usually has is the less common one, and so is one made with
+        // egg whites.
+        #expect(first("chili dog", ["Chili hot dog, no bun", "Chili hot dog, on white bun"]) == "Chili hot dog, on white bun")
+        #expect(first("egg sandwich", ["Egg white sandwich", "Egg sandwich on bagel"]) == "Egg sandwich on bagel")
+        // Another name on the other side of an "or" is no word the food wasn't asked by, as
+        // far as the first name is long: the parmigiana isn't chicken.
+        #expect(first("chicken salad", ["Chicken salad with egg", "Chicken or turkey salad"]) == "Chicken or turkey salad")
+        #expect(first("turkey salad", ["Turkey salad with egg", "Chicken or turkey salad"]) == "Chicken or turkey salad")
+        #expect(
+            first("macaroni and cheese", ["Macaroni and cheese, canned entree", "Macaroni or noodles with cheese"])
+                == "Macaroni or noodles with cheese")
+        #expect(
+            top("chicken", plain: ["Chicken, broilers or fryers, breast, cooked, roasted"], dishes: ["Chicken or turkey parmigiana"]).hasPrefix(
+                "Chicken, broilers"))
+        // Another name the catalog keeps for a food, when it's all that was said in the order
+        // said, stands for the food as its own name would.
+        let shells = [
+            Entry(OwnWordsTests.food("Manicotti, cheese-filled, with meat sauce"), dish: true),
+            Entry(OwnWordsTests.food("Manicotti, cheese-filled, with tomato sauce, meatless"), also: "Manicotti", dish: true),
+        ]
+        #expect(rankSearch("manicotti", shells).first?.food.name == "Manicotti, cheese-filled, with tomato sauce, meatless")
+        let teas = [Entry(OwnWordsTests.food("Tea, bubble"), also: "Milk tea"), Entry(OwnWordsTests.food("Tea, hot, with milk"))]
+        #expect(rankSearch("tea with milk", teas).first?.food.name == "Tea, hot, with milk")
+        #expect(rankSearch("milk tea", teas).first?.food.name == "Tea, bubble")
     }
 
     @Test("a model's name is read apart from its amount and what the food comes with")
@@ -1404,6 +1597,40 @@ struct StaplesTests {
         #expect(catalog.top("mai tai", 1).first == "Mai Tai")
         // A word with a meaning of its own isn't read as the typo it could be.
         #expect(catalog.top("mezcal", 1).first == "Tequila")
+    }
+
+    @Test("a dish comes first typed and named as a model would, and mostly as USDA lists it")
+    func dishesBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var plain = 0
+            var missed: [String] = []
+            for (query, pattern) in dishes {
+                let found = seen ? catalog.candidates(name: query, brand: nil).first?.food : catalog.search(query).first?.food
+                if found.map({ matches(pattern, $0.name) }) == true { first += 1 } else { missed.append("\(query): \(found?.name ?? "nothing")") }
+                if found?.source == .usda { plain += 1 }
+            }
+            print("Dishes \(seen ? "as a model names them" : "typed"): \(first) of \(dishes.count) first, \(plain) as USDA lists them")
+            #expect(Double(first) >= 0.95 * Double(dishes.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+            #expect(Double(plain) >= 0.85 * Double(dishes.count))
+        }
+        // By the name it's cooked or ordered by, which the catalog keeps beside its own.
+        #expect(catalog.top("chicken parmesan", 1).first == "Chicken or turkey parmigiana")
+        #expect(catalog.top("fettuccine alfredo", 1).first == "Pasta with cream sauce, restaurant")
+        #expect(catalog.top("tater tots", 1).first == "Potato tots")
+        #expect(catalog.candidates(name: "Grilled cheese", brand: nil).first?.called == true)
+        // A dish made with a food isn't the food: the cheese, the tortilla and the liver first.
+        #expect(catalog.top("parmesan", 1).first?.hasPrefix("Cheese, parmesan") == true)
+        #expect(catalog.top("flour tortilla", 1).first?.hasPrefix("Tortillas") == true)
+        #expect(catalog.top("american cheese", 1).first?.hasPrefix("Cheese") == true)
+        #expect(catalog.top("liver", 1).first?.hasPrefix("Beef, variety meats and by-products, liver") == true)
+        // The dish named by nothing but what was said, before its kinds.
+        #expect(catalog.top("burrito", 1).first == "Burrito")
+        #expect(catalog.top("tomato soup", 1).first == "Soup, tomato")
+        #expect(catalog.top("pizza", 1).first == "Pizza, cheese, from restaurant or fast food")
+        // The whole of a search is no brand where the catalog names a dish by those words.
+        #expect(catalog.searchCatalog("eggs benedict", known: [:]).brand.isEmpty)
+        #expect(catalog.top("eggs benedict", 1).first == "Egg, Benedict")
     }
 
     @Test("a product is first before its name is typed out")

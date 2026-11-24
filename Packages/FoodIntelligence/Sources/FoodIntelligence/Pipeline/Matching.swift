@@ -51,8 +51,11 @@ enum Matching {
     /// whatever the words alone say: a frankfurter for a hot dog, brewed coffee for black
     /// coffee, toast for "toast with butter", cooked white rice for jasmine rice, scrambled eggs
     /// for "scrambled eggs (2 large)".
+    /// Nor is a food the catalog also calls by exactly what was seen something else that only
+    /// describes: its "Grilled cheese sandwich" is a grilled cheese.
     static func fits(_ name: String, _ match: FoodMatch) -> Bool {
-        match.food.isPlausible && (match.named || covers(name, match.food)) && Drinks.sameKind(name, match.food) && !qualifies(name, match.food)
+        match.food.isPlausible && (match.named || covers(name, match.food)) && Drinks.sameKind(name, match.food)
+            && (match.called || !qualifies(name, match.food))
     }
 
     /// The first part of a catalog name, where it says what the food is: up to its first comma or
@@ -68,10 +71,25 @@ enum Matching {
     /// comes in or with, is made from or may also be ("Pulled pork in barbecue sauce" is pulled
     /// pork, "Soy sauce made from soy and wheat" soy sauce, a "Ham sandwich or sub" a ham
     /// sandwich), nor how it's sold ("Cereals ready-to-eat" are cereals).
-    static func kind(of food: Food) -> [String] {
-        let part = readyTo.replacing(in: kindEnd.replacing(in: firstPart(food.name), with: ""), with: " ")
-        return FoodText.words(part).map(FoodText.stem)
+    static func kind(of food: Food) -> [String] { kinds(of: food)[0] }
+
+    private static let also = Pattern(#"^(.*?)\sor\s(.*)$"#)
+
+    /// The same by each name the part gives: a second name after "or" is as long as the first,
+    /// and what follows it is said of both, so a "Taco or tostada salad" is a taco salad and a
+    /// tostada salad, a "Chicken or turkey salad" no chicken.
+    static func kinds(of food: Food) -> [[String]] {
+        let part = readyTo.replacing(in: firstPart(food.name), with: " ")
+        let whole = FoodText.words(kindEnd.replacing(in: part, with: "")).map(FoodText.stem)
+        guard let halves = also.allMatches(in: comesWith.replacing(in: part, with: "")).first, halves.count == 3 else { return [whole] }
+        let first = FoodText.words(halves[1]).map(FoodText.stem)
+        let second = FoodText.words(halves[2]).map(FoodText.stem)
+        guard !first.isEmpty, second.count > first.count else { return [whole] }
+        let shared = Array(second.dropFirst(first.count))
+        return [first + shared, Array(second.prefix(first.count)) + shared]
     }
+
+    private static let comesWith = Pattern(#"\s(?:in|with|on|made (?:from|with))\s.*$"#)
 
     /// Two words for one food in a catalog's name: "Jams and preserves" are jam, "Ginger root"
     /// is ginger, a "Seasoning mix" a seasoning and a "Frozen coffee drink" a frozen coffee.
@@ -90,11 +108,14 @@ enum Matching {
     /// last word of its name's first part; USDA files under a group first ("Fish, salmon"), which
     /// doesn't count against it.
     static func qualifies(_ name: String, _ food: Food) -> Bool {
-        let kind = kind(of: food)
         let seen = FoodText.nameWords(name).map(FoodText.stem)
-        guard let head = seen.last, let own = kind.last, kind.count > 1 else { return false }
+        guard let head = seen.last else { return false }
         let named = { (word: String) in seen.contains { FoodText.same($0, word) || FoodText.same(word, $0) } }
-        return kind.dropLast().contains { FoodText.same($0, head) || FoodText.same(head, $0) } && !named(own) && sameFood[head]?.contains(own) != true
+        return kinds(of: food).contains { kind in
+            guard let own = kind.last, kind.count > 1 else { return false }
+            return kind.dropLast().contains { FoodText.same($0, head) || FoodText.same(head, $0) } && !named(own)
+                && sameFood[head]?.contains(own) != true
+        }
     }
 
     /// Cooking and cutting words a catalog name may leave out: grilled chicken is roasted chicken.

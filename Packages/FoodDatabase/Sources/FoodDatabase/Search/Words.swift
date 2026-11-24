@@ -36,6 +36,8 @@ let alternatives: [String: [String]] = [
     "pilsner": ["pilsner", "beer"], "stout": ["stout", "beer"],
     // Venison is its deer, calamari its squid and crawfish its crayfish.
     "venison": ["venison", "deer"], "calamari": ["calamari", "squid"], "crawfish": ["crawfish", "crayfish"],
+    // A kebab is its "shish kabob".
+    "kebab": ["kebab", "kabob"], "kebabs": ["kebab", "kabob"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -187,6 +189,8 @@ let shortNames: [String: String] = [
     // Red pepper flakes are its red or cayenne pepper.
     "red pepper flakes": "spices pepper red cayenne", "crushed red pepper": "spices pepper red cayenne",
     "cayenne pepper": "spices pepper red cayenne", "cayenne": "spices pepper red cayenne",
+    // Mac and cheese is macaroni and cheese, not the one named "Easy Mac".
+    "mac and cheese": "macaroni and cheese", "mac n cheese": "macaroni and cheese", "mac cheese": "macaroni and cheese",
 ]
 
 /// Names that, typed alone, are also the word USDA files them under: "spaghetti" is its "Pasta,

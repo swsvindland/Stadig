@@ -46,7 +46,7 @@ let searchBasket: [(String, String)] = [
     ("almonds", "^Nuts, almonds"),
     ("black beans", "^Beans, black, mature seeds, cooked"),
     ("orange juice", "^Orange juice, raw"),
-    ("slice of pizza", "^Pizza, cheese topping"),
+    ("slice of pizza", "^Pizza, cheese"),
     ("mcdonalds", "^McDONALD'S, "),
     ("big mac", "^McDONALD'S, BIG MAC$"),
     ("wendys", "^WENDY'S, "),
@@ -102,7 +102,7 @@ let firstResults: [(String, String)] = [
     ("stea", "^Beef, .*steak"),
     ("sal", "^Fish, salmon, .*cooked"),
     ("ground bee", "^Beef, ground, .*cooked"),
-    ("ketchu", "^Catsup"),
+    ("ketchu", "^Catsup|^Ketchup$"),
     ("hot do", "^Frankfurter"),
     ("bell peppe", "^Peppers, sweet"),
     ("spaghett", "^Pasta, cooked"),
@@ -114,7 +114,7 @@ let firstResults: [(String, String)] = [
     ("peanut b", "^Peanut butter"),
     ("hotd", "^Frankfurter"),
     ("peanutb", "^Peanut butter"),
-    ("icecr", "^Ice creams"),
+    ("icecr", "^Ice creams?"),
     // Two letters at the end aren't a brand begun: not Doritos, nor McLaren Vale's eggs.
     ("egg mc", "^McDONALD'S, Egg McMUFFIN"),
     // A food named by its leading parts, as USDA inverts them, before a blend or dish with the words.
@@ -149,7 +149,7 @@ let firstResults: [(String, String)] = [
     ("quinao", "^Quinoa, cooked"),
     ("cofee", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
     ("peanutbutter", "^Peanut butter, "),
-    ("icecream", "^Ice creams, "),
+    ("icecream", "^Ice creams, |^Ice cream$"),
     ("protien bar", "(?i)protein bar"),
     ("teff", "^Teff, "),
     ("beet", "^Beets, raw"),
@@ -555,7 +555,7 @@ struct CandidateTests {
             // Filed under what it's made of, and before a food that only has the word or lacks one said.
             ("sirloin", "^Beef, .*sirloin", "(?i)veal"),
             ("meatballs", "^Meatballs", "(?i)pockets|meatless"),
-            ("fried rice", "(?i)fried rice", "(?i)^Rice, white"),
+            ("fried rice", "(?i)fried rice|^Rice, fried", "(?i)^Rice, white"),
         ])
     func everyday(name: String, pattern: String, not: String) throws {
         let found = catalog.candidates(name: name, brand: nil)
@@ -607,11 +607,11 @@ struct CandidateTests {
             ("soy milk", "^Soymilk", "(?i)sheep|buttermilk"),
             ("milkshake", "^Milk shakes?", ""),
             ("kiwi", "^Kiwifruit", ""),
-            ("mac and cheese", "^Macaroni and [Cc]heese", ""),
-            ("mac n cheese", "^Macaroni and [Cc]heese", ""),
+            ("mac and cheese", "^Macaroni (and [Cc]heese|or noodles with cheese$)", ""),
+            ("mac n cheese", "^Macaroni (and [Cc]heese|or noodles with cheese$)", ""),
             // A food named after one keeps its own name: the bun, not a frankfurter.
             ("hot dog bun", "^Rolls, hamburger or hot ?dog", "(?i)frankfurter"),
-            ("corn dog", "^Corn dogs", "(?i)frankfurter"),
+            ("corn dog", "^Corn dogs?", "(?i)frankfurter"),
             ("spaghetti squash", "^Squash, winter, spaghetti", "(?i)pasta"),
             ("ranch dressing", "^Salad dressing, ranch dressing", ""),
         ])
@@ -649,7 +649,10 @@ struct CandidateTests {
         #expect(catalogDish("Chicken soup") == "Chicken soup")
         let found = catalog.candidates(name: "spaghetti bolognese", brand: nil)
         let first = try #require(found.first)
-        #expect(matches("(?i)^(Restaurant, Italian, )?spaghetti with meat sauce", first.food.name), "\(found.prefix(4).map(\.food.name))")
+        // USDA's spaghetti with meat sauce, or the pasta with tomato sauce and meat it also calls that.
+        #expect(
+            matches("(?i)^(Restaurant, Italian, )?spaghetti with meat sauce|^Pasta with tomato-based sauce and meat", first.food.name),
+            "\(found.prefix(4).map(\.food.name))")
         #expect(!isBranded(first.food))
         // A brand's own bolognese keeps its name.
         let branded = catalog.candidates(name: "spaghetti bolognese", brand: "Nutriquick")

@@ -160,7 +160,8 @@ final class Catalog: Sendable {
                 if let entry = read.withLock({ $0[rowid] }) {
                     hits.append(Hit(entry: entry, away: row.int(10) == 1, home: row.int(11) == 1))
                 } else if let food = food(row) {
-                    let entry = Entry(food, also: row.string(9) ?? "")
+                    // The traits' third bit marks a dish of several foods.
+                    let entry = Entry(food, also: row.string(9) ?? "", dish: !row.isNull(8) && row.int(8) & 4 != 0)
                     fresh.append((rowid, entry))
                     hits.append(Hit(entry: entry, away: row.int(10) == 1, home: row.int(11) == 1))
                 }

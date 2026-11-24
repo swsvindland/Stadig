@@ -673,8 +673,9 @@ extension FoodCatalog {
         return brand
     }
 
-    /// Whether the generic catalog names a food by exactly these words, and they aren't one of
-    /// the most scanned brands: "Mai Tai", "Tom Collins", not Cape Cod's chips.
+    /// Whether the generic catalog names a food by exactly these words, as its own name or
+    /// another it keeps for it, and they aren't one of the most scanned brands: "Mai Tai", "Tom
+    /// Collins", not Cape Cod's chips.
     private func isPlainName(_ words: ArraySlice<String>) -> Bool {
         let said = words.joined(separator: " ")
         let key = "plain \(said)"
@@ -685,7 +686,9 @@ extension FoodCatalog {
             !popular
             && catalogs.contains { catalog in
                 catalog.kind == .generic
-                    && catalog.match("{name}: \"\(said)\"", limit: 10).contains { FoodDatabase.words($0.entry.food.name).map(stem) == stems }
+                    && catalog.match("{name also}: \"\(said)\"", limit: 10).contains { hit in
+                        FoodDatabase.words(hit.entry.food.name).map(stem) == stems || hit.entry.also.contains { $0.text.titled == stems }
+                    }
             }
         brandish.withLock { remembered in
             if remembered.count > 500 { remembered.removeAll() }
@@ -711,9 +714,10 @@ extension FoodCatalog {
                 if size == 1, start + size == words.count, length(words[start]) < 3 { continue }
                 if let catalog, isBrand(span, catalog, fixes) {
                     if size == 1, isNamed(words, without: start, catalog, fixes) { continue }
-                    // Nor is the whole of a search a brand where USDA names a food by exactly
-                    // those words: a "mai tai" is the drink, whatever mixes are listed under it.
-                    if size == words.count, isPlainName(span) { continue }
+                    // Nor is any of a search a brand where USDA names a food by exactly its
+                    // words: a "mai tai" is the drink, whatever mixes are listed under it, and
+                    // "eggs benedict" the dish, whoever sells eggs as Benedict.
+                    if isPlainName(words[...]) { continue }
                     return start..<(start + size)
                 }
                 if isChain(span, catalog, fixes, halfTyped: start + size == words.count) { return start..<(start + size) }
@@ -1030,6 +1034,8 @@ extension FoodCatalog {
         let generic = brand.isEmpty ? [] : ranked.dropFirst(head.count).filter { !FoodText($0.food).branded }.prefix(2)
         let first = Set((head + generic).map(\.index))
         let ordered = Array(head) + Array(generic) + ranked.filter { !first.contains($0.index) }
-        return ordered.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil, named: $0.name >= 1) }
+        return ordered.prefix(limit).map {
+            FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil, named: $0.name >= 1, called: $0.called)
+        }
     }
 }

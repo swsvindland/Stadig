@@ -1,7 +1,7 @@
 """The food catalogs: every source read into one `Food`, written to a file per licence and shipping.
 Python standard library only. Run by Scripts/build-catalogs.py.
 
-usda.db holds SR Legacy and FNDDS's fast-food and restaurant foods and drinks, and is bundled from
+usda.db holds SR Legacy and FNDDS's fast-food and restaurant foods, drinks and dishes, and is bundled from
 Packages/FoodDatabase/Sources/FoodDatabase/Resources (in git). off.db holds Open Food Facts, under
 the ODbL, and is bundled from Apps/MacroTrack/Catalogs (not in git). The two stay apart so that the
 app works without off.db and so nothing else takes on its licence. Never processes user data.
@@ -662,6 +662,10 @@ def fdc_nutrients(raw):
     return nutrients, micros
 
 
+# SR Legacy's groups of dishes: a burger, a restaurant's lo mein, a frozen lasagna.
+USDA_DISHES = {"fast foods", "restaurant foods", "meals, entrees, and side dishes"}
+
+
 def usda_foods(path, stats):
     with zipfile.ZipFile(path) as archive:
         with archive.open(next(n for n in archive.namelist() if n.endswith(".json"))) as src:
@@ -686,7 +690,8 @@ def usda_foods(path, stats):
         yield Food(id=f"usda:{raw['fdcId']}", name=name, brand="", barcode=None, basis="g", nutrients=nutrients,
                    micros=checked_micros(nutrients, micros, {}, stats), portions=portions[:12], popularity=0,
                    markets="", nova=usda_processing(category, name),
-                   traits=(TRAIT_FERMENTED if fermented else 0) | usda_energy_trait(nutrients, name, stats))
+                   traits=((TRAIT_FERMENTED if fermented else 0) | (TRAIT_DISH if (category or "").lower() in USDA_DISHES else 0)
+                           | usda_energy_trait(nutrients, name, stats)))
 
 
 # SR Legacy's chain items are from 2006 to 2012; FNDDS, the survey database that replaced its
@@ -753,6 +758,56 @@ FNDDS_DRINKS = {
 }
 
 
+# And dishes as they're eaten: a sandwich, a burrito, a plate of pad thai, a bowl of soup. SR
+# Legacy has their ingredients and a few frozen entrees.
+FNDDS_DISHES = {
+    "Deli and cured meat sandwiches", "Burgers", "Egg/breakfast sandwiches", "Frankfurter sandwiches", "Peanut butter and jelly sandwiches",
+    "Chicken fillet sandwiches", "Meat and BBQ sandwiches", "Seafood sandwiches", "Cheese sandwiches", "Vegetable sandwiches/burgers",
+    "Meat mixed dishes", "Pasta mixed dishes, excludes macaroni and cheese", "Poultry mixed dishes", "Rice mixed dishes",
+    "Seafood mixed dishes", "Stir-fry and soy-based sauce mixtures", "Other Mexican mixed dishes", "Burritos and tacos",
+    "Fried rice and lo/chow mein", "Egg rolls, dumplings, sushi", "Bean, pea, legume dishes", "Vegetable dishes", "Nachos",
+    "Macaroni and cheese", "Pizza", "Turnovers and other grain-based items", "Soups, broth-based", "Soups, cream-based",
+    "Ramen and Asian broth-based soups", "Coleslaw, non-lettuce salads", "Lettuce and lettuce salads",
+}
+# And what's cooked or baked from one food more than put together from several: eggs as an
+# omelet, potatoes mashed or fried, pancakes, a slice of cake, a scoop of ice cream, a dip.
+FNDDS_PREPARED = {
+    "Eggs and omelets", "Pancakes, waffles, French toast", "Cakes and pies", "Cookies and brownies", "Doughnuts, sweet rolls, pastries",
+    "Ice cream and frozen dairy desserts", "Pudding", "Gelatins, ices, sorbets", "French fries and other fried white potatoes",
+    "Mashed potatoes and white potato mixtures", "Fried vegetables", "Dips, gravies, other sauces", "Tomato-based condiments",
+}
+# The survey's own distinctions, which no one logging a plate makes: which vegetables a mixture
+# had by the survey's classes, which fat it was cooked in where butter, oil or none says it,
+# which of nine dressings a salad was made with, and a pasta dish "ready-to-heat" beside the
+# same from a restaurant and from a home recipe.
+FNDDS_CODED = re.compile(r"excluding\s+carrots|excluding tomato|dark[- ]green vegetables|other than dark|and/or tomato-based|"
+                         r"margarine|animal fat|cooking spray|mayonnaise-type|creamy dressing|Italian dressing|"
+                         r"any type of fat free dressing|ready-to-heat", re.I)
+# The survey's wording for what an answer wasn't or might have been, as what it usually was:
+# a meat, a starch and vegetables is that whichever vegetables they were, a salad "made with
+# mayonnaise" is the salad, and scrambled eggs are made with butter.
+FNDDS_REWORDED = (
+    (re.compile(r"\s+including\s+carrots,? broccoli,? and/or dark[- ] ?green leafy"), ""),
+    (re.compile(r"; no potatoes, no sauce$|[;,] no sauce$|, excluding potatoes$"), ""),
+    (re.compile(r"; no potatoes, "), "; "),
+    (re.compile(r"; cream sauce, white sauce, or mushroom sauce$|; cream, white, or soup-based sauce$"), "; cream sauce"),
+    (re.compile(r"; (?:with )?(.+)$"), r", with \1"),
+    (re.compile(r"flavors other than chocolate"), "vanilla or other flavors"),
+    (re.compile(r"meat other than pepperoni"), "sausage or other meat"),
+    (re.compile(r"with icing or filling other than chocolate"), "with icing or filling"),
+    (re.compile(r"salad with assorted vegetables including tomatoes and/or carrots"), "salad with assorted vegetables"),
+    (re.compile(r"^(Chicken or turkey (?:caesar )?garden salad(?: with [a-z ]+)?), chicken and/or turkey.*(, no dressing)$"), r"\1\2"),
+    (re.compile(r",? tomato,? and/or carrots, with or without other vegetables"), ""),
+    (re.compile(r", made with mayonnaise$"), ""),
+    (re.compile(r"^(Egg omelet or scrambled egg.*), made with butter$"), r"\1"),
+)
+# The dishes that are whole foods put together or cooked: a salad without its dressing, eggs as
+# an omelet or scrambled.
+FNDDS_WHOLE = re.compile(r"^Lettuce, salad\b|^Egg omelet or scrambled egg|^Egg white omelet|^Guacamole", re.I)
+# The plain foods filed with the dishes, which SR Legacy has.
+FNDDS_PLAIN = re.compile(r"^(Egg, (whole|white|yolk)|Egg substitute|Egg white, |Duck egg|Goose egg|Quail egg)|, raw$|^Lettuce, cooked$", re.I)
+
+
 # What a few of them are called where they're ordered, which their own words don't reach: FNDDS
 # files a vodka cranberry under "Cape Cod" and a chai latte under "Tea, hot, with milk". Read
 # like the chains' names for a food (`fndds_also`).
@@ -781,14 +836,101 @@ FNDDS_OTHER_NAMES = {
     "Tea, hot, hibiscus": ["Agua de Jamaica"],
     "Iced Tea / Lemonade juice drink": ["Arnold Palmer"],
 }
+# And the dishes, by the names they're cooked and ordered by, keyed by the name the catalog gives
+# each: the survey files a chicken parmesan under "Chicken or turkey parmigiana" and fettuccine
+# alfredo under "Pasta with cream sauce".
+FNDDS_DISH_NAMES = {
+    "Cheese steak sandwich or sub on white": ["Philly cheesesteak", "Cheesesteak"],
+    "Chicken fillet sandwich, fried, from fast food": ["Fried chicken sandwich", "Crispy chicken sandwich"],
+    "Chicken fillet sandwich, grilled, from fast food": ["Grilled chicken sandwich"],
+    "Egg sandwich on English muffin, with sausage": ["Breakfast sandwich", "Sausage egg and cheese"],
+    "Egg sandwich on English muffin, with bacon": ["Bacon egg and cheese"],
+    "Tuna salad sandwich on white, with cheese": ["Tuna melt"],
+    "Pasta with cream sauce, restaurant": ["Fettuccine alfredo", "Alfredo pasta", "Pasta alfredo"],
+    "Pasta with cream sauce and poultry, restaurant": ["Chicken alfredo", "Chicken fettuccine alfredo"],
+    "Pasta with cream sauce and seafood, restaurant": ["Shrimp alfredo", "Seafood alfredo"],
+    "Pasta with cream sauce and meat, restaurant": ["Carbonara", "Spaghetti carbonara", "Pasta carbonara"],
+    "Pasta with tomato-based sauce and meat, restaurant": ["Spaghetti bolognese", "Pasta bolognese", "Spaghetti with meat sauce"],
+    "Pasta with tomato-based sauce, restaurant": ["Spaghetti marinara", "Pasta marinara", "Pasta with marinara sauce"],
+    "Pasta with tomato-based sauce and cheese": ["Baked ziti"],
+    "Macaroni or noodles with cheese": ["Mac and cheese", "Macaroni and cheese"],
+    "Chicken or turkey parmigiana": ["Chicken parmesan", "Chicken parm"],
+    "Veal parmigiana": ["Veal parmesan"],
+    "Eggplant parmesan casserole, regular": ["Eggplant parmesan", "Eggplant parm", "Eggplant parmigiana"],
+    "Chicken curry": ["Chicken tikka masala", "Butter chicken", "Tikka masala"],
+    "Chicken or turkey caesar garden salad, no dressing": ["Chicken caesar salad"],
+    "Chicken or turkey garden salad, no dressing": ["Grilled chicken salad", "Chicken salad with lettuce"],
+    "Lettuce, salad with assorted vegetables, no dressing": ["Garden salad", "Side salad", "House salad", "Tossed salad", "Green salad"],
+    "Roll with meat and/or shrimp, vegetables and rice paper, not fried": ["Spring roll", "Summer roll", "Fresh spring roll"],
+    "Wonton, dumpling or pot sticker, steamed": ["Dumplings", "Steamed dumplings", "Gyoza", "Potstickers"],
+    "Wonton, dumpling or pot sticker, fried": ["Fried dumplings", "Fried wontons", "Fried potstickers"],
+    "Sushi roll, California": ["California roll"],
+    "Sushi roll, salmon": ["Salmon roll", "Salmon avocado roll"],
+    "Sushi roll tuna": ["Tuna roll", "Spicy tuna roll"],
+    "Sushi roll, shrimp": ["Shrimp tempura roll"],
+    "Sushi roll, avocado": ["Avocado roll"],
+    "Sushi roll, vegetable": ["Veggie roll", "Cucumber roll"],
+    "Sushi roll, eel": ["Eel roll", "Unagi roll"],
+    "Sushi, topped with salmon": ["Salmon nigiri", "Nigiri"],
+    "Sushi, topped with tuna": ["Tuna nigiri"],
+    "Soup, New England clam chowder": ["Clam chowder"],
+    "Soup, broccoli cheese": ["Broccoli cheddar soup"],
+    "Gelatin dessert": ["Jello", "Jell-O"],
+    "Potato tots": ["Tater tots"],
+    "Cheese dip": ["Queso", "Queso dip", "Nacho cheese"],
+    "Cheese dip with chili pepper": ["Chile con queso"],
+    "Shrimp in garlic sauce, Puerto Rican style": ["Shrimp scampi", "Garlic shrimp"],
+    "Palak Paneer": ["Saag paneer"],
+    "Stuffed cabbage rolls with beef and rice": ["Stuffed cabbage", "Cabbage rolls"],
+    "Stuffed shells, cheese-filled, with tomato sauce, meatless": ["Stuffed shells"],
+    "Manicotti, cheese-filled, with tomato sauce, meatless": ["Manicotti"],
+    "Doughnut, yeast type": ["Glazed donut", "Glazed doughnut"],
+    "Roll, sweet, cinnamon bun, frosted": ["Cinnamon roll"],
+    "Cake or cupcake, chocolate with chocolate icing, bakery": ["Chocolate cake", "Chocolate cupcake"],
+    "Cake or cupcake, white with white icing, bakery": ["Vanilla cake", "Vanilla cupcake", "Birthday cake", "White cake"],
+    "Chicken or turkey and vegetables, with soy-based sauce": ["Chicken stir fry", "Chicken and vegetable stir fry"],
+    "Beef and vegetables, with soy-based sauce": ["Beef stir fry", "Beef and vegetable stir fry"],
+    "Pork and vegetables, with soy-based sauce": ["Pork stir fry"],
+    "Shrimp and vegetables, with soy-based sauce": ["Shrimp stir fry"],
+    "Tofu and vegetables, with soy-based sauce": ["Tofu stir fry", "Vegetable stir fry", "Veggie stir fry"],
+    "Egg, Benedict": ["Eggs Benedict"],
+    "Pizza with sausage or other meat, from restaurant or fast food": ["Sausage pizza", "Meat lovers pizza"],
+    "Pizza with meat and vegetables, from restaurant or fast food, thin crust": ["Supreme pizza"],
+    "Pizza with meat and fruit, thin crust": ["Hawaiian pizza"],
+    "Pizza, cheese, with vegetables, from restaurant or fast food, thin crust": ["Veggie pizza", "Vegetable pizza"],
+    "Pizza, cheese, from restaurant or fast food, thin crust": ["Margherita pizza"],
+    "Milk shake, fast food, vanilla or other flavors": ["Milkshake", "Vanilla milkshake", "Strawberry milkshake"],
+    "Milk shake, fast food, chocolate": ["Chocolate milkshake"],
+    "Gyro sandwich": ["Gyro"],
+    "Grilled cheese sandwich": ["Grilled cheese"],
+    "Peanut butter and jelly sandwich": ["Peanut butter and jelly", "PB&J"],
+    "Reuben sandwich": ["Reuben"],
+    "French dip sandwich": ["French dip"],
+    "Cuban sandwich": ["Cubano"],
+    "Sloppy joe sandwich, on white bun": ["Sloppy joe"],
+    "Chili hot dog sandwich, on white bun": ["Chili dog", "Chili cheese dog"],
+    "Bacon, lettuce, tomato sandwich on white": ["BLT", "BLT sandwich"],
+    "Barbecue pork sandwich, on white bun": ["Pulled pork sandwich"],
+    "Double cheeseburger, from fast food, 2 small patties": ["Double cheeseburger"],
+    "Beef shish kabob with vegetables": ["Beef kebab", "Shish kebab"],
+    "Chicken or turkey shish kabob with vegetables": ["Chicken kebab"],
+    "Lamb shish kabob with vegetables": ["Lamb kebab"],
+    # And a few the survey files with plain meat, fish and vegetables.
+    'Chicken "wings" with hot sauce, from fast food / restaurant': ["Buffalo wings", "Hot wings", "Buffalo chicken wings"],
+    'Chicken "wings", boneless, with hot sauce, from fast food / restaurant': ["Boneless wings", "Boneless buffalo wings"],
+    "Pork, carnitas": ["Carnitas"],
+    "Spinach, creamed": ["Creamed spinach"],
+    "Shrimp cocktail": ["Prawn cocktail"],
+}
 # The milks a coffee drink "with non-dairy milk" is ordered with.
 PLANT_MILKS = ("oat milk", "almond milk", "soy milk", "coconut milk", "oat", "almond", "soy")
 
 
-def fndds_other_names(description):
-    """A food's other names: the ones listed for it, and for a coffee drink "with non-dairy milk"
-    the drink by each milk ("Oat milk latte", "Iced soy latte")."""
-    names = list(FNDDS_OTHER_NAMES.get(description, []))
+def fndds_other_names(description, name):
+    """A food's other names: the ones listed for it, by the survey's description or the name the
+    catalog gives it, and for a coffee drink "with non-dairy milk" the drink by each milk ("Oat
+    milk latte", "Iced soy latte")."""
+    names = list(FNDDS_OTHER_NAMES.get(description, [])) + FNDDS_DISH_NAMES.get(name, [])
     parts = [part.strip() for part in description.split(",")]
     if parts[0] == "Coffee" and parts[2:] == ["with non-dairy milk"]:
         drink = parts[1].lower()
@@ -822,7 +964,10 @@ def fndds_name(description):
     fat" "not specified as to", which say what a survey answer left out, not what the food is."""
     parts = [part.strip() for part in " ".join(description.split()).split(",")]
     kept = [part for part in parts if part != "NFS" and not part.startswith("NS as to")]
-    return ", ".join(kept) or parts[0]
+    name = ", ".join(kept) or parts[0]
+    for coded, plain in FNDDS_REWORDED:
+        name = coded.sub(plain, name)
+    return name
 
 
 def fndds_foods(path, stats):
@@ -834,10 +979,11 @@ def fndds_foods(path, stats):
         stats["fnddsRecords"] += 1
         name = fndds_name(raw["description"])
         chains = fndds_also(raw)
-        others = fndds_other_names(" ".join(raw["description"].split()))
+        others = fndds_other_names(" ".join(raw["description"].split()), name)
         also = chains + [other for other in others if other not in chains]
         category = (raw.get("wweiaFoodCategory") or {}).get("wweiaFoodCategoryDescription")
-        eaten = category in FNDDS_DRINKS
+        plated = (category in FNDDS_DISHES or category in FNDDS_PREPARED) and not FNDDS_CODED.search(name) and not FNDDS_PLAIN.search(name)
+        eaten = category in FNDDS_DRINKS or plated
         if not FNDDS_RESTAURANT.search(name) and not FNDDS_CHAIN.search(name) and not also and not eaten:
             continue
         # Two answers the coders tell apart can be one food once their notes are gone.
@@ -858,11 +1004,16 @@ def fndds_foods(path, stats):
         dish = re.sub(r"fast food|restaurant", "", name, flags=re.I)
         stats["fnddsIncluded"] += 1
         stats["fnddsDrinks"] += category in FNDDS_DRINKS
+        stats["fnddsDishes"] += category in FNDDS_DISHES or category in FNDDS_PREPARED
         stats["fnddsWithChainNames"] += bool(chains)
         stats["fnddsChainNames"] += len(chains)
         stats["fnddsOtherNames"] += len(also) - len(chains)
         if category in FNDDS_DRINKS and not fast and not FNDDS_RESTAURANT.search(name):
             nova = fndds_drink_processing(category, name)
+        elif FNDDS_WHOLE.search(name) and not re.search(r"cheese|meat|bacon|ham\b|sausage|dressing,|from fast food|restaurant", name, re.I):
+            # A dish is processed as a restaurant's is; a salad of raw vegetables and eggs
+            # scrambled or folded into an omelet are still whole foods.
+            nova = 1
         else:
             nova = usda_processing("fast foods" if fast else "restaurant foods", dish)
         # Kombucha is the one of them with live cultures.
@@ -870,7 +1021,13 @@ def fndds_foods(path, stats):
         yield Food(id=f"usda:{raw['fdcId']}", name=name, brand="", barcode=None, basis="g", nutrients=nutrients,
                    micros=checked_micros(nutrients, micros, {}, stats), portions=fndds_portions(raw)[:12],
                    popularity=0, markets="", nova=nova,
-                   traits=fermented | usda_energy_trait(nutrients, name, stats), also=also)
+                   traits=fermented | (TRAIT_DISH if category in FNDDS_DISHES else 0) | usda_energy_trait(nutrients, name, stats),
+                   also=also)
+    # A dish's other names are listed by the name the catalog gives it, so one that no food has
+    # is a name that changed.
+    unnamed = [name for name in FNDDS_DISH_NAMES if name.lower() not in named]
+    if unnamed:
+        raise SystemExit(f"FNDDS_DISH_NAMES lists foods the catalog doesn't have: {unnamed}")
 
 
 def assess_energy(nutrients, name, kj=None, serving=None):
@@ -999,6 +1156,9 @@ def off_foods(path, limits, stats):
 TRAIT_FERMENTED = 1
 # Calories too far from the macros to trust, with no way to tell which is wrong (food_energy.py).
 TRAIT_ENERGY_SUSPECT = 2
+# A dish of several foods (a sandwich, a casserole, a stir-fry), which the search doesn't take
+# for one of the foods in it.
+TRAIT_DISH = 4
 
 CORE = ("calories", "protein", "carbs", "fat", "fiber", "sodium")
 # A row's values by position, the commonest first so that most rows end early. The order is
