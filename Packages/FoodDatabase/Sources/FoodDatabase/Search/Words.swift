@@ -9,6 +9,11 @@ typealias Fixes = [String: [String]]
 
 let stopWords: Set<String> = ["a", "an", "and", "the", "of", "with", "in", "on", "or", "s", "to", "for", "style"]
 
+/// What a label says of how a food was grown or made, which is no kind of the food and which
+/// USDA never says: an "organic" or "homemade" food is the food, and one that says so a little
+/// ahead. Stemmed.
+let labelWords: Set<String> = Set(["organic", "natural", "homemade"].map(stem))
+
 /// Catalog wording differs from everyday names: USDA files burger buns under "Rolls, hamburger".
 let alternatives: [String: [String]] = [
     "fries": ["fries", "fried"], "bun": ["bun", "roll"], "buns": ["bun", "roll"], "ketchup": ["ketchup", "catsup"],

@@ -429,6 +429,16 @@ extension FoodCatalog {
             read.typed = read.typed ?? query
             return read
         }
+        // A label's word for how a food was grown or made, typed first, says nothing of which
+        // food it is: "organic ranch" is read as "ranch" is, and "homemade mac and cheese" as
+        // mac and cheese. The word stays in the search for the foods that say it.
+        if tokens.count > 1, labelWords.contains(stem(tokens[0].word)), named(1) || tokens.count > 2 {
+            let label = makeString(scalars[tokens[0].start..<tokens[0].end])
+            var read = respell(makeString(scalars[tokens[1].start...]), typing: typing, meant: meant)
+            read.text = "\(label) \(read.text)"
+            if read.typed != nil { read.typed = query }
+            return read
+        }
         // What people type for a food instead of its name: "pb&j".
         if let name = shortNames[tokens.map(\.word).joined(separator: " ")] {
             var read = respell(name, typing: false)
@@ -721,7 +731,7 @@ extension FoodCatalog {
                     // Nor is any of a search a brand where USDA names a food by exactly its
                     // words: a "mai tai" is the drink, whatever mixes are listed under it, and
                     // "eggs benedict" the dish, whoever sells eggs as Benedict.
-                    if isPlainName(words[...]) { continue }
+                    if isPlainName(words.filter { !labelWords.contains(stem($0)) }[...]) { continue }
                     return start..<(start + size)
                 }
                 if isChain(span, catalog, fixes, halfTyped: start + size == words.count) { return start..<(start + size) }

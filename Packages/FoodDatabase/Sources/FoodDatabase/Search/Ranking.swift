@@ -387,7 +387,8 @@ private let plateCuts = stems("sliced diced chopped shredded crumbled grated min
 /// named, where more ways of cutting say nothing of the food.
 func isEasable(_ word: String, seen: Bool = false) -> Bool {
     let said = stem(word)
-    return heats[said] != nil || cutWords.contains(said) || trimWords[said] != nil || rawWords.contains(said) || (seen && plateCuts.contains(said))
+    return heats[said] != nil || cutWords.contains(said) || trimWords[said] != nil || rawWords.contains(said) || labelWords.contains(said)
+        || (seen && plateCuts.contains(said))
 }
 
 /// Whether a word says how a food is cooked.
@@ -419,8 +420,8 @@ struct Ease {
     var unless: String?
     /// The word says the food isn't cooked.
     var raw = false
-    /// A way a model says the food on the plate is cut: any food is spared it, one that says
-    /// it a little ahead.
+    /// A way a model says the food on the plate is cut, or a label's word for how it was grown
+    /// or made: any food is spared it, one that says it a little ahead.
     var plate = false
     /// No food is spared the word: some plain food lists it, or none comes near it. Then it
     /// says which food is meant, and a food without it lacks it, though it's a word for how a
@@ -1548,8 +1549,9 @@ func scoreFoods(
             for word in easable {
                 let said = stem(word)
                 var ease = Ease(said)
-                // How a model saw the food cut says nothing of which food it is.
-                if !search, plateCuts.contains(said) {
+                // How a model saw the food cut says nothing of which food it is, nor does how a
+                // label says it was grown or made: organic chicken breast is chicken breast.
+                if labelWords.contains(said) || (!search && plateCuts.contains(said)) {
                     ease.plate = true
                     eases[word] = ease
                     continue
@@ -1772,7 +1774,9 @@ func scoreFoods(
         var dish: Bool
     }
     let isForm = { (word: String, form: String) in isNumber(form) ? word == form : starts(word, form) }
-    let saidStems = target.map(stem)
+    // What was said, without a label's word for how it was grown or made: "organic manicotti"
+    // is still what the catalog calls "Manicotti".
+    let saidStems = target.map(stem).filter { !labelWords.contains($0) }
     var rows: [Row] = []
     rows.reserveCapacity(keys.count)
     for key in keys {

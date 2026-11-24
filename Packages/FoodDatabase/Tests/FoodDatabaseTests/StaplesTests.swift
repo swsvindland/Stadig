@@ -1186,6 +1186,14 @@ struct EverydayFormTests {
         // Pretzels from a bag are the hard ones, and water is still water.
         #expect(first("pretzels", ["Pretzels, soft", "Pretzels, hard, plain, salted"]) == "Pretzels, hard, plain, salted")
         #expect(first("water", ["Water, tonic", "Water, bottled, generic"]) == "Water, bottled, generic")
+        // How a label says a food was grown or made is no kind of the food: the plain food
+        // before the label that says it, and a plain food that says it a little ahead.
+        let breasts = [
+            OwnWordsTests.food("Organic Chicken Breast", brand: "Kirkland"),
+            OwnWordsTests.food("Chicken, broilers or fryers, breast, meat only, cooked, roasted"),
+        ]
+        #expect(rankSearch("organic chicken breast", breasts).first?.food.brand == nil)
+        #expect(first("homemade granola", ["Granola, with nuts", "Granola, homemade"]) == "Granola, homemade")
         // Shredded meat is the cooked meat, where no plain food lists it shredded.
         #expect(first("shredded chicken", ["Chicken, feet, boiled", "Chicken, broilers or fryers, meat only, cooked, roasted"]).hasSuffix("roasted"))
         #expect(first("shredded cheese", ["Cheese, cheddar", "Cheese, mozzarella, shredded"]) == "Cheese, mozzarella, shredded")
@@ -1680,6 +1688,35 @@ struct StaplesTests {
         // The whole of a search is no brand where the catalog names a dish by those words.
         #expect(catalog.searchCatalog("eggs benedict", known: [:]).brand.isEmpty)
         #expect(catalog.top("eggs benedict", 1).first == "Egg, Benedict")
+    }
+
+    @Test("a staple is still first when it's typed in capitals, with an amount, or as organic or homemade")
+    func reworded() {
+        let ways: [(String, (String) -> String)] = [
+            ("in capitals", { $0.capitalized }), ("with an amount", { "1 cup \($0)" }), ("organic", { "organic \($0)" }),
+            ("homemade", { "homemade \($0)" }),
+        ]
+        for (way, reword) in ways {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in staples {
+                let names = catalog.top(reword(query), 1)
+                if names.first.map({ matches(pattern, $0) }) == true {
+                    first += 1
+                } else {
+                    missed.append("\(reword(query)): \(names.first ?? "nothing")")
+                }
+            }
+            print("Staples \(way): \(first) of \(staples.count) first")
+            #expect(Double(first) >= 0.95 * Double(staples.count), "\(way): \(missed.joined(separator: " | "))")
+        }
+        // A label's word typed first is read past: the rules for a word typed alone, a short
+        // name and a dish's other name still apply.
+        #expect(catalog.top("organic ranch", 1).first?.hasPrefix("Salad dressing, ranch") == true)
+        #expect(catalog.top("homemade mac and cheese", 1).first == "Macaroni or noodles with cheese")
+        #expect(catalog.top("organic eggs benedict", 1).first == "Egg, Benedict")
+        // Typed alone it's a search like any other.
+        #expect(catalog.searchCatalog("organic", known: [:]).text == "organic")
     }
 
     @Test("what's eaten through a day comes first typed and named as a model would")
