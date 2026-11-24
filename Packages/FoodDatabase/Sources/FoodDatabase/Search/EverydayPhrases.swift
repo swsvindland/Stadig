@@ -66,8 +66,8 @@ enum EverydayPhrases {
     ]
 
     /// Foods from the kitchen, the bar and the deli that are logged less often than those: the
-    /// drinks, produce by its variety, condiments, baking ingredients and spices that a search
-    /// finds by these names. They're offered after the rest, and a word is only read as one of
+    /// drinks, produce by its variety, condiments, baking ingredients, spices and dishes that a
+    /// search finds by these names. They're offered after the rest, and a word is only read as one of
     /// them begun from its fourth letter: "cha" isn't champagne yet.
     static let third: [String] = [
         // Drinks.
@@ -100,6 +100,24 @@ enum EverydayPhrases {
         // Spices and seeds.
         "salt", "black pepper", "garlic powder", "onion powder", "chili powder", "curry powder", "paprika", "cumin", "cinnamon", "oregano",
         "turmeric", "nutmeg", "ground ginger", "cayenne pepper", "red pepper flakes", "taco seasoning", "sesame seeds", "hemp seeds",
+        // Dishes, as they're cooked and ordered.
+        "turkey sandwich", "ham sandwich", "tuna melt", "club sandwich", "fish sandwich", "egg sandwich", "veggie burger", "turkey burger",
+        "chili dog", "corn dog", "french dip", "sloppy joe", "chicken quesadilla", "bean burrito", "fish taco", "chicken taco",
+        "chicken enchilada", "tamale", "fajitas", "chicken fajitas", "chimichanga", "spaghetti and meatballs", "fettuccine alfredo",
+        "chicken alfredo", "chow mein", "chicken fried rice", "general tso chicken", "kung pao chicken", "sweet and sour chicken",
+        "beef and broccoli", "sesame chicken", "spring roll", "potstickers", "wonton soup", "california roll", "miso soup", "clam chowder",
+        "minestrone", "french onion soup", "chicken pot pie", "shepherds pie", "meatloaf", "pot roast", "chicken parmesan", "eggplant parmesan",
+        "chicken tikka masala", "butter chicken", "jambalaya", "paella", "risotto", "stuffed peppers", "beef stroganoff", "chicken and rice",
+        "rice and beans", "cobb salad", "garden salad", "chicken caesar salad", "taco salad", "macaroni salad", "pasta salad", "cheese omelet",
+        "eggs benedict", "quiche", "crepes", "biscuits and gravy", "home fries", "onion rings", "scalloped potatoes", "mozzarella sticks",
+        "buffalo wings", "cheese pizza", "calzone", "garlic bread", "chocolate cake", "carrot cake", "pumpkin pie", "pecan pie", "key lime pie",
+        "chocolate chip cookie", "oatmeal cookie", "sugar cookie", "glazed donut", "cinnamon roll", "tiramisu", "ice cream sandwich",
+        "banana split", "bread pudding", "rice pudding", "chocolate pudding", "peach cobbler", "pound cake", "angel food cake", "coffee cake",
+        "vegetable soup", "lentil soup", "split pea soup", "potato soup", "tortilla soup", "egg drop soup", "hot and sour soup",
+        "teriyaki chicken", "chicken stir fry", "beef stir fry", "fish and chips", "fish sticks", "crab cake", "shrimp scampi", "fried shrimp",
+        "stuffed cabbage", "pierogi", "samosa", "empanada", "spinach dip", "deviled eggs", "creamed spinach", "green bean casserole",
+        "baked ziti", "stuffed shells", "manicotti", "tuna casserole", "huevos rancheros", "philly cheesesteak", "pulled pork sandwich",
+        "meatball sub", "reuben", "gumbo", "stromboli", "churro", "baklava",
         // Supplements.
         "whey protein", "fish oil",
     ]

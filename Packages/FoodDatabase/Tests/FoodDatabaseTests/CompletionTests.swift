@@ -67,9 +67,10 @@ struct CompletionTests {
     }
 
     @Test func phrasesDontStopOnAConnector() {
-        let phrases = FoodCompletions.suggest("rice", from: [food("Rice with beans and peppers")])
-        #expect(phrases.contains("rice with beans"))
-        #expect(!phrases.contains("rice with"))
+        // A food with few everyday phrases of its own, so the row's is among those offered.
+        let phrases = FoodCompletions.suggest("quinoa", from: [food("Quinoa with beans and peppers")])
+        #expect(phrases.contains("quinoa with beans"))
+        #expect(!phrases.contains("quinoa with"))
     }
 
     @Test func bracketsAndCommasStayOut() {
