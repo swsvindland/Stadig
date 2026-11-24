@@ -523,6 +523,12 @@ extension FoodCatalog {
                 return respelt
             }
             if let filed = aloneFiled[stem(word)] { also(filed, for: [alone.word]) }
+        } else {
+            // With only whether it's cooked said of it, the word is as good as alone: "cooked
+            // spaghetti" is the pasta too, not the one kind USDA lists as spaghetti. A way of
+            // cooking names a dish: baked ziti.
+            let foods = only.filter { !["cooked", "boiled", "uncooked", "raw", "dry"].contains(tokens[$0].word) }
+            if foods.count == 1, let filed = aloneFiled[stem(tokens[foods[0]].word)] { also(filed, for: [tokens[foods[0]].word]) }
         }
         // A word read as another, half typed or misspelt, is read by that word's own other wordings
         // and spellings: "ketchu" and "ketchep" are on their way to catsup too, "milkshak" to
@@ -711,6 +717,8 @@ extension FoodCatalog {
         let key = "plain \(said)"
         if let remembered = brandish.withLock({ $0[key] }) { return remembered }
         let stems = words.map(stem)
+        // In any order: USDA writes "Thyme, fresh" for fresh thyme.
+        let sorted = stems.sorted()
         let popular = PopularBrands.names.contains { FoodDatabase.words($0).map(stem) == stems }
         // By each word rather than as a phrase: the words searched leave out the "with" of
         // "Pasta with meat sauce".
@@ -720,7 +728,7 @@ extension FoodCatalog {
             && catalogs.contains { catalog in
                 catalog.kind == .generic
                     && catalog.match("{name also}: (\(each))", limit: 40).contains { hit in
-                        FoodDatabase.words(hit.entry.food.name).map(stem) == stems || hit.entry.also.contains { $0.text.titled == stems }
+                        FoodDatabase.words(hit.entry.food.name).map(stem).sorted() == sorted || hit.entry.also.contains { $0.text.titled == stems }
                     }
             }
         brandish.withLock { remembered in

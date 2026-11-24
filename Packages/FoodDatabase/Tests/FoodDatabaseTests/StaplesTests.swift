@@ -845,6 +845,84 @@ let dishes: [(String, String)] = [
     ("edamame", "(?i)edamame"), ("seaweed salad", "(?i)seaweed"),
 ]
 
+/// Produce, herbs, fish and juice said to be fresh, which USDA calls raw: a tenth list.
+let fresh: [(String, String)] = [
+    ("fresh spinach", "^Spinach, raw"), ("fresh basil", "^Basil, fresh"), ("fresh cilantro", "^Coriander \\(cilantro\\) leaves, raw"),
+    ("fresh ginger", "^Ginger root, raw"), ("fresh ginger root", "^Ginger root, raw"), ("fresh garlic", "^Garlic, raw"),
+    ("fresh parsley", "^Parsley, fresh"), ("fresh mint", "^(Peppermint|Spearmint), fresh"), ("fresh dill", "^Dill weed, fresh"),
+    ("fresh thyme", "^Thyme, fresh"), ("fresh rosemary", "^Rosemary, fresh"), ("fresh chives", "^Chives, raw"),
+    ("fresh strawberries", "^Strawberries, raw"), ("fresh blueberries", "^Blueberries, raw"), ("fresh raspberries", "^Raspberries, raw"),
+    ("fresh blackberries", "^Blackberries, raw"), ("fresh cranberries", "^Cranberries, raw"), ("fresh pineapple", "^Pineapple, raw"),
+    ("fresh mango", "^Mangos, raw"), ("fresh peaches", "^Peaches, yellow, raw"), ("fresh cherries", "^Cherries, sweet, raw"),
+    ("fresh figs", "^Figs, raw"), ("fresh apricots", "^Apricots, raw"), ("fresh plums", "^Plums, raw"), ("fresh apple", "^Apples, raw"),
+    ("fresh pear", "^Pears, raw"), ("fresh banana", "^Bananas, raw"), ("fresh orange", "^Oranges, raw"), ("fresh lemon", "^Lemons, raw"),
+    ("fresh lime", "^Limes, raw"), ("fresh grapefruit", "^Grapefruit, raw"), ("fresh grapes", "^Grapes, .*raw"),
+    ("fresh watermelon", "^Watermelon, raw"), ("fresh cantaloupe", "^Melons, cantaloupe, raw"), ("fresh papaya", "^Papayas, raw"),
+    ("fresh kiwi", "^Kiwifruit, green, raw"), ("fresh avocado", "^Avocados, raw"), ("fresh coconut", "^Nuts, coconut meat, raw"),
+    ("fresh tomatoes", "^Tomatoes, red, ripe, raw"), ("fresh tomato", "^Tomatoes, red, ripe, raw"),
+    ("fresh corn", "^Corn, sweet, (white|yellow), raw"), ("fresh green beans", "^Beans, snap, green, raw"), ("fresh peas", "^Peas, green, raw"),
+    ("fresh broccoli", "^Broccoli, raw"), ("fresh cauliflower", "^Cauliflower, raw"), ("fresh carrots", "^Carrots, raw"),
+    ("fresh mushrooms", "^Mushrooms, white, raw"), ("fresh jalapeno", "^Peppers, jalapeno, raw"),
+    ("fresh zucchini", "^Squash, summer, zucchini, includes skin, raw"), ("fresh onion", "^Onions, raw"), ("fresh cabbage", "^Cabbage, raw"),
+    ("fresh beets", "^Beets, raw"), ("fresh asparagus", "^Asparagus, raw"), ("fresh cucumber", "^Cucumber, (peeled|with peel), raw"),
+    ("fresh bell pepper", "^Peppers, sweet, .*raw"), ("fresh kale", "^Kale, raw"), ("fresh lettuce", "^Lettuce, .*raw"),
+    ("fresh celery", "^Celery, raw"), ("fresh eggplant", "^Eggplant, raw"), ("fresh okra", "^Okra, raw"), ("fresh radishes", "^Radishes, raw"),
+    ("fresh arugula", "^Arugula, raw"), ("fresh shallots", "^Shallots, raw"), ("fresh leeks", "^Leeks, \\(bulb and lower leaf-portion\\), raw"),
+    ("fresh fennel", "^Fennel, bulb, raw"), ("fresh brussels sprouts", "^Brussels sprouts, raw"), ("fresh pumpkin", "^Pumpkin, raw"),
+    ("fresh potatoes", "^Potatoes, .*raw"), ("fresh lemon juice", "^Lemon juice, raw"), ("fresh lime juice", "^Lime juice, raw"),
+    ("fresh orange juice", "^Orange juice, raw"), ("fresh squeezed orange juice", "(?i)orange juice"), ("fresh salmon", "^Fish, salmon, .*raw"),
+    ("fresh salmon fillet", "^Fish, salmon, .*raw"), ("fresh tuna", "^Fish, tuna, fresh"), ("fresh cod", "^Fish, cod, Atlantic, raw"),
+    ("fresh shrimp", "^Crustaceans, shrimp, raw"), ("fresh scallops", "^Mollusks, scallop, .*raw"), ("fresh oysters", "^Mollusks, oyster, .*raw"),
+    ("fresh salsa", "^Salsa"), ("fresh mozzarella", "(?i)mozzarella"), ("fresh pasta", "^Pasta, fresh-refrigerated"),
+    ("fresh eggs", "^Egg, whole, raw, fresh"), ("fresh bread", "^Bread, (white|wheat)"), ("fresh fruit salad", "(?i)fruit salad"),
+    ("fresh milk", "^Milk, (whole|reduced fat|lowfat)"), ("fresh strawberry", "^Strawberries, raw"), ("fresh blueberry", "^Blueberries, raw"),
+    ("fresh herbs", "(?i)herb"), ("fresh pineapple chunks", "^Pineapple, raw"), ("fresh sliced tomato", "^Tomatoes, red, ripe, raw"),
+    ("fresh baby spinach", "^Spinach, (raw|baby)"), ("fresh chopped onion", "^Onions, raw"), ("fresh berries", "(?i)berries"),
+]
+
+/// Grains, vegetables, meat and fish said to be cooked: an eleventh list.
+let cookedFoods: [(String, String)] = [
+    ("cooked rice", "^Rice, white, long-grain, regular, enriched, cooked"),
+    ("cooked white rice", "^Rice, white, long-grain, regular, enriched, cooked"), ("cooked brown rice", "^Rice, brown, .*cooked"),
+    ("cooked jasmine rice", "^Rice, white, long-grain, regular, enriched, cooked"),
+    ("cooked basmati rice", "^Rice, white, long-grain, regular, enriched, cooked"), ("cooked wild rice", "^Wild rice, cooked"),
+    ("cooked chicken", "^Chicken, broilers or fryers, meat only, cooked, roasted"),
+    ("cooked chicken breast", "^Chicken, broilers or fryers, breast, meat only, cooked, roasted"),
+    ("cooked chicken thigh", "^Chicken, broilers or fryers, thigh, meat only, cooked, roasted"),
+    ("cooked ground chicken", "^Chicken, ground, .*cooked"), ("cooked chicken wings", "^Chicken, .*wing.*cooked"),
+    ("cooked pasta", "^Pasta, cooked"), ("cooked spaghetti", "^Pasta, cooked"), ("cooked macaroni", "^Pasta, cooked"),
+    ("cooked noodles", "^Noodles, egg, enriched, cooked"), ("cooked egg noodles", "^Noodles, egg, enriched, cooked"),
+    ("cooked rice noodles", "^Rice noodles, cooked"), ("cooked quinoa", "^Quinoa, cooked"),
+    ("cooked oatmeal", "^(Cereals, oats, .*cooked with water|Oatmeal, regular or quick, made with water)"),
+    ("cooked oats", "^(Cereals, oats, .*cooked with water|Oatmeal, regular or quick, made with water)"), ("cooked couscous", "^Couscous, cooked"),
+    ("cooked barley", "^Barley, pearled, cooked"), ("cooked bulgur", "^Bulgur, cooked"), ("cooked millet", "^Millet, cooked"),
+    ("cooked grits", "^(Grits|Cereals, corn grits.*cooked)"), ("cooked spinach", "^Spinach, cooked, boiled"),
+    ("cooked broccoli", "^Broccoli, cooked"), ("cooked carrots", "^Carrots, cooked"), ("cooked potato", "^Potatoes, (boiled|baked)"),
+    ("cooked sweet potato", "^Sweet potato, cooked"), ("cooked green beans", "^Beans, snap, green, cooked, boiled"),
+    ("cooked peas", "^Peas, green, cooked"), ("cooked corn", "^Corn, sweet, (yellow|white), cooked"), ("cooked cabbage", "^Cabbage, cooked"),
+    ("cooked kale", "^Kale, cooked"), ("cooked mushrooms", "^Mushrooms, white, cooked"), ("cooked onions", "^Onions, cooked"),
+    ("cooked zucchini", "^Squash, summer, zucchini, includes skin, cooked"), ("cooked cauliflower", "^Cauliflower, cooked"),
+    ("cooked asparagus", "^Asparagus, cooked"), ("cooked brussels sprouts", "^Brussels sprouts, cooked"),
+    ("cooked squash", "^Squash, (winter|summer), .*cooked"), ("cooked butternut squash", "^Squash, winter, butternut, cooked"),
+    ("cooked collard greens", "^Collards, cooked"), ("cooked eggplant", "^Eggplant, cooked"), ("cooked beets", "^Beets, cooked"),
+    ("cooked okra", "^Okra, cooked"), ("cooked lentils", "^Lentils, mature seeds, cooked"),
+    ("cooked black beans", "^Beans, black, mature seeds, cooked"), ("cooked beans", "^Beans, (black|pinto), mature seeds, cooked"),
+    ("cooked chickpeas", "^Chickpeas .*cooked"), ("cooked kidney beans", "^Beans, kidney, red, mature seeds, cooked"),
+    ("cooked pinto beans", "^Beans, pinto, mature seeds, cooked"), ("cooked ground beef", "^Beef, ground, .*cooked"),
+    ("cooked beef", "^Beef, .*cooked"), ("cooked steak", "^Beef, .*steak.*cooked"), ("cooked pork", "^Pork, fresh, (composite|loin).*cooked"),
+    ("cooked pork chop", "^Pork, fresh, loin.*chops.*cooked"), ("cooked pork tenderloin", "^Pork, fresh, loin, tenderloin.*cooked"),
+    ("cooked ground pork", "^Pork, fresh, ground, cooked"), ("cooked bacon", "^Pork, cured, bacon, cooked"),
+    ("cooked ham", "^(Ham|Pork, cured, ham)"), ("cooked sausage", "^(Sausage|Pork sausage).*cooked"), ("cooked lamb", "^Lamb, .*cooked"),
+    ("cooked veal", "^Veal, .*cooked"), ("cooked turkey", "^Turkey, whole, meat only, cooked"),
+    ("cooked turkey breast", "^Turkey, whole, breast, meat only, cooked"), ("cooked ground turkey", "^Turkey, [Gg]round, cooked"),
+    ("cooked duck", "^Duck, .*cooked"), ("cooked egg", "^Egg, whole, cooked"), ("cooked eggs", "^Egg, whole, cooked"),
+    ("cooked salmon", "^Fish, salmon, .*cooked"), ("cooked shrimp", "^Crustaceans, shrimp, cooked"), ("cooked tilapia", "^Fish, tilapia, cooked"),
+    ("cooked cod", "^Fish, cod, (Pacific|Atlantic), cooked"), ("cooked tuna", "^Fish, tuna, .*cooked"), ("cooked trout", "^Fish, trout, .*cooked"),
+    ("cooked halibut", "^Fish, halibut, .*cooked"), ("cooked catfish", "^Fish, catfish, .*cooked"), ("cooked crab", "^Crustaceans, crab, .*cooked"),
+    ("cooked lobster", "^Crustaceans, lobster, northern, cooked"), ("cooked scallops", "^Mollusks, scallop.*cooked"), ("cooked tofu", "^Tofu"),
+    ("cooked edamame", "^Edamame"),
+]
+
 /// Breakfast, snacks, wraps and what's drunk from a can, as they're logged through a day: each
 /// with a pattern for the plain food that should come first ("oatmeal with milk" FNDDS's oatmeal
 /// made with milk, "pretzels" the hard ones, "shredded chicken" cooked chicken, "sparkling
@@ -1864,6 +1942,76 @@ struct StaplesTests {
         // A plain food reached past the dishes made with it, however many there are.
         #expect(
             catalog.candidates(name: "Shredded chicken", brand: nil).first?.food.name == "Chicken, broilers or fryers, meat only, cooked, roasted")
+    }
+
+    @Test("a food said to be fresh is the raw one, typed and named as a model would")
+    func freshBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in fresh {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Fresh foods \(seen ? "as a model names them" : "typed"): \(first) of \(fresh.count) first")
+            #expect(Double(first) >= 0.95 * Double(fresh.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // Fresh is USDA's raw, wherever the food is filed, and still the word of a food that says it.
+        let zucchini = [OwnWordsTests.food("Squash, summer, zucchini, includes skin, raw"), OwnWordsTests.food("Fresh Zucchini", brand: "Farm")]
+        #expect(rankSearch("fresh zucchini", zucchini).first?.food.name == "Squash, summer, zucchini, includes skin, raw")
+        let basil = [OwnWordsTests.food("Spices, basil, dried"), OwnWordsTests.food("Basil, fresh")]
+        #expect(rankSearch("fresh basil", basil).first?.food.name == "Basil, fresh")
+        // It isn't cooked or smoked, though the food usually is when no more is said.
+        let salmon = ["Fish, salmon, chinook, smoked", "Fish, salmon, Atlantic, wild, raw", "Fish, salmon, Atlantic, wild, cooked, dry heat"]
+            .map { OwnWordsTests.food($0) }
+        #expect(rankSearch("fresh salmon", salmon).first?.food.name == "Fish, salmon, Atlantic, wild, raw")
+        #expect(rankSearch("salmon", salmon).first?.food.name == "Fish, salmon, Atlantic, wild, cooked, dry heat")
+        // A word after only how the food comes is whole: the corn of "fresh corn" isn't cornsalad begun.
+        let corn = [OwnWordsTests.food("Cornsalad, raw"), OwnWordsTests.food("Corn, sweet, white, raw")]
+        #expect(rankSearch("fresh corn", corn).first?.food.name == "Corn, sweet, white, raw")
+        #expect(rankSearch("raw corn", corn).first?.food.name == "Corn, sweet, white, raw")
+        // USDA's name in another order is still its name, not a brand's: "Thyme, fresh".
+        #expect(catalog.top("fresh thyme", 1).first == "Thyme, fresh")
+        // The herb, typed alone or said to be fresh.
+        #expect(catalog.top("mint", 1).first.map { matches("^(Peppermint|Spearmint), fresh$", $0) } == true)
+        // Mashed potatoes made from fresh ones still say so.
+        #expect(catalog.top("fresh mashed potatoes", 1).first == "Potato, mashed, from fresh")
+    }
+
+    @Test("a food said to be cooked is the plain cooked one, typed and named as a model would")
+    func cookedBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in cookedFoods {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Cooked foods \(seen ? "as a model names them" : "typed"): \(first) of \(cookedFoods.count) first")
+            #expect(Double(first) >= 0.95 * Double(cookedFoods.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // The fat trimmed off a cut isn't the meat, and the cuts together are the meat typed alone.
+        let pork = [
+            "Pork, fresh, separable fat, cooked", "Pork, fresh, backribs, separable lean and fat, cooked, roasted",
+            "Pork, fresh, composite of trimmed retail cuts (leg, loin, and shoulder), separable lean only, cooked",
+        ].map { OwnWordsTests.food($0) }
+        #expect(
+            rankSearch("pork", pork).first?.food.name
+                == "Pork, fresh, composite of trimmed retail cuts (leg, loin, and shoulder), separable lean only, cooked")
+        #expect(rankSearch("pork", pork).last?.food.name == "Pork, fresh, separable fat, cooked")
+        #expect(catalog.top("pork", 1).first.map { matches("^Pork, fresh, composite of trimmed retail cuts", $0) } == true)
+        // A plain food from a restaurant is cooked their way, which wasn't asked for.
+        let beans = [
+            OwnWordsTests.food("Green beans, cooked, from restaurant"),
+            OwnWordsTests.food("Beans, snap, green, cooked, boiled, drained, without salt"),
+        ]
+        #expect(rankSearch("cooked green beans", beans).first?.food.name == "Beans, snap, green, cooked, boiled, drained, without salt")
+        #expect(rankSearch("green beans restaurant", beans).first?.food.name == "Green beans, cooked, from restaurant")
+        // With only how it comes said of it, a word is as good as typed alone.
+        let lamb = [OwnWordsTests.food("Lambsquarters, cooked, boiled, drained, with salt"), OwnWordsTests.food("Lamb, ground, cooked, broiled")]
+        #expect(rankSearch("cooked lamb", lamb).first?.food.name == "Lamb, ground, cooked, broiled")
+        #expect(catalog.top("cooked spaghetti", 1).first.map { matches("^Pasta, cooked", $0) } == true)
+        #expect(catalog.top("spaghetti squash", 1).first.map { matches("(?i)spaghetti", $0) } == true)
     }
 
     @Test("a product is first before its name is typed out")

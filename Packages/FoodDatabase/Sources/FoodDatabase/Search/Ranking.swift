@@ -62,7 +62,7 @@ private let neutral = stems(
         + "ascorbic acid potassium sodium magnesium chloride iron "
         // How a cut of meat is graded and trimmed. Not its fat, which USDA also lists as a food
         // ("Pork, fresh, separable fat").
-        + "trimmed lean choice select prime grades boneless "
+        + "trimmed lean choice select prime grades boneless composite retail "
         // How a canned soup is made up, what a canned dish is called and how corn comes.
         + "equal volume entree kernel no")
 
@@ -106,7 +106,7 @@ private let fatWords = stems("fat milkfat lowfat low reduced nonfat lean")
 
 /// USDA's own markers for the typical entry among varieties: "Tomatoes, red, ripe, raw, year round
 /// average", "Soymilk, original and vanilla".
-private let typicalWords = stems("average varieties regular ripe original")
+private let typicalWords = stems("average varieties regular ripe original composite")
 
 /// Words in a name's first part that say nothing of another food.
 private let leadFillers = stems("made from ready eat")
@@ -401,6 +401,10 @@ func isEasable(_ word: String, seen: Bool = false) -> Bool {
 
 /// Whether a word says how a food is cooked.
 func isHeat(_ word: String) -> Bool { heats[stem(word)] != nil }
+
+/// Whether a word only says how a food comes: cooked or raw, how it's cooked, cut or trimmed,
+/// or a label's word for how it was made.
+func saysHow(_ word: String) -> Bool { isEasable(word) || cookedWords.contains(stem(word)) }
 
 /// Words for the form a food comes in, beyond how it's cooked or kept: how fat, sweet or salted,
 /// which colour, with its skin or bone.
@@ -994,9 +998,12 @@ struct CoverageQuery {
                 // creamy oat" is on its way to Oatmilk.
                 // And two letters with a word after them are a word: the "dr" of "dr pepper"
                 // isn't dried begun. Not "mc", which starts a name typed apart ("mc flurry").
+                // A word after only how the food comes is as good as alone: the "corn" of
+                // "fresh corn" isn't cornsalad begun, nor the "lamb" of "cooked lamb" lambsquarters.
                 finished: prefix && word != "mac"
                     && (i < words.count - 1
-                        ? EverydayPhrases.isWord(stem(word)) || isShortWord(word) : words.count == 1 && EverydayPhrases.isWritten(word))
+                        ? EverydayPhrases.isWord(stem(word)) || isShortWord(word)
+                        : words.dropLast().allSatisfy(saysHow) && EverydayPhrases.isWritten(word))
             )
         }
         var mentioned: [String] = []
@@ -1252,6 +1259,9 @@ struct CoverageQuery {
         for (i, w) in text.said.enumerated() where !isNumber(w) && !(level && fatWords.contains(w)) && !asked(w) {
             if w == "seed" && legume { continue }
             if spare.contains(w) { continue }
+            // USDA's "composite of trimmed retail cuts" is the meat, whichever cut: no word a
+            // search for pork didn't ask for. Cold cuts are another matter.
+            if w == "cut", i > 0, text.said[i - 1] == "retail" { continue }
             // Nor is the food's own way of cooking, the same kind as the one said, a less common
             // form of it: stewed chicken for "boiled chicken".
             if variationWords.contains(w), let kind = heats[w], heated.contains(kind) { continue }
@@ -1263,11 +1273,12 @@ struct CoverageQuery {
                 forms.append(w)
             } else if i > 0,
                 (text.said[i - 1] == "no" && w != "dressing" && w != "sauce" && !neutral.contains(w))
-                    || (w == "white" && text.said[i - 1] == "egg")
+                    || (w == "white" && text.said[i - 1] == "egg") || (w == "fat" && text.said[i - 1] == "separable")
             {
                 // A dish without what it usually has is the less common one: a chili dog with
                 // "no bun", a gumbo with "no rice". Not a salad's dressing, which is logged apart.
-                // So is one made with egg whites, where "white" says little of bread.
+                // So is one made with egg whites, where "white" says little of bread, and the
+                // fat trimmed off a cut, which isn't the meat: "Pork, fresh, separable fat".
                 variations += 1
                 forms.append(w)
             } else if !neutral.contains(w) {
@@ -1527,8 +1538,9 @@ func scoreFoods(
     // The word being typed counts as the food it's most likely on its way to: "ground bee" is beef.
     let likely = search ? EverydayPhrases.likely(target) : nil
     let namedAfter = (likely ?? target.last).map { formWords.contains(stem($0)) && !eatenCooked.contains(stem($0)) } ?? false
+    // Nor is one said to be fresh: fresh salmon isn't the smoked one, nor fresh green beans cooked.
     let cooked =
-        !target.contains("raw") && !hints.sides.contains("raw") && !namedAfter
+        !target.contains { rawWords.contains(stem($0)) } && !hints.sides.contains("raw") && !namedAfter
         && (target + target.flatMap { alternatives[$0] ?? [] } + fixValues(fixes, order: target) + (likely.map { [$0] } ?? [])).contains { word in
             let s = stem(word)
             return eatenCooked.contains(s) || (search && length(s) >= 4 && eatenCooked.contains { starts($0, s) })
@@ -2129,6 +2141,16 @@ func scoreFoods(
         if match.missing == 0 { score += boost(known, row.food.id) }
         // Among packaged foods, the ones people scan most: Coca-Cola before a store's cola.
         if hints.popularity { score += 0.12 * row.food.popularity }
+        // A plain food from a restaurant is cooked their way, which wasn't asked for: cooked
+        // green beans are the boiled ones, not the restaurant's with butter. A dish is the
+        // same dish wherever it's from, and so is the entry with what a model said the food
+        // comes with: mashed potatoes with gravy. Only the vegetables the catalog lists as
+        // "cooked, from restaurant": tenders and fries from one are the usual ones.
+        if hints.out == nil, !row.dish, !row.text.branded, match.sides == 0, row.text.said.contains("cooked"),
+            match.extra.contains(where: fromWords.contains)
+        {
+            score -= 0.5
+        }
         // Of the sizes a plain food comes in, where none was asked for, the middle one: a
         // burger's medium patty, a pizza's medium crust.
         if !row.text.branded, match.missing == 0, row.text.titled.contains("medium"), !saidStems.contains("medium") { score += 0.03 }

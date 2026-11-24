@@ -24,6 +24,11 @@ let alternatives: [String: [String]] = [
     // it is already the start of the word.
     "skim": ["skim", "nonfat"], "bbq": ["bbq", "barbecue"], "coke": ["coke", "cola"], "mayo": ["mayo", "mayonnaise"],
     "decaf": ["decaf", "decaffeinated"],
+    // Fresh produce, fish and meat are USDA's "raw": fresh zucchini is "Squash, summer, zucchini,
+    // includes skin, raw". A food that says fresh is still found by it: "Basil, fresh".
+    "fresh": ["fresh", "raw"],
+    // The herb is its spearmint and peppermint.
+    "mint": ["mint", "spearmint", "peppermint"],
     // USDA's kiwi is "Kiwifruit".
     "kiwi": ["kiwi", "kiwifruit"], "kiwis": ["kiwi", "kiwifruit"],
     // Ribs are its spareribs and backribs.
@@ -214,7 +219,7 @@ let typedAlternatives: Set<String> = [
     "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
-    "venison", "calamari", "crawfish",
+    "venison", "calamari", "crawfish", "fresh", "mint",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
