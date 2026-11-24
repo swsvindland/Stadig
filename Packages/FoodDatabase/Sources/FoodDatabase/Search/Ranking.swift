@@ -912,6 +912,9 @@ struct Coverage {
     /// out: "Lasagna with meat" leads with lasagna. And by those words whole.
     var heads: Bool
     var headsWhole: Bool
+    /// What was said names the kind of thing the food's name opens with: a turkey sandwich is
+    /// a sandwich.
+    var kind: Bool
     var others: Int
     /// The words counted in `others`, and the ones of them the name adds after "with" or "and":
     /// other foods the dish comes with.
@@ -1132,6 +1135,14 @@ struct CoverageQuery {
             && ((text.lead.contains(where: asked) && text.lead.prefix { $0 != "made" }.allSatisfy(leading))
                 || (target.count == 1 && (text.group.first.map(asked) ?? false)))
         var heads = leads
+        // What was said is the kind of thing the name opens with: the "sandwich" of "Turkey
+        // sandwich on white" and of "Chicken or turkey sandwich", not the "parmesan" of
+        // "Eggplant parmesan casserole".
+        var kind = false
+        if let opening = text.runs.first {
+            let named = text.said.indices.prefix { text.runs[$0] == opening || text.alternate.contains(text.runs[$0]) }
+            kind = named.last.map { wholly(text.said[$0]) } ?? false
+        }
         // And by whole words, which is how a dish is told from a food its name only starts
         // like: "ch" on its way to chicken isn't a chimichanga's.
         var headsWhole = false
@@ -1347,6 +1358,7 @@ struct CoverageQuery {
             near: near,
             heads: heads,
             headsWhole: headsWhole,
+            kind: kind,
             others: others,
             extra: extra,
             mixed: mixed,
@@ -2010,8 +2022,9 @@ func scoreFoods(
         // comes with: spaghetti and meatballs for "spaghetti with meatballs".
         if row.dish, !row.text.branded, !plain.isEmpty, !match.modifies, match.sides == 0 {
             let more = { (word: String) in !shelf.contains(word) && !row.text.group.contains(word) && !fromWords.contains(word) }
-            // It leads by its own words, whole, or by where it's filed.
-            let itself = match.headsWhole || (leads && !match.heads)
+            // It leads by its own words, whole, or by where it's filed, or is a kind of what
+            // was said: a turkey sandwich for "sandwich", whatever cookies are sandwiches too.
+            let itself = match.headsWhole || (leads && !match.heads) || match.kind
             if !itself || (food && match.mixed.contains(where: more)) || (plainly && match.extra.contains(where: more)) { score -= 1.5 }
         }
         // Every food of a brand searched for alone answers it as well as any other.

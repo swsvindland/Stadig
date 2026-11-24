@@ -1137,6 +1137,11 @@ struct EverydayFormTests {
         #expect(
             top("green beans", plain: ["Beans, snap, green, cooked, boiled"], dishes: ["Green beans, cooked, Szechuan-style"])
                 == "Beans, snap, green, cooked, boiled")
+        // A dish that is a kind of what was said is no dish made with it, whatever else has
+        // the word: a turkey sandwich for "sandwich", where sandwich cookies are cookies.
+        #expect(
+            top("sandwich", plain: ["Cookies, peanut butter sandwich, regular"], dishes: ["Turkey sandwich on white", "Chicken or turkey sandwich"])
+                != "Cookies, peanut butter sandwich, regular")
         // With no plain food by those words, the dishes are ranked as they were: the sauce a
         // pizza is made with isn't one.
         #expect(
