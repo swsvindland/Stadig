@@ -18,6 +18,7 @@ let alternatives: [String: [String]] = [
     // USDA's skim milk is "Milk, nonfat", its Coke "cola". A model's "mayo" is mayonnaise; typed,
     // it is already the start of the word.
     "skim": ["skim", "nonfat"], "bbq": ["bbq", "barbecue"], "coke": ["coke", "cola"], "mayo": ["mayo", "mayonnaise"],
+    "decaf": ["decaf", "decaffeinated"],
     // USDA's kiwi is "Kiwifruit".
     "kiwi": ["kiwi", "kiwifruit"], "kiwis": ["kiwi", "kiwifruit"],
     // Ribs are its spareribs and backribs.
@@ -59,8 +60,6 @@ let dishNames: [(said: [String], catalog: [String])] = [
     (["sourdough", "toast"], ["sourdough", "bread", "toasted"]),
     (["rye", "toast"], ["rye", "bread", "toasted"]),
     (["multigrain", "toast"], ["multigrain", "bread", "toasted"]),
-    // Iced coffee is its brewed coffee, poured over ice; its "iced" coffee is a bottled mocha.
-    (["iced", "coffee"], ["brewed", "coffee"]),
 ]
 
 /// A seen dish in the catalog's wording: "Spaghetti bolognese" → "spaghetti meat sauce".
@@ -139,6 +138,8 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
         (["snap", "pea"], [(0, "podded")]),
         (["snow", "pea"], [(0, "podded")]),
         (["bean", "sprout"], [(0, "mung")]),
+        // A green smoothie is the one with vegetables.
+        (["green", "smoothie"], [(0, "vegetable")]),
     ] as [([String], [(Int, String)])] + pastaShapes.map { ([$0, "pasta"], [(0, "pasta")]) }).map {
         (said: $0.0.map(stem), means: $0.1.map { (at: $0.0, word: stem($0.1)) })
     }
@@ -158,11 +159,11 @@ let writtenNames: Set<String> = Set((["jasmine", "basmati"] + pastaShapes).map(s
 private let aloneMeanings: [String: (name: String, means: String)] = Dictionary(
     uniqueKeysWithValues: [
         ("ranch", "ranch salad dressing"), ("protein", "protein powder"), ("salad", "lettuce salad"),
-        // Spirits: USDA lists rum, vodka and whiskey, and the rest under "distilled, all (gin,
-        // rum, vodka, whiskey)". Champagne is its white table wine, an IPA its higher-alcohol beer.
-        ("gin", "distilled gin"), ("tequila", "distilled all"), ("brandy", "distilled all"), ("cognac", "distilled all"),
-        ("mezcal", "distilled all"), ("bourbon", "distilled whiskey"), ("scotch", "distilled whiskey"), ("sake", "sake rice alcoholic"),
-        ("champagne", "white table wine"), ("prosecco", "white table wine"), ("ipa", "beer higher alcohol"),
+        // Drinks by another name: bourbon is USDA's whiskey, cognac its brandy, mezcal its
+        // tequila and a rosé its rose wine. What a drink is called where it's ordered (a flat
+        // white, a vodka cranberry) is in the catalog, as another name of the food.
+        ("bourbon", "whiskey"), ("cognac", "brandy"), ("mezcal", "tequila"), ("sake", "sake rice alcoholic"), ("rose", "rose wine"),
+        ("ipa", "beer higher alcohol"),
         // And a few foods filed where the word alone doesn't reach: agave is the syrup, yeast
         // the baker's, a habanero a hot chili pepper.
         ("agave", "agave syrup"), ("yeast", "leavening yeast active dry"), ("habanero", "hot chili pepper red raw"),

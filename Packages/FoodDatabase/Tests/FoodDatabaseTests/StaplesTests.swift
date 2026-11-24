@@ -166,7 +166,7 @@ let staples: [(String, String)] = [
     ("hot sauce", "^Sauce, (ready-to-serve, pepper or hot|hot chile)"),
     ("vinegar", "^Vinegar, "),
     // Drinks.
-    ("coffee", "^Beverages, coffee, brewed, prepared with tap water$"),
+    ("coffee", "^Beverages, coffee, brewed, prepared with tap water$|^Coffee(, brewed)?$"),
     ("tea", "^Beverages, tea, black, brewed"),
     ("orange juice", "^Orange juice"),
     ("apple juice", "^Apple juice, canned or bottled"),
@@ -176,9 +176,9 @@ let staples: [(String, String)] = [
     ("wine", "^Alcoholic beverage, wine, table"),
     ("red wine", "^Alcoholic beverage, wine, table, red"),
     ("white wine", "^Alcoholic beverage, wine, table, white"),
-    ("vodka", "^Alcoholic beverage, distilled, vodka"),
-    ("whiskey", "^Alcoholic beverage, distilled, whiskey"),
-    ("espresso", "^Beverages, coffee, brewed, espresso"),
+    ("vodka", "^Alcoholic beverage, distilled, vodka|^Vodka$"),
+    ("whiskey", "^Alcoholic beverage, distilled, whiskey|^Whiskey$"),
+    ("espresso", "^Beverages, coffee, brewed, espresso|^Coffee, espresso$"),
     ("milkshake", "^Milk shakes?, "),
     // Snacks and sweets.
     ("chips", "^Snacks, potato chips, plain"),
@@ -232,12 +232,12 @@ let pantry: [(String, String)] = [
     ("cornbread", "^Bread, cornbread, (prepared|dry mix, prepared)"),
     ("sports drink", "(?i)(gatorade|powerade|sports? drink)"),
     ("american cheese", "^Cheese, pasteurized process, American"),
-    ("black coffee", "^Beverages, coffee, brewed"),
+    ("black coffee", "^Beverages, coffee, brewed|^Coffee, brewed$"),
     ("lasagna", "(?i)lasagna with meat"),
     ("spam", "(?i)spam"),
     ("canned corn", "^Corn, sweet, (yellow|white), canned, (whole kernel|vacuum pack|brine pack)"),
     ("pumpkin puree", "^Pumpkin, canned"),
-    ("condensed milk", "^Milk, canned, condensed, sweetened"),
+    ("condensed milk", "^Milk, canned, condensed, sweetened|^Milk, condensed, sweetened"),
     ("evaporated milk", "^Milk, (canned, )?evaporated"),
     ("refried beans", "^(Refried beans|Beans, refried)"),
     ("olives", "^Olives, ripe, canned"),
@@ -439,9 +439,9 @@ let plates: [(String, String)] = [
     ("Buttered toast", "^Bread, .*toasted"),
     ("Sourdough toast", "^Bread, .*toasted.*sourdough"),
     ("Toast with jam", "^Bread, .*toasted"),
-    ("Black coffee", "^Beverages, coffee, brewed"),
-    ("Coffee with milk", "^Beverages, coffee, brewed"),
-    ("Iced coffee with cream", "^Beverages, coffee, brewed"),
+    ("Black coffee", "^Beverages, coffee, brewed|^Coffee, brewed$"),
+    ("Coffee with milk", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
+    ("Iced coffee with cream", "^Beverages, coffee, brewed|^Iced Coffee, brewed$"),
     ("Orange juice (fresh squeezed)", "^Orange juice"),
     ("Glass of whole milk", "^Milk, whole"),
     ("French fries (medium serving)", "^Potato(es)?, french fri"),
@@ -532,7 +532,8 @@ let products: [(String, String)] = [
     ("mcchicken", "(?i)mcchicken"), ("egg mcmuffin", "Egg McMUFFIN \\["), ("mcflurry", "McFLURRY"),
     ("chick fil a sandwich", "^CHICK-FIL-A, chicken sandwich"), ("chick fil a nuggets", "(?i)chick-fil-a.*(nugget|strips)|chicken nuggets"),
     ("chipotle chicken", "^Chipotle chicken"), ("starbucks latte", "(?i)latte.*Starbucks"),
-    ("starbucks frappuccino", "(?i)frappuccino.*Starbucks"), ("pumpkin spice latte", "(?i)pumpkin spice latte"), ("subway footlong", "(?i)subway"),
+    ("starbucks frappuccino", "(?i)frappuccino.*Starbucks"), ("pumpkin spice latte", "(?i)pumpkin spice latte|^Coffee, Latte, flavored"),
+    ("subway footlong", "(?i)subway"),
     ("taco bell crunchwrap", "(?i)crunchwrap"), ("crunchy taco", "(?i)taco with beef.*hard shell|taco bell"),
     ("mcdonalds fries", "^McDONALD'S, french fries"), ("kfc chicken", "^KFC"),
     ("glazed donut", "(?i)^doughnuts?,.*glazed|glazed (donut|doughnut)"), ("dominos pizza", "^DOMINO'S"), ("oreos", "(?i)oreo"),
@@ -592,18 +593,19 @@ let products: [(String, String)] = [
 /// whiskey)", the scallions for a green onion, the semisweet chocolate for chocolate chips, the
 /// squid for calamari.
 let kitchen: [(String, String)] = [
-    ("beer", "^Alcoholic beverage, beer, regular, all"), ("light beer", "^Alcoholic beverage, beer, light$"),
-    ("ipa", "^Alcoholic beverages, beer, higher alcohol"), ("lager", "^Alcoholic beverage, beer, regular, all"),
-    ("red wine", "^Alcoholic beverage, wine, table, red$"), ("white wine", "^Alcoholic beverage, wine, table, white$"),
-    ("rose wine", "^Alcoholic beverages, wine, rose"), ("champagne", "^Alcoholic beverage, wine, table, white$"),
-    ("vodka", "^Alcoholic beverage, distilled, vodka"), ("tequila", "^Alcoholic beverage, distilled, all .* 80 proof"),
-    ("rum", "^Alcoholic beverage, distilled, (rum|all .* 80 proof)"), ("gin", "^Alcoholic beverage, distilled, (gin|all .* (80|90) proof)"),
-    ("whiskey", "^Alcoholic beverage, distilled, whiskey"), ("bourbon", "^Alcoholic beverage, distilled, whiskey"),
-    ("scotch", "^Alcoholic beverage, distilled, whiskey"), ("brandy", "^Alcoholic beverage, distilled, all .* 80 proof"),
-    ("sake", "^Alcoholic beverage, rice \\(sake\\)"), ("pina colada", "^Alcoholic beverage, pina colada"), ("hard cider", "hard cider"),
-    ("espresso", "^Beverages, coffee, brewed, espresso"), ("hot chocolate", "(?i)hot cocoa|hot chocolate"),
-    ("green tea", "^Beverages, tea, green, brewed"), ("herbal tea", "^Beverages, tea, herb"),
-    ("chamomile tea", "^Beverages, tea, herb, brewed, chamomile"), ("iced tea", "^Tea, iced, brewed, black, unsweetened"),
+    ("beer", "^Alcoholic beverage, beer, regular, all|^Beer$"), ("light beer", "^Alcoholic beverage, beer, light$|^Beer, light$"),
+    ("ipa", "^Alcoholic beverages, beer, higher alcohol|^Beer, higher alcohol"), ("lager", "^Alcoholic beverage, beer, regular, all|^Beer$"),
+    ("red wine", "^Alcoholic beverage, wine, table, red$|^Wine, red$"), ("white wine", "^Alcoholic beverage, wine, table, white$|^Wine, white$"),
+    ("rose wine", "^Alcoholic beverages, wine, rose|^Wine, rose"), ("champagne", "^Wine, sparkling"),
+    ("vodka", "^Alcoholic beverage, distilled, vodka|^Vodka$"), ("tequila", "^Tequila$"),
+    ("rum", "^Alcoholic beverage, distilled, (rum|all .* 80 proof)|^Rum$"), ("gin", "^Gin$"),
+    ("whiskey", "^Alcoholic beverage, distilled, whiskey|^Whiskey$"), ("bourbon", "^Whiskey$"),
+    ("scotch", "^Scotch$"), ("brandy", "^Brandy$"),
+    ("sake", "^Alcoholic beverage, rice \\(sake\\)|^Wine, rice"), ("pina colada", "^Alcoholic beverage, pina colada|^Pina Colada$"),
+    ("hard cider", "hard cider|^Hard cider"),
+    ("espresso", "^Beverages, coffee, brewed, espresso|^Coffee, espresso$"), ("hot chocolate", "(?i)hot cocoa|hot chocolate|^Hot chocolate"),
+    ("green tea", "^Beverages, tea, green, brewed|^Tea, hot, leaf, green$"), ("herbal tea", "^Beverages, tea, herb|^Tea, hot, herbal"),
+    ("chamomile tea", "^Beverages, tea, herb, brewed, chamomile|^Tea, hot, chamomile"), ("iced tea", "^Tea, iced, brewed, black, unsweetened"),
     ("sweet tea", "^Tea, iced, brewed, black, pre-sweetened"), ("lemonade", "^Lemonade|^Beverages, lemonade"), ("apple juice", "^Apple juice"),
     ("cranberry juice", "^Cranberry juice"), ("grapefruit juice", "^Grapefruit juice"), ("tomato juice", "^Tomato juice"),
     ("coconut water", "(?i)coconut water"), ("tonic water", "^Beverages, carbonated, tonic water"),
@@ -642,7 +644,7 @@ let kitchen: [(String, String)] = [
     ("ground ginger", "^Spices, ginger, ground"), ("garlic", "^Garlic, raw"), ("turmeric", "^Spices, turmeric"), ("chia seeds", "^Seeds, chia"),
     ("flax seeds", "^Seeds, flaxseed"), ("hemp seeds", "^Seeds, hemp"), ("pumpkin seeds", "^Seeds, pumpkin"),
     ("sunflower seeds", "^Seeds, sunflower"), ("whey protein", "(?i)whey protein"), ("protein powder", "(?i)protein powder"),
-    ("fish oil", "^Fish oil"), ("prosecco", "^Alcoholic beverage, wine, table, white$"), ("grape juice", "^Grape juice"),
+    ("fish oil", "^Fish oil"), ("prosecco", "^Wine, sparkling"), ("grape juice", "^Grape juice"),
     ("scallions", "^Onions, spring or scallions"), ("plantain", "^Plantains"), ("leeks", "^Leeks"), ("radishes", "^Radishes, raw"),
     ("artichoke", "^Artichokes"), ("okra", "^Okra"), ("collard greens", "^Collards"), ("swiss chard", "^Chard, swiss"),
     ("snap peas", "^Peas, edible-podded"), ("snow peas", "^Peas, edible-podded"), ("bean sprouts", "^Mung beans, mature seeds, sprouted"),
@@ -665,8 +667,53 @@ let kitchen: [(String, String)] = [
     ("swordfish", "^Fish, swordfish"), ("catfish", "^Fish, catfish"), ("clams", "^Mollusks, clam"), ("mussels", "^Mollusks, mussel"),
     ("oysters", "^Mollusks, oyster"), ("calamari", "^Mollusks, squid"), ("octopus", "^Mollusks, octopus"), ("crawfish", "^Crustaceans, crayfish"),
     ("egg noodles", "^Noodles, egg"), ("whipped topping", "(?i)whipped.*topping|topping"), ("evaporated milk", "^Milk, canned, evaporated"),
-    ("buttermilk", "^Milk, buttermilk"), ("eggnog", "^Eggnog"), ("custard", "^Desserts, egg custard|^Egg custards|^Pie, egg custard"),
+    ("buttermilk", "^Milk, buttermilk"), ("eggnog", "^Eggnog|^Eggnog"), ("custard", "^Desserts, egg custard|^Egg custards|^Pie, egg custard"),
     ("pudding", "^Puddings"), ("frozen yogurt", "^Frozen yogurts"),
+]
+
+/// What's ordered at a coffee shop or a bar, each with a pattern for the drink that should come
+/// first: FNDDS's latte, margarita or hard seltzer, by its own name or the one it's ordered by
+/// ("flat white", "vodka cranberry", "oat milk latte").
+let bar: [(String, String)] = [
+    ("latte", "^Coffee, Latte$"), ("cappuccino", "^Coffee, Cappuccino$"), ("mocha", "^Coffee, Cafe Mocha$"),
+    ("cafe mocha", "^Coffee, Cafe Mocha$"), ("macchiato", "^Coffee, macchiato$"),
+    ("americano", "^Coffee, brewed$|^Beverages, coffee, brewed, prepared with tap water"), ("iced latte", "^Coffee, Iced Latte$"),
+    ("iced coffee", "^Iced Coffee, brewed$"), ("cold brew", "^Iced Coffee, brewed$"), ("iced mocha", "^Coffee, Iced Cafe Mocha$"),
+    ("flat white", "^Coffee, Latte$"), ("nonfat latte", "^Coffee, Latte, nonfat$"), ("oat milk latte", "^Coffee, Latte, with non-dairy milk$"),
+    ("decaf latte", "^Coffee, Latte, decaffeinated$"), ("vanilla latte", "^Coffee, Latte, flavored$"),
+    ("decaf coffee", "^Coffee, (brewed, )?decaffeinated|^Beverages, coffee, brewed, prepared with tap water, decaffeinated"),
+    ("instant coffee", "^Coffee, instant, reconstituted|^Beverages, coffee, instant, regular, prepared with water"),
+    ("frappuccino", "(?i)frappuccino|^Frozen coffee drink$"), ("frozen coffee", "^Frozen coffee drink$"),
+    ("cafe con leche", "^Coffee, cafe con leche$"), ("turkish coffee", "^Coffee, Turkish"), ("bubble tea", "^Tea, bubble"),
+    ("boba", "^Tea, bubble"), ("kombucha", "^Tea, kombucha"), ("ginger tea", "^Tea, ginger"),
+    ("black tea", "^Tea, hot, leaf, black$|^Beverages, tea, black, brewed"),
+    ("tea with milk", "^Tea, hot, with milk|^Beverages, tea, black, brewed"),
+    ("hot chocolate", "^Hot chocolate / cocoa(, made with whole or reduced fat \\(2%\\) milk)?$|^Milk, chocolate beverage, hot cocoa"),
+    ("hot cocoa", "^Hot chocolate / cocoa"), ("chocolate milk", "^Chocolate milk$|^Milk, chocolate"), ("strawberry milk", "^Strawberry milk"),
+    ("milkshake", "^Milk shake"), ("chocolate milkshake", "^Milk shake.*chocolate$|^Milk shakes, thick chocolate"),
+    ("vanilla milkshake", "^Milk shake|^Milk shakes, thick vanilla"), ("smoothie", "^Fruit smoothie"), ("fruit smoothie", "^Fruit smoothie"),
+    ("green smoothie", "^Fruit and vegetable smoothie|^Vegetable smoothie"), ("horchata", "^Horchata"), ("eggnog", "^Eggnog"),
+    ("margarita", "^Margarita$"), ("frozen margarita", "^Frozen margarita"), ("martini", "^Martini$"), ("mojito", "^Mojito"),
+    ("old fashioned", "^Old fashioned"), ("manhattan", "^Manhattan"), ("gin and tonic", "^Gin and tonic"), ("rum and coke", "^Rum and cola"),
+    ("whiskey and coke", "^Whiskey and cola"), ("jack and coke", "^Whiskey and cola"), ("vodka soda", "^Vodka and soda"),
+    ("vodka tonic", "^Vodka and tonic"), ("vodka cranberry", "^Cape Cod"), ("screwdriver", "^Screwdriver"),
+    ("whiskey sour", "^Whiskey sour|^Alcoholic beverage, whiskey sour"), ("bloody mary", "^Bloody Mary"), ("mimosa", "^Mimosa"),
+    ("sangria", "^Sangria"), ("moscow mule", "^Moscow mule"), ("white russian", "^White Russian"),
+    ("long island iced tea", "^Long Island iced tea"), ("daiquiri", "^Daiquiri|^Alcoholic beverage, daiquiri"), ("mai tai", "^Mai Tai"),
+    ("tequila sunrise", "^Tequila Sunrise|^Alcoholic beverage, tequila sunrise"), ("pina colada", "^Pina Colada|^Alcoholic beverage, pina colada"),
+    ("cocktail", "^Cocktail$"), ("champagne", "^Wine, sparkling"), ("prosecco", "^Wine, sparkling"), ("sparkling wine", "^Wine, sparkling"),
+    ("red wine", "^Wine, red$|^Alcoholic beverage, wine, table, red$"), ("white wine", "^Wine, white$|^Alcoholic beverage, wine, table, white$"),
+    ("rose", "^Wine, rose|^Alcoholic beverages, wine, rose"), ("wine", "^Wine, red$|^Alcoholic beverage, wine, table, (all|red)$"),
+    ("wine cooler", "^Wine cooler"), ("wine spritzer", "^Wine spritzer"), ("dessert wine", "^Wine, dessert|^Alcoholic beverage, wine, dessert"),
+    ("beer", "^Beer$|^Alcoholic beverage, beer, regular, all"), ("light beer", "^Beer, light$|^Alcoholic beverage, beer, light$"),
+    ("ipa", "^Beer, higher alcohol|^Alcoholic beverages, beer, higher alcohol"),
+    ("craft beer", "^Beer, higher alcohol|^Beer$|^Alcoholic beverage, beer, regular, all"), ("hard seltzer", "^Hard seltzer"),
+    ("white claw", "(?i)hard seltzer"), ("hard cider", "^Hard cider"), ("michelada", "^Michelada"), ("vodka", "^Vodka$"), ("whiskey", "^Whiskey$"),
+    ("bourbon", "^Whiskey$"), ("scotch", "^Scotch$"), ("gin", "^Gin$"), ("rum", "^Rum$"), ("tequila", "^Tequila$"), ("mezcal", "^Tequila$"),
+    ("brandy", "^Brandy$"), ("cognac", "^Brandy$"), ("sake", "^Wine, rice|^Alcoholic beverage, rice \\(sake\\)"), ("liqueur", "^Liqueur$"),
+    ("baileys", "^Liqueur, cream|(?i)baileys"), ("jello shot", "^Gelatin shot, alcoholic"), ("shot of tequila", "^Tequila$"),
+    ("glass of red wine", "^Wine, red$|^Alcoholic beverage, wine, table, red$"),
+    ("pint of beer", "^Beer$|^Alcoholic beverage, beer, regular, all"),
 ]
 
 /// These rank foods made here, so they run without either catalog.
@@ -1072,9 +1119,9 @@ struct EverydayFormTests {
         #expect(first("cocoa powder", ["Beverages, Cocoa mix, powder", "Cocoa, dry powder, unsweetened"]) == "Cocoa, dry powder, unsweetened")
         #expect(first("ginger", ["Spices, ginger, ground", "Ginger root, raw"]) == "Ginger root, raw")
         #expect(first("ground ginger", ["Ginger root, raw", "Spices, ginger, ground"]) == "Spices, ginger, ground")
-        // A word typed alone, by the word itself: "brand" isn't brandy.
-        #expect(aloneName("gin") == "distilled gin" && aloneName("salads") == "lettuce salad" && aloneName("brandy") != nil)
-        #expect(aloneName("brand") == nil && aloneName("ginger") == nil)
+        // A word typed alone, by the word itself and not any that shares its stem.
+        #expect(aloneName("bourbon") == "whiskey" && aloneName("salads") == "lettuce salad" && aloneName("yeast") != nil)
+        #expect(aloneName("yeasty") == nil && aloneName("ginger") == nil)
         // Spirits are 80 proof unless a number says otherwise.
         let spirits = [
             "Alcoholic beverage, distilled, all (gin, rum, vodka, whiskey) 86 proof",
@@ -1325,15 +1372,38 @@ struct StaplesTests {
             #expect(Double(first) >= 0.95 * Double(kitchen.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
         }
         // A word some plain food has whole is that food, not a brand that starts with it.
-        #expect(catalog.top("rum", 1).first.map { matches("distilled, rum", $0) } == true)
+        #expect(catalog.top("rum", 1).first == "Rum")
         // And a word USDA wrote is no typo of a commoner one.
         #expect(catalog.searchCatalog("ghee", known: [:]).fixes.isEmpty)
         // What a food is packed in isn't what it is.
         #expect(catalog.top("tomato juice", 1).first.map { matches("^Tomato juice", $0) } == true)
         #expect(catalog.top("tuna in water", 1).first.map { matches("(?i)tuna.*canned in water", $0) } == true)
         // A food logged less often is read as begun from its fourth letter.
-        #expect(catalog.top("tequ", 1).first.map { matches("distilled, all", $0) } == true)
-        #expect(catalog.top("bour", 1).first.map { matches("distilled, whiskey", $0) } == true)
+        #expect(catalog.top("tequ", 1).first == "Tequila")
+        #expect(catalog.top("bour", 1).first == "Whiskey")
+    }
+
+    @Test("what's ordered at a coffee shop or a bar comes first typed and named as a model would")
+    func barBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in bar {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Drinks \(seen ? "as a model names them" : "typed"): \(first) of \(bar.count) first")
+            #expect(Double(first) >= 0.95 * Double(bar.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // By the name it's ordered by, which the catalog keeps beside its own.
+        #expect(catalog.top("vodka cranberry", 1).first == "Cape Cod")
+        #expect(catalog.top("chai latte", 1).first == "Tea, hot, with milk")
+        #expect(catalog.candidates(name: "Oat milk latte", brand: nil).first?.food.name == "Coffee, Latte, with non-dairy milk")
+        // The whole of a search is no brand where USDA names a food by exactly those words.
+        #expect(catalog.searchCatalog("mai tai", known: [:]).brand.isEmpty)
+        #expect(catalog.top("mai tai", 1).first == "Mai Tai")
+        // A word with a meaning of its own isn't read as the typo it could be.
+        #expect(catalog.top("mezcal", 1).first == "Tequila")
     }
 
     @Test("a product is first before its name is typed out")

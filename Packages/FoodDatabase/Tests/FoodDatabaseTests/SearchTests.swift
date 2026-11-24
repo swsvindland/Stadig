@@ -23,9 +23,9 @@ let searchBasket: [(String, String)] = [
     ("cherry", "^Cherries, sweet, raw"),
     ("avocado", "^Avocados, raw"),
     ("broccoli", "^Broccoli, (raw|cooked)"),
-    ("coffee", "^Beverages, coffee, brewed"),
-    ("cup of coffee", "^Beverages, coffee, brewed"),
-    ("coff", "^Beverages, coffee, brewed"),
+    ("coffee", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
+    ("cup of coffee", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
+    ("coff", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
     ("toast", "^Bread, .*toasted"),
     ("oats", "^(Cereals, oats|Oats)"),
     ("yogurt", "^Yogurt, "),
@@ -147,7 +147,7 @@ let firstResults: [(String, String)] = [
     ("cheeze", "^Cheese, cheddar"),
     ("salmen", "^Fish, salmon, .*cooked"),
     ("quinao", "^Quinoa, cooked"),
-    ("cofee", "^Beverages, coffee, brewed"),
+    ("cofee", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
     ("peanutbutter", "^Peanut butter, "),
     ("icecream", "^Ice creams, "),
     ("protien bar", "(?i)protein bar"),
@@ -175,7 +175,7 @@ struct GenericSearchTests {
             ("cheddar cheese", "^Cheese, cheddar"),
             ("eggs", "^Egg, whole, cooked"),
             ("apples", "^Apples, raw"),
-            ("coffee", "^Beverages, coffee, brewed"),
+            ("coffee", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
             ("chicken br", "^Chicken, broilers or fryers, breast"),
             // Toast is toasted bread; melba toast and rusks are crackers, named when meant.
             ("toast", "^Bread, .*toasted"),
@@ -478,9 +478,8 @@ struct SearchTests {
     func unrelatedPersonal() throws {
         let rice = try #require(catalog.search("white rice").first { $0.food.name == "Rice, white, long-grain, regular, enriched, cooked" }?.food)
         let flat = catalog.search("flat white", personal: [PersonalFood(food: rice, score: 20)])
-        #expect(
-            flat.first.map { matches("(?i)flat white", "\($0.food.name) \($0.food.brand ?? "")") } == true,
-            "\(flat.prefix(3).map(\.food.name))")
+        // USDA's latte, by the name the catalog keeps for it.
+        #expect(flat.first?.food.name == "Coffee, Latte", "\(flat.prefix(3).map(\.food.name))")
         #expect(!flat.contains { $0.food.id == rice.id })
         let breast = try #require(catalog.search("chicken breast").first?.food)
         #expect(!catalog.search("chicken soup", personal: [PersonalFood(food: breast, score: 20)]).contains { $0.food.id == breast.id })
@@ -543,7 +542,7 @@ struct CandidateTests {
             ("hamburger bun", "^Rolls, hamburger", ""),
             ("bacon", "(?i)bacon", "(?i)meatless|turkey|bits|sticks"),
             ("french fries", "(?i)french fr", ""),
-            ("black coffee", "^Beverages, coffee, brewed", ""),
+            ("black coffee", "^Beverages, coffee, brewed|^Coffee(, brewed)?$", ""),
             ("egg", "^Egg, whole", ""),
             ("chicken", "^Chicken", "(?i)feet|giblets|liver|skin"),
             ("white rice", "long-grain", ""),

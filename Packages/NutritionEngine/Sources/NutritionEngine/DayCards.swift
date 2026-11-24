@@ -142,14 +142,17 @@ public enum FoodLabel {
     /// Words that go in front of the head: "Rice, white" is white rice.
     private static let describing: Set<String> = [
         "white", "brown", "wild", "greek", "sweet", "whole", "whole-wheat", "whole-grain", "olive", "coconut", "canola", "peanut", "black", "red",
-        "green", "kidney", "pinto", "wheat", "rye",
+        "green", "kidney", "pinto", "wheat", "rye", "iced", "bubble", "sparkling", "light",
     ]
     private static let meats: Set<String> = ["chicken", "turkey", "beef", "pork", "lamb"]
     /// The part of a meat a person names.
     private static let cuts = ["breast", "thigh", "wing", "drumstick", "leg", "tenderloin", "sirloin", "ribeye", "loin", "chop", "ground"]
     /// Parts that name the food better than the head they're filed under, with the parts they say
-    /// already: "Beverages, coffee, brewed, espresso" is espresso.
-    private static let naming: [String: Set<String>] = ["espresso": ["coffee", "brewed"]]
+    /// already: "Beverages, coffee, brewed, espresso" is espresso, and "Coffee, Latte, nonfat" a latte.
+    private static let naming: [String: Set<String>] = [
+        "espresso": ["coffee", "brewed"], "latte": ["coffee"], "iced latte": ["coffee"], "cappuccino": ["coffee"], "macchiato": ["coffee"],
+        "cafe mocha": ["coffee"], "iced cafe mocha": ["coffee"], "cafe con leche": ["coffee"],
+    ]
     /// USDA's notes in brackets, which say where a food came from or how it was measured rather
     /// than what it is: "(Includes foods for USDA's Food Distribution Program)".
     private static let notes = #"\s*\((?i:includes|for reference)[^)]*\)"#

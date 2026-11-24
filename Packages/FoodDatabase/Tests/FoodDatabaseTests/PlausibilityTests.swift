@@ -76,8 +76,8 @@ struct CatalogPlausibilityTests {
         let powder = try #require(catalog.food(barcode: "7613036675680"))
         #expect(powder.problem == .drinkTooDense)
         #expect(catalog.search("coca cola", limit: 5).allSatisfy { $0.food.isPlausible })
-        // A flat white, not the "Flat White" brand's coffee chocolate.
+        // A flat white is USDA's latte, not the "Flat White" brand's coffee chocolate nor a powder.
         let first = try #require(catalog.search("flat white").first)
-        #expect(first.food.name.lowercased() == "flat white", "\(first.food.name) [\(first.food.brand ?? "")]")
+        #expect(first.food.name == "Coffee, Latte" && first.food.isPlausible, "\(first.food.name) [\(first.food.brand ?? "")]")
     }
 }

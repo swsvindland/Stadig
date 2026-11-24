@@ -81,7 +81,7 @@ private let formWords = stems(
         + "nugget crumb snack tender pie dip sauce dressing seasoning candy cereal granola drink shake smoothie creamer "
         + "popcorn ice gelato frosting filling pudding jam jelly butter batter yogurt milk water flour syrup bagel waffle "
         + "pancake biscuit brownie donut doughnut tart latte tea coffee salad burger wrap burrito taco pizza crust dough "
-        + "noodle pasta broth sausage meatball dumpling bowl kit shell")
+        + "noodle pasta broth sausage meatball dumpling bowl kit shell shot")
 
 /// Words after which a name goes on to another part of the food: "cake with chocolate filling".
 private let partWords: Set<String> = ["with", "and", "or", "in", "on", "filled", "topped", "dipped", "covered", "coated", "stuffed"]
@@ -309,6 +309,8 @@ private let usualPhrases: [(words: [String], usual: Usual)] = [
     ("soy sauce", Usual(["shoyu"], ["tamari", "low", "reduced", "less", "lite", "light", "hydrolyzed"])),
     ("cocoa powder", Usual(["unsweetened"], ["mix", "hot", "sweetened"])),
     ("corn syrup", Usual(["light"], ["dark", "high", "fructose"])),
+    // Iced tea is brewed black tea, unsweetened, unless it's said to be bottled or sweet.
+    ("iced tea", Usual(["black"], "bottled instant green sweetened diet decaffeinated lemonade herbal light".split(separator: " ").map(String.init))),
     // Chocolate chips are its semisweet chocolate, where most foods with the words are cookies.
     (
         "chocolate chip",
@@ -1733,7 +1735,9 @@ func scoreFoods(
             var foods: [String: Int] = [:]
             // Not a brand USDA has many foods of, which it writes in capitals.
             for row in family { for word in Set(row.match.filed) where !row.text.shouted.contains(word) { foods[word, default: 0] += 1 } }
-            shelf = Set(foods.filter { 2 * $0.value >= family.count }.keys)
+            // More than half: every other frozen coffee drink is a mocha one, and none is
+            // filed under "mocha".
+            shelf = Set(foods.filter { 2 * $0.value > family.count }.keys)
         }
         // And the form most of them come in is the form the food comes in: tomato sauce and
         // tomato paste are canned, so "canned" isn't a less common kind of either.

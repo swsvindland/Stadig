@@ -481,7 +481,10 @@ extension FoodCatalog {
         let only = tokens.indices.filter { named($0) && (typing || !countWords.contains(tokens[$0].word)) }
         if only.count == 1 {
             let alone = tokens[only[0]]
-            let word = meant[alone.word] ?? likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
+            // A word with a meaning of its own is that, whatever it could be a typo of:
+            // "mezcal" isn't Mezcla.
+            let word =
+                aloneName(alone.word) != nil ? alone.word : meant[alone.word] ?? likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
             if let meant = aloneName(word) {
                 write(meant, over: alone.start..<alone.end)
                 text += scalars[copied...]
@@ -670,6 +673,27 @@ extension FoodCatalog {
         return brand
     }
 
+    /// Whether the generic catalog names a food by exactly these words, and they aren't one of
+    /// the most scanned brands: "Mai Tai", "Tom Collins", not Cape Cod's chips.
+    private func isPlainName(_ words: ArraySlice<String>) -> Bool {
+        let said = words.joined(separator: " ")
+        let key = "plain \(said)"
+        if let remembered = brandish.withLock({ $0[key] }) { return remembered }
+        let stems = words.map(stem)
+        let popular = PopularBrands.names.contains { FoodDatabase.words($0).map(stem) == stems }
+        let named =
+            !popular
+            && catalogs.contains { catalog in
+                catalog.kind == .generic
+                    && catalog.match("{name}: \"\(said)\"", limit: 10).contains { FoodDatabase.words($0.entry.food.name).map(stem) == stems }
+            }
+        brandish.withLock { remembered in
+            if remembered.count > 500 { remembered.removeAll() }
+            remembered[key] = named
+        }
+        return named
+    }
+
     /// The words at the start or end of a search that name a brand, the most words first: "trader
     /// joes" in "trader joes mini wheats" or "mini wheats trader joes", and "little caesars" before
     /// "little". A search of two or three words that is a brand as a whole ("trader joes", "great
@@ -687,6 +711,9 @@ extension FoodCatalog {
                 if size == 1, start + size == words.count, length(words[start]) < 3 { continue }
                 if let catalog, isBrand(span, catalog, fixes) {
                     if size == 1, isNamed(words, without: start, catalog, fixes) { continue }
+                    // Nor is the whole of a search a brand where USDA names a food by exactly
+                    // those words: a "mai tai" is the drink, whatever mixes are listed under it.
+                    if size == words.count, isPlainName(span) { continue }
                     return start..<(start + size)
                 }
                 if isChain(span, catalog, fixes, halfTyped: start + size == words.count) { return start..<(start + size) }

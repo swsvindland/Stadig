@@ -74,9 +74,9 @@ enum Matching {
     }
 
     /// Two words for one food in a catalog's name: "Jams and preserves" are jam, "Ginger root"
-    /// is ginger and a "Seasoning mix" a seasoning.
+    /// is ginger, a "Seasoning mix" a seasoning and a "Frozen coffee drink" a frozen coffee.
     private static let sameFood: [String: Set<String>] = [
-        "jam": ["preserve"], "preserve": ["jam"], "ginger": ["root"], "seasoning": ["mix"],
+        "jam": ["preserve"], "preserve": ["jam"], "ginger": ["root"], "seasoning": ["mix"], "coffee": ["drink"],
     ]
 
     /// The food's name starts with what was seen: "Blueberries, raw" for blueberries.

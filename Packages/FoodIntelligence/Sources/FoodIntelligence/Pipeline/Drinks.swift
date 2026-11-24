@@ -10,10 +10,11 @@ enum Drinks {
             + "smoothie shake milkshake kombucha beverage beverages drink drinks milk gatorade powerade redbull "
             + "whiskey whisky vodka rum gin tequila bourbon scotch brandy sake champagne soymilk oatmilk almondmilk eggnog kefir "
             + "cognac mezcal liqueur prosecco pilsner stout ipa seltzer tonic colada margarita mojito martini daiquiri sangria mimosa spritz "
-            + "buttermilk horchata lassi")
+            + "buttermilk horchata lassi boba")
             .split(separator: " ")
             .map { FoodText.stem(String($0)) })
-    private static let phrases = Pattern(#"\b(?:flat white|hot chocolate|iced tea|soft drink|energy drink|red bull|sports drink)\b"#)
+    private static let phrases = Pattern(
+        #"\b(?:flat white|hot chocolate|hot cocoa|iced tea|soft drink|energy drink|red bull|sports drink|cold brew|cafe con leche)\b"#)
 
     /// Named after a drink and none: baking soda.
     private static let foods = Pattern(#"\b(?:baking soda|bicarbonate of soda)\b"#)
@@ -33,16 +34,24 @@ enum Drinks {
         food.basis == .ml || isDrink(String(food.name.split(separator: ",").first ?? ""))
     }
 
+    /// What USDA's name says of a drink that isn't one as poured.
+    private static let dry = Pattern(#"\b(?:powder|powdered|mix|dry|concentrate|instant|syrup)\b"#)
+
     /// The match is the same kind of thing as what was seen. A drink's match must be a drink as
-    /// poured; food must not match one. A powder or concentrate of a drink (over 200 kcal per
-    /// 100 g) isn't one as poured, so it's no match for the drink and is one for the powder:
-    /// USDA files whey protein powder under "Beverages".
+    /// poured; food must not match one. A powder or concentrate of a drink isn't one as poured,
+    /// so it's no match for the drink and is one for the powder: USDA files whey protein powder
+    /// under "Beverages".
     static func sameKind(_ name: String, _ food: Food) -> Bool {
-        // Spirits are over that as poured: USDA's vodka is 231 kcal per 100 g.
-        let poured =
-            isDrink(food)
-            && (food.basis != .g || food.nutrients.kcal <= 200 || FoodText.words(Matching.firstPart(food.name)).contains("alcoholic"))
-        return isDrink(name) == poured
+        isDrink(name) == isPoured(food)
+    }
+
+    /// A drink as it's poured. A label's drink over 200 kcal per 100 g is a powder or a
+    /// concentrate of one, whatever its name says. USDA's names say when one is ("Cocoa mix,
+    /// powder"), and its spirits and stronger cocktails are over that as poured: vodka is 231.
+    static func isPoured(_ food: Food) -> Bool {
+        guard isDrink(food) else { return false }
+        if food.basis != .g || food.nutrients.kcal <= 200 { return true }
+        return food.source == .usda && !dry.matches(FoodText.plain(food.name))
     }
 }
 

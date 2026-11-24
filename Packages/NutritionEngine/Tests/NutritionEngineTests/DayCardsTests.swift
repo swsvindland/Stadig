@@ -194,6 +194,17 @@ struct FoodLabelTests {
             ("Chicken, broilers or fryers, meat only, raw", "Chicken", "meat only, raw"),
             ("Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)", "Apples", "raw, with skin"),
             ("Oats (Includes foods for USDA's Food Distribution Program)", "Oats", nil),
+            // What's ordered at a coffee shop or a bar, as FNDDS files it.
+            ("Coffee, Latte, nonfat", "Latte", "nonfat"),
+            ("Coffee, Iced Latte, with non-dairy milk", "Iced Latte", "with non-dairy milk"),
+            ("Coffee, Cappuccino", "Cappuccino", nil),
+            ("Coffee, espresso", "Espresso", nil),
+            ("Tea, iced, brewed, black, unsweetened", "Iced tea", "brewed, black, unsweetened"),
+            ("Tea, bubble", "Bubble tea", nil),
+            ("Wine, sparkling", "Sparkling wine", nil),
+            ("Wine, red", "Red wine", nil),
+            ("Beer, light", "Light beer", nil),
+            ("Margarita", "Margarita", nil),
         ] as [(String, String, String?)])
     func everydayCatalogNamesReadAsTheyreSaid(name: String, title: String, detail: String?) {
         let parts = FoodLabel.parts(of: name)

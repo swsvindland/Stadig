@@ -1,7 +1,7 @@
 """The food catalogs: every source read into one `Food`, written to a file per licence and shipping.
 Python standard library only. Run by Scripts/build-catalogs.py.
 
-usda.db holds SR Legacy and FNDDS's fast-food and restaurant foods, and is bundled from
+usda.db holds SR Legacy and FNDDS's fast-food and restaurant foods and drinks, and is bundled from
 Packages/FoodDatabase/Sources/FoodDatabase/Resources (in git). off.db holds Open Food Facts, under
 the ODbL, and is bundled from Apps/MacroTrack/Catalogs (not in git). The two stay apart so that the
 app works without off.db and so nothing else takes on its licence. Never processes user data.
@@ -81,7 +81,7 @@ COUNTRIES = dict(pair.split(":") for pair in """
 """.split())
 LICENSES = {
     "usda": ("CC0-1.0", "USDA FoodData Central: SR Legacy (April 2018), and the fast-food and restaurant "
-                        "foods of FNDDS 2021-2023 (October 2024). Public domain (CC0 1.0)."),
+                        "foods and the drinks of FNDDS 2021-2023 (October 2024). Public domain (CC0 1.0)."),
     "off": ("ODbL-1.0",
             "Contains information from Open Food Facts (https://world.openfoodfacts.org), which is "
             "made available here under the Open Database License (ODbL) 1.0 "
@@ -744,16 +744,107 @@ def fndds_portions(raw):
     return ([first] if first else []) + [p for p in portions if p is not first]
 
 
+# What FNDDS has that SR Legacy has little of: drinks as they're ordered and poured, at a bar or
+# a coffee shop (a latte, a margarita, a milkshake), by FNDDS's own (What We Eat in America)
+# categories. SR Legacy has brewed coffee, table wine and three spirits.
+FNDDS_DRINKS = {
+    "Coffee", "Tea", "Liquor and cocktails", "Wine", "Beer", "Smoothies and grain drinks", "Milk shakes and other dairy drinks",
+    "Flavored milk, whole", "Flavored milk, reduced fat", "Flavored milk, lowfat", "Flavored milk, nonfat",
+}
+
+
+# What a few of them are called where they're ordered, which their own words don't reach: FNDDS
+# files a vodka cranberry under "Cape Cod" and a chai latte under "Tea, hot, with milk". Read
+# like the chains' names for a food (`fndds_also`).
+FNDDS_OTHER_NAMES = {
+    "Cape Cod": ["Vodka cranberry"],
+    "Screwdriver": ["Vodka and orange juice"],
+    "Greyhound": ["Vodka and grapefruit juice"],
+    "Seven and Seven": ["7 and 7"],
+    "Whiskey and cola": ["Jack and Coke"],
+    "Fruit punch, alcoholic": ["Rum punch"],
+    "Martini, flavored": ["Espresso martini"],
+    "Alcoholic coffee drink": ["Irish coffee"],
+    "Hard seltzer": ["White Claw", "Spiked seltzer"],
+    "Wine, sparkling": ["Champagne", "Prosecco"],
+    "Beer, higher alcohol": ["IPA", "Craft beer"],
+    "Coffee, Latte": ["Flat white", "Caffe latte"],
+    "Coffee, Latte, flavored": ["Vanilla latte", "Caramel latte", "Hazelnut latte", "Pumpkin spice latte"],
+    "Coffee, Iced Latte, flavored": ["Iced vanilla latte", "Iced caramel latte"],
+    "Coffee, macchiato, sweetened": ["Caramel macchiato"],
+    "Coffee, Cafe Mocha": ["Mocha latte"],
+    "Coffee, Iced Cafe Mocha": ["Iced mocha latte"],
+    "Iced Coffee, brewed": ["Cold brew", "Cold brew coffee"],
+    "Coffee, brewed": ["Americano"],
+    "Tea, hot, with milk": ["Chai latte", "Chai tea latte", "Masala chai", "Matcha latte", "Tea latte"],
+    "Tea, bubble": ["Boba", "Boba tea", "Milk tea"],
+    "Tea, hot, hibiscus": ["Agua de Jamaica"],
+    "Iced Tea / Lemonade juice drink": ["Arnold Palmer"],
+}
+# The milks a coffee drink "with non-dairy milk" is ordered with.
+PLANT_MILKS = ("oat milk", "almond milk", "soy milk", "coconut milk", "oat", "almond", "soy")
+
+
+def fndds_other_names(description):
+    """A food's other names: the ones listed for it, and for a coffee drink "with non-dairy milk"
+    the drink by each milk ("Oat milk latte", "Iced soy latte")."""
+    names = list(FNDDS_OTHER_NAMES.get(description, []))
+    parts = [part.strip() for part in description.split(",")]
+    if parts[0] == "Coffee" and parts[2:] == ["with non-dairy milk"]:
+        drink = parts[1].lower()
+        iced, rest = ("Iced ", drink[5:]) if drink.startswith("iced ") else ("", drink)
+        names += [f"{iced}{milk} {rest}".capitalize() for milk in PLANT_MILKS]
+    return names
+
+
+def fndds_drink_processing(category, name):
+    """An estimate of the NOVA group for one of FNDDS's drinks. Spirits and cocktails are 4, as
+    are sweetened, flavoured, bottled and instant drinks and anything made with ice cream or
+    chocolate; beer, wine and cider are 3, with the drinks cultured or cooked at home (kombucha,
+    horchata, atole); coffee, tea and a smoothie of whole fruit, with or without milk, are 1."""
+    n = name.lower()
+    if category == "Liquor and cocktails" or re.search(r"malt beverage|seltzer|wine cooler", n):
+        return 4
+    if category in ("Wine", "Beer"):
+        return 3
+    if category not in ("Coffee", "Tea", "Smoothies and grain drinks"):
+        return 4
+    if re.search(r"(?<!un)sweetened|flavored|mocha|frozen|bottled|canned|instant|lightened|juice drink|bubble|\blight\b|protein|"
+                 r"substitute|chicory|low calorie", n):
+        return 4
+    if re.search(r"kombucha|horchata|atole|licuado|frescavena|corn beverage|cafe con leche", n):
+        return 3
+    return 1
+
+
+def fndds_name(description):
+    """FNDDS's name without its coders' notes: "NFS" is "not further specified" and "NS as to
+    fat" "not specified as to", which say what a survey answer left out, not what the food is."""
+    parts = [part.strip() for part in " ".join(description.split()).split(",")]
+    kept = [part for part in parts if part != "NFS" and not part.startswith("NS as to")]
+    return ", ".join(kept) or parts[0]
+
+
 def fndds_foods(path, stats):
     with zipfile.ZipFile(path) as archive:
         with archive.open(next(n for n in archive.namelist() if n.endswith(".json"))) as src:
             records = json.load(src)["SurveyFoods"]
+    named = set()
     for raw in records:
         stats["fnddsRecords"] += 1
-        name = " ".join(raw["description"].split())
-        also = fndds_also(raw)
-        if not FNDDS_RESTAURANT.search(name) and not FNDDS_CHAIN.search(name) and not also:
+        name = fndds_name(raw["description"])
+        chains = fndds_also(raw)
+        others = fndds_other_names(" ".join(raw["description"].split()))
+        also = chains + [other for other in others if other not in chains]
+        category = (raw.get("wweiaFoodCategory") or {}).get("wweiaFoodCategoryDescription")
+        eaten = category in FNDDS_DRINKS
+        if not FNDDS_RESTAURANT.search(name) and not FNDDS_CHAIN.search(name) and not also and not eaten:
             continue
+        # Two answers the coders tell apart can be one food once their notes are gone.
+        if name.lower() in named:
+            stats["fnddsSameName"] += 1
+            continue
+        named.add(name.lower())
         nutrients, micros = fdc_nutrients(raw)
         if not valid_nutrients(nutrients):
             stats["fnddsExcludedNutrition"] += 1
@@ -761,17 +852,25 @@ def fndds_foods(path, stats):
         # Read as SR Legacy's groups of the same name: fast food is ultra-processed, and a dish
         # from a restaurant, from either ("Black beans, from fast food / restaurant") or a chain's
         # item under a plain name ("Frozen coffee drink") is processed unless its name says
-        # otherwise (nuggets, pizza, cookies). None is a fermented food.
+        # otherwise (nuggets, pizza, cookies). A drink is read by what it is (see
+        # `fndds_drink_processing`).
         fast = FNDDS_CHAIN.search(name) or (re.search("fast food", name, re.I) and not re.search("restaurant", name, re.I))
         dish = re.sub(r"fast food|restaurant", "", name, flags=re.I)
         stats["fnddsIncluded"] += 1
-        stats["fnddsWithChainNames"] += bool(also)
-        stats["fnddsChainNames"] += len(also)
+        stats["fnddsDrinks"] += category in FNDDS_DRINKS
+        stats["fnddsWithChainNames"] += bool(chains)
+        stats["fnddsChainNames"] += len(chains)
+        stats["fnddsOtherNames"] += len(also) - len(chains)
+        if category in FNDDS_DRINKS and not fast and not FNDDS_RESTAURANT.search(name):
+            nova = fndds_drink_processing(category, name)
+        else:
+            nova = usda_processing("fast foods" if fast else "restaurant foods", dish)
+        # Kombucha is the one of them with live cultures.
+        fermented = TRAIT_FERMENTED if re.search(r"\bkombucha\b", name, re.I) else 0
         yield Food(id=f"usda:{raw['fdcId']}", name=name, brand="", barcode=None, basis="g", nutrients=nutrients,
                    micros=checked_micros(nutrients, micros, {}, stats), portions=fndds_portions(raw)[:12],
-                   popularity=0, markets="",
-                   nova=usda_processing("fast foods" if fast else "restaurant foods", dish),
-                   traits=usda_energy_trait(nutrients, name, stats), also=also)
+                   popularity=0, markets="", nova=nova,
+                   traits=fermented | usda_energy_trait(nutrients, name, stats), also=also)
 
 
 def assess_energy(nutrients, name, kj=None, serving=None):

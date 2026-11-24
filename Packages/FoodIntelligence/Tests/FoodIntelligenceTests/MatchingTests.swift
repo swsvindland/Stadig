@@ -137,6 +137,15 @@ struct MatchingTests {
         #expect(Matching.fits("taco seasoning", food("Seasoning mix, dry, taco, original")))
         #expect(!Matching.fits("pancakes", food("Pancake mix, dry")))
         #expect(Matching.fits("buttermilk", food("Milk, buttermilk, fluid, whole", kcal: 62)))
+        // USDA's spirits and stronger cocktails are over 200 kcal per 100 g as poured, where a
+        // label's drink that dense is a powder; its own names say when one is.
+        #expect(Matching.fits("vodka", food("Vodka", kcal: 231)))
+        #expect(Matching.fits("martini", food("Martini", kcal: 222)))
+        #expect(!Matching.fits("cappuccino", food("Cappuccino", brand: "Nescafe", kcal: 429, source: .off)))
+        #expect(!Matching.fits("hot chocolate", food("Beverages, Cocoa mix, powder", kcal: 398)))
+        // A drink by the name it's ordered by.
+        #expect(Drinks.isDrink("cold brew") && Drinks.isDrink("boba") && Drinks.isDrink("cafe con leche"))
+        #expect(Matching.fits("frozen coffee", food("Frozen coffee drink", kcal: 70)))
         // A bowl named last is a dish, as the catalog reads it.
         #expect(FoodText.nameWords("Poke bowl") == ["poke", "bowl"])
         #expect(FoodText.nameWords("Bowl of rice") == ["rice"])
