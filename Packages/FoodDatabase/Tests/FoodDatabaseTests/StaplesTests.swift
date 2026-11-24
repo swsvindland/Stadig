@@ -1690,11 +1690,11 @@ struct StaplesTests {
         #expect(catalog.top("eggs benedict", 1).first == "Egg, Benedict")
     }
 
-    @Test("a staple is still first when it's typed in capitals, with an amount, or as organic or homemade")
+    @Test("a staple is still first when it's typed in capitals, with an amount, or as organic, homemade or plain")
     func reworded() {
         let ways: [(String, (String) -> String)] = [
-            ("in capitals", { $0.capitalized }), ("with an amount", { "1 cup \($0)" }), ("organic", { "organic \($0)" }),
-            ("homemade", { "homemade \($0)" }),
+            ("in capitals", { $0.capitalized }), ("with an amount", { "1 cup \($0)" }), ("as half of one", { "half \($0)" }),
+            ("organic", { "organic \($0)" }), ("homemade", { "homemade \($0)" }), ("plain", { "plain \($0)" }),
         ]
         for (way, reword) in ways {
             var first = 0
@@ -1710,6 +1710,13 @@ struct StaplesTests {
             print("Staples \(way): \(first) of \(staples.count) first")
             #expect(Double(first) >= 0.95 * Double(staples.count), "\(way): \(missed.joined(separator: " | "))")
         }
+        // An amount said without a number is an amount, and "half and half" still the cream.
+        #expect(searchedWords(readQuery("half a sandwich").words) == ["sandwich"])
+        #expect(searchedWords(readQuery("a few crackers").words) == ["crackers"])
+        #expect(searchedWords(readQuery("2x eggs").words) == ["eggs"])
+        #expect(catalog.top("half and half", 1).first == "Cream, fluid, half and half")
+        #expect(catalog.top("plain hamburger", 1).first == "Hamburger")
+        #expect(catalog.top("plain yogurt", 1).first == "Yogurt, plain, whole milk")
         // A label's word typed first is read past: the rules for a word typed alone, a short
         // name and a dish's other name still apply.
         #expect(catalog.top("organic ranch", 1).first?.hasPrefix("Salad dressing, ranch") == true)

@@ -9,10 +9,10 @@ typealias Fixes = [String: [String]]
 
 let stopWords: Set<String> = ["a", "an", "and", "the", "of", "with", "in", "on", "or", "s", "to", "for", "style"]
 
-/// What a label says of how a food was grown or made, which is no kind of the food and which
-/// USDA never says: an "organic" or "homemade" food is the food, and one that says so a little
-/// ahead. Stemmed.
-let labelWords: Set<String> = Set(["organic", "natural", "homemade"].map(stem))
+/// What a label says of how a food was grown or made, or that nothing was added to it, which is
+/// no kind of the food and which USDA mostly leaves unsaid: an "organic", "homemade" or "plain"
+/// food is the food, and one that says so a little ahead. Stemmed.
+let labelWords: Set<String> = Set(["organic", "natural", "homemade", "plain"].map(stem))
 
 /// Catalog wording differs from everyday names: USDA files burger buns under "Rolls, hamburger".
 let alternatives: [String: [String]] = [
@@ -233,6 +233,9 @@ let unitWords: Set<String> = [
     "tablespoons", "teaspoon", "teaspoons", "scoop", "scoops", "can", "cans", "bottle", "bottles", "glass", "glasses",
     "mug", "mugs", "shot", "shots", "pint", "pints", "handful", "handfuls",
 ]
+
+/// An amount said without a number, before the food.
+let vagueAmounts: Set<String> = ["half", "some", "few", "couple", "several"]
 
 /// A size before the food says how much of it: "large egg", "grande latte". "Mini" names products.
 let sizeWords: Set<String> = ["small", "medium", "large", "jumbo", "regular", "tall", "grande", "venti", "dozen"]
@@ -641,6 +644,15 @@ func readQuery(_ query: String) -> QueryReading {
             sizes.append(size)
         } else if isNumber(word) {
             roles.append(writtenIntoName(word, before: text[..<token.start], after: text[token.end...]) ? .name : .amount)
+        } else if roles.allSatisfy({ $0 == .stop }), i + 1 < found.count, vagueAmounts.contains(word),
+            !["and", "half", "n", "baked"].contains(found[i + 1].word)
+        {
+            // How much of a food, said before it without a number: "half a sandwich", "some
+            // rice", "a few crackers". Not "half and half", which is a food.
+            roles.append(.amount)
+        } else if word.count > 1, word.last == "x", isNumber(String(word.dropLast())), i + 1 < found.count {
+            // "2x" is two of what follows.
+            roles.append(.amount)
         } else if measured(word) {
             roles.append(.amount)
         } else if stopWords.contains(word) {

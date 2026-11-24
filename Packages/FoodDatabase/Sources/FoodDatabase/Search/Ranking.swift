@@ -423,6 +423,9 @@ struct Ease {
     /// A way a model says the food on the plate is cut, or a label's word for how it was grown
     /// or made: any food is spared it, one that says it a little ahead.
     var plate = false
+    /// The word is a label's, which puts a food that says it only just ahead: a plain
+    /// hamburger is still the hamburger, not the bun that's listed as plain.
+    var label = false
     /// No food is spared the word: some plain food lists it, or none comes near it. Then it
     /// says which food is meant, and a food without it lacks it, though it's a word for how a
     /// food comes: fried rice isn't USDA's plain cooked rice, nor fresh mozzarella its block.
@@ -451,7 +454,7 @@ struct Ease {
     /// that than one that only says "cooked": USDA's own cooked entry says how, and one that
     /// doesn't is a variety's or a restaurant's.
     func nearness(_ text: FoodText) -> Double {
-        guard let heat else { return plate ? -0.3 : 0 }
+        guard let heat else { return label ? -0.1 : plate ? -0.3 : 0 }
         let kinds = text.cooking.kinds
         return kinds.contains(heat) ? 0.3 : kinds.isEmpty ? 0 : 0.1
     }
@@ -1553,6 +1556,7 @@ func scoreFoods(
                 // label says it was grown or made: organic chicken breast is chicken breast.
                 if labelWords.contains(said) || (!search && plateCuts.contains(said)) {
                     ease.plate = true
+                    ease.label = labelWords.contains(said)
                     eases[word] = ease
                     continue
                 }
@@ -1860,13 +1864,22 @@ func scoreFoods(
     // for potato chips. It isn't held against a food, and a name with nothing else before the
     // food leads with it as "Fish, salmon" does. For a food a model saw as for a typed search:
     // its "sirloin" is beef before veal.
+    // The plain foods that aren't dishes and have every word, as typed, and the dishes named by
+    // the words: whether the words name a food more than a dish. "Liver" does, as many plain
+    // foods have it as dishes are named by it; "chow mein" and "hamburger" don't.
+    let plain = rows.filter { row in
+        !row.dish && !row.text.branded && row.match.missing == 0 && row.match.partial == 0 && !row.match.modifies && !row.match.garnish
+    }
+    let dishes = rows.filter { $0.dish && $0.match.missing == 0 && $0.match.partial == 0 && ($0.match.headsWhole || $0.match.kind) }.count
+    let food = plain.count >= dishes
     var shelf = Set<String>()
     do {
         // The foods that have the words whole, where the last is still being typed and enough
         // do: "ch" on its way to chicken is filed as chicken is.
         // Not the dishes a food is in: a taco made with a flour tortilla doesn't file flour
-        // tortillas under tacos.
-        let every = rows.filter { $0.match.missing == 0 && !$0.text.branded && !$0.dish }
+        // tortillas under tacos. Nor, where the words name a dish, the foods named after it:
+        // the rolls a hamburger comes in don't file hamburgers under "Rolls".
+        let every = rows.filter { $0.match.missing == 0 && !$0.text.branded && $0.dish != food }
         // Of several words, the foods that have them in one part of the name: a coconut cream
         // pudding "prepared with whole milk" isn't a coconut milk.
         let one = every.filter { $0.match.together }
@@ -1938,19 +1951,12 @@ func scoreFoods(
     let filedWhole = { (match: Coverage) in match.missing == 0 && !match.filed.isEmpty && match.filed.allSatisfy(shelf.contains) }
     // Some plain food that isn't a dish has every word, as typed: then a dish that doesn't lead
     // with them is a dish made with the food, and one that adds another food to it is that
-    // food with more. "Parmesan" is the cheese before an eggplant parmesan casserole, "flour
-    // tortilla" the tortilla before a taco in one, "liver" liver before liver and onions. Where
+    // food with more, where the words name a food more than a dish. "Parmesan" is the cheese
+    // before an eggplant parmesan casserole, "flour tortilla" the tortilla before a taco in
+    // one, "liver" liver before liver and onions; chow mein with noodles is chow mein. Where
     // such a food leads with the words, so is any dish that says more: green beans before
     // Szechuan-style ones.
-    let plain = rows.filter { row in
-        !row.dish && !row.text.branded && row.match.missing == 0 && row.match.partial == 0 && !row.match.modifies && !row.match.garnish
-    }
     let plainly = plain.contains { $0.match.leads || filedWhole($0.match) }
-    // Whether the words name a food more than a dish: as many plain foods have them as dishes
-    // lead with them. "Liver" does, so liver and onions is liver with more; "chow mein"
-    // doesn't, so chow mein with noodles is chow mein.
-    let dishes = rows.filter { $0.dish && $0.match.missing == 0 && $0.match.partial == 0 && $0.match.headsWhole }.count
-    let food = plain.count >= dishes
     var ranked: [Ranked] = []
     for (index, row) in rows.enumerated() where row.name > 0 {
         let match = row.match
