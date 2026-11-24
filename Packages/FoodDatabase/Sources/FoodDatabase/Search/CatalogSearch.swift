@@ -819,9 +819,17 @@ extension FoodCatalog {
         // Those foods first, then the ones all the words found. The reading stays the first
         // search's, which the person's own foods are found by.
         var both = search
-        let found = Set(plain.ranked.map(\.food.id))
-        both.ranked = plain.ranked + search.ranked.filter { !found.contains($0.food.id) }
+        both.ranked = Self.joined(plain.ranked, search.ranked)
         both.elsewhere.formUnion(plain.elsewhere)
+        return both
+    }
+
+    /// One list's foods, then the other's that aren't among them, with no score above the one
+    /// before it: a caller that orders by score keeps this order.
+    private static func joined(_ first: [Ranked], _ rest: [Ranked]) -> [Ranked] {
+        let found = Set(first.map(\.food.id))
+        var both = first + rest.filter { !found.contains($0.food.id) }
+        for i in both.indices.dropFirst() { both[i].score = min(both[i].score, both[i - 1].score) }
         return both
     }
 
@@ -992,6 +1000,23 @@ extension FoodCatalog {
     /// Candidates for a seen food: the person's own that match it, then catalog searches from most
     /// to least specific until 40 are found, ranked with the typed search's scorer.
     func matchCandidates(name said: String, brand: String, personal: [PersonalFood], limit: Int) -> [FoodMatch] {
+        let known = Self.known(personal)
+        var ranked = rankCandidates(name: said, brand: brand, personal: personal, known: known, out: nil)
+        // A restaurant chain's food the catalogs have none of is that food as such a place
+        // serves it, as when it's typed (see `searchCatalog`): fries from Five Guys are fries
+        // from fast food, before another brand's fries or the plain ones.
+        if let place = Chains.place(of: brand), !ranked.prefix(5).contains(where: \.mine) {
+            let plain = rankCandidates(name: said, brand: "", personal: personal, known: known, out: place)
+            if let first = plain.first, first.name >= 1, !FoodText(first.food).branded { ranked = Self.joined(plain, ranked) }
+        }
+        return ranked.prefix(limit).map {
+            FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil, named: $0.name >= 1, called: $0.called)
+        }
+    }
+
+    /// The candidates in order. With `out`, the food as such a place serves it comes first (see
+    /// `RankHints.out`).
+    private func rankCandidates(name said: String, brand: String, personal: [PersonalFood], known: [String: Double], out: String?) -> [Ranked] {
         // What a model says comes with a food or about it ("toast with butter", "yogurt
         // (nonfat)") is kept apart from its name: the food is found by its own words. A brand's
         // product keeps its whole name.
@@ -1008,7 +1033,6 @@ extension FoodCatalog {
         // A brand's "Ranch" is its own; only a plain "ranch" is the salad dressing.
         let name = brand.isEmpty ? read.text : read.typed ?? read.text
         let seen = Named(name: name, brand: brand)
-        let known = Self.known(personal)
         var pool: [Entry] = []
         var ids: [String: Int] = [:]
         // The person's own foods are found by the name as it was said: their Ranch Dip by "ranch".
@@ -1081,8 +1105,8 @@ extension FoodCatalog {
         let plain = brand.isEmpty ? nil : catalogQueries(Named(name: name, brand: "")).first
         let kind = plain.flatMap { profile(for: nameWords(name), search($0), fixes: read.also, respelt: read.forms) }
         var ranked = scoreFoods(
-            seen, pool, known: known, hints: RankHints(fixes: read.also, away: away, profile: kind, respelt: read.forms, sides: sides, beside: beside)
-        )
+            seen, pool, known: known,
+            hints: RankHints(fixes: read.also, away: away, profile: kind, respelt: read.forms, sides: sides, beside: beside, out: out))
         // Where the reading added words to the name, the person's own foods are ranked by it as
         // it was said: their Ranch Dip has "ranch", not "salad dressing".
         if own != name {
@@ -1099,9 +1123,6 @@ extension FoodCatalog {
         let head = ranked.prefix(brand.isEmpty ? 8 : 6)
         let generic = brand.isEmpty ? [] : ranked.dropFirst(head.count).filter { !FoodText($0.food).branded }.prefix(2)
         let first = Set((head + generic).map(\.index))
-        let ordered = Array(head) + Array(generic) + ranked.filter { !first.contains($0.index) }
-        return ordered.prefix(limit).map {
-            FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil, named: $0.name >= 1, called: $0.called)
-        }
+        return Array(head) + Array(generic) + ranked.filter { !first.contains($0.index) }
     }
 }

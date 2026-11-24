@@ -50,30 +50,50 @@ enum Chains {
         .filter { !$0.words.isEmpty }
         .sorted { $0.words.count > $1.words.count }
 
+    /// Whether a word is a chain's, stemmed. `owning` are the words written as possessives,
+    /// which the words have lost: "chili's" is Chili's and "chili" the food.
+    private static func isWord(_ word: String, of chain: Chain, _ theirs: String, owning: Set<String>) -> (named: Bool, possessive: Bool) {
+        // "Mo" is what the stem of Moe's comes to, not a way of writing it.
+        if stem(word) == theirs { return (chain.words.count > 1 || length(word) > 2, false) }
+        let possessive = owning.contains(word) && stem(word + "s") == theirs
+        return (possessive, possessive)
+    }
+
+    /// The words written with "'s" after them.
+    private static func possessives(in text: String) -> Set<String> {
+        let written = tokens(text)
+        return Set(written.indices.dropLast().filter { written[$0 + 1] == "s" }.map { written[$0] })
+    }
+
+    private static func place(of chain: Chain) -> String { stem(seated.contains(chain.name) ? "restaurant" : "fast") }
+
     /// The chain a search starts or ends with, when other words are typed with it. `typed` is
-    /// the search as written, which shows a possessive the words have lost: "chili's" is the
-    /// chain and "chili" the food.
+    /// the search as written, which shows a possessive.
     static func chain(in searched: [String], typed: String = "") -> Found? {
-        let written = tokens(typed)
-        let owning = Set(written.indices.dropLast().filter { written[$0 + 1] == "s" }.map { written[$0] })
+        let owning = possessives(in: typed)
         for chain in chains where chain.words.count < searched.count {
             for span in [0..<chain.words.count, (searched.count - chain.words.count)..<searched.count] {
-                var possessive = false
-                let named = zip(searched[span], chain.words).allSatisfy { word, theirs in
-                    // "Mo" is what the stem of Moe's comes to, not a way of typing it.
-                    if stem(word) == theirs { return chain.words.count > 1 || length(word) > 2 }
-                    guard owning.contains(word), stem(word + "s") == theirs else { return false }
-                    possessive = true
-                    return true
-                }
-                guard named else { continue }
-                if let menu = sells[chain.name], !possessive {
+                let read = zip(searched[span], chain.words).map { isWord($0, of: chain, $1, owning: owning) }
+                guard read.allSatisfy(\.named) else { continue }
+                if let menu = sells[chain.name], !read.contains(where: \.possessive) {
                     let rest = searched.indices.filter { !span.contains($0) }.map { stem(searched[$0]) }
                     guard rest.contains(where: menu.contains) else { return nil }
                 }
-                return Found(span: span, place: stem(seated.contains(chain.name) ? "restaurant" : "fast"))
+                return Found(span: span, place: place(of: chain))
             }
         }
         return nil
+    }
+
+    /// The kind of place a brand is, as a model names one for a food, when it's a chain or
+    /// starts with one's name: "Chick-fil-A", "Chili's", "Panera Bread", "Five Guys Burgers and
+    /// Fries". The word its foods say in the catalog, as `Found.place`.
+    static func place(of brand: String) -> String? {
+        let said = words(brand)
+        guard !said.isEmpty else { return nil }
+        let owning = possessives(in: brand)
+        return chains.first { chain in
+            chain.words.count <= said.count && zip(said, chain.words).allSatisfy { isWord($0, of: chain, $1, owning: owning).named }
+        }.map(place(of:))
     }
 }

@@ -1725,7 +1725,7 @@ struct StaplesTests {
         #expect(catalog.top("eggs benedict", 1).first == "Egg, Benedict")
     }
 
-    @Test("a chain typed with a food it has none of in the catalogs is that food from a restaurant")
+    @Test("a chain typed or named with a food it has none of in the catalogs is that food from a restaurant")
     func chains() {
         // The chain's words at either end of the search, with something else typed.
         #expect(Chains.chain(in: ["five", "guys", "fries"])?.span == 0..<2)
@@ -1763,8 +1763,31 @@ struct StaplesTests {
             let names = catalog.top(query, 1)
             #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.first ?? "nothing")")
         }
+        // The foods all the words found follow, none scored above the restaurant's.
+        let listed = catalog.search("five guys fries")
+        #expect(listed.count > 5 && zip(listed, listed.dropFirst()).allSatisfy { $0.score >= $1.score })
         // A word left that no plain food has as typed isn't read as another: a footlong isn't oolong.
         #expect(catalog.top("subway footlong", 1).first.map { matches("(?i)subway|footlong", $0) } == true)
+        // A model names the chain as the food's brand: the same reading, and no score above
+        // the one before it, so the meal pipeline keeps the order.
+        #expect(Chains.place(of: "Chick-fil-A") == "fast" && Chains.place(of: "Chili's") == "restaurant")
+        #expect(Chains.place(of: "Panera Bread") == "fast" && Chains.place(of: "Chipotle") == "fast")
+        #expect(Chains.place(of: "Chili") == nil && Chains.place(of: "Kraft") == nil && Chains.place(of: "") == nil)
+        for (name, brand, pattern) in [
+            ("French fries", "Five Guys", "^Potato, french fries, fast food$"),
+            ("Chicken nuggets", "Chick-fil-A", "^Chicken nuggets, from fast food$"),
+            ("Breadsticks", "Olive Garden", "^Breadsticks, soft, fast food / restaurant$"), ("Burrito bowl", "Chipotle", "^Burrito bowl$"),
+            ("Wings", "Wingstop", "^Chicken \"wings\", plain, from fast food / restaurant$"),
+        ] {
+            let found = catalog.candidates(name: name, brand: brand)
+            #expect(found.first.map { matches(pattern, $0.food.name) } == true, "\(name) from \(brand): \(found.first?.food.name ?? "nothing")")
+            #expect(zip(found, found.dropFirst()).allSatisfy { $0.score >= $1.score })
+        }
+        // The chain's own item where the catalog has it.
+        #expect(catalog.candidates(name: "French fries", brand: "McDonald's").first?.food.name == "McDONALD'S, french fries")
+        #expect(
+            catalog.candidates(name: "Pepperoni pizza", brand: "Domino's").first.map { matches("^DOMINO'S 14\" Pepperoni Pizza", $0.food.name) }
+                == true)
         // The person's own food is found by everything typed, and comes before the restaurant's.
         let own = Food(id: "custom:fries", name: "Five Guys Little Fries", basis: .g, nutrients: .zero, source: .custom)
         let found = catalog.search("five guys fries", personal: [PersonalFood(food: own, score: 1)])

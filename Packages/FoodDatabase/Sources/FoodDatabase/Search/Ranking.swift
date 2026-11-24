@@ -1985,6 +1985,7 @@ func scoreFoods(
     // Szechuan-style ones.
     let plainly = plain.contains { $0.match.leads || filedWhole($0.match) }
     var ranked: [Ranked] = []
+    let maker = seen.brand.isEmpty ? [] : words(seen.brand).map(stem)
     for (index, row) in rows.enumerated() where row.name > 0 {
         let match = row.match
         var filedUnder = 0.0
@@ -2134,7 +2135,8 @@ func scoreFoods(
         // From a chain, the food as a restaurant serves it, before the one named by exactly
         // the words said: their fries have the fryer's oil. The words that say so don't count
         // against it, and of two the one from that kind of place is a little ahead.
-        if let place = hints.out, !row.text.branded, match.missing == 0, row.text.titled.contains(where: fromWords.contains) {
+        // The food itself, not a dish of theirs it's in: a bagel isn't their bagel with egg and sausage.
+        if let place = hints.out, !row.text.branded, match.missing == 0, match.mixed.isEmpty, row.text.titled.contains(where: fromWords.contains) {
             score += 1.5 + (row.dish ? 0 : 0.25 * Double(match.extra.filter(fromWords.contains).count)) + (row.text.titled.contains(place) ? 0.1 : 0)
         }
         // Another country's product, as much as four words the search didn't ask for: it still
@@ -2143,7 +2145,10 @@ func scoreFoods(
         // Numbers that can't be right (kilojoules as calories, a powder's values on a drink) rank
         // below every plausible food that matches as well.
         if !row.plausible { score -= 1.5 }
-        let mine = asked && row.mine && row.name >= 1 && (row.food.source == .usda || row.like >= 0)
+        // The brand a model named is on the food as its brand, not a word of its name: a label
+        // called "Chipotle Mango Burrito Bowl" isn't Chipotle's.
+        let made = asked || (!maker.isEmpty && maker.allSatisfy { word in row.text.own.contains { same($0, word) || same(word, $0) } })
+        let mine = made && row.mine && row.name >= 1 && (row.food.source == .usda || row.like >= 0)
         ranked.append(Ranked(food: row.food, score: score, index: index, name: row.name, called: row.called, mine: mine))
     }
     // A generic food found by a chain's name for it stands in for the chain's item, so the chain's
