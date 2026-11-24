@@ -205,6 +205,37 @@ struct FoodLabelTests {
             ("Wine, red", "Red wine", nil),
             ("Beer, light", "Light beer", nil),
             ("Margarita", "Margarita", nil),
+            // A dish filed with its kind after it is said the other way round.
+            ("Soup, tomato", "Tomato soup", nil),
+            ("Soup, chicken noodle, canned", "Chicken noodle soup", "canned"),
+            (
+                "Soup, tomato, canned, prepared with equal volume water, commercial", "Tomato soup",
+                "canned, prepared with equal volume water, commercial"
+            ),
+            ("Soup, New England clam chowder", "New England clam chowder", nil),
+            ("Soup, pho, with meat", "Pho", "with meat"),
+            ("Pie, apple", "Apple pie", nil),
+            ("Pizza, cheese, from restaurant or fast food", "Cheese pizza", "from restaurant or fast food"),
+            ("Taco, fish", "Fish taco", nil),
+            ("Burrito, chicken, cheese", "Chicken burrito", "cheese"),
+            ("Cookie, chocolate chip", "Chocolate chip cookie", nil),
+            (
+                "Cookies, chocolate chip, commercially prepared, regular, higher fat", "Chocolate chip cookies",
+                "commercially prepared, regular, higher fat"
+            ),
+            ("Ice creams, vanilla", "Vanilla ice cream", nil),
+            ("Sushi roll, California", "California roll", nil),
+            ("Rice, fried, with chicken", "Fried rice", "with chicken"),
+            ("Potato, mashed", "Mashed potato", nil),
+            ("Potato, french fries", "French fries", nil),
+            ("Cookie, brownie", "Brownie", nil),
+            // Not by how it comes, is made or is sold.
+            ("Pizza, no cheese, thin crust", "Pizza", "no cheese, thin crust"),
+            ("Burrito, with beans, cheese", "Burrito", "with beans, cheese"),
+            ("Taco, corn tortilla, beef, cheese", "Taco", "corn tortilla, beef, cheese"),
+            ("Pizza, cheese topping, regular crust, frozen, cooked", "Pizza", "cheese topping, regular crust, frozen, cooked"),
+            ("Pancakes, plain", "Pancakes", "plain"),
+            ("Chicken or turkey parmigiana", "Chicken or turkey parmigiana", nil),
         ] as [(String, String, String?)])
     func everydayCatalogNamesReadAsTheyreSaid(name: String, title: String, detail: String?) {
         let parts = FoodLabel.parts(of: name)
