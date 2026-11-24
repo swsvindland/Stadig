@@ -662,6 +662,10 @@ def fdc_nutrients(raw):
     return nutrients, micros
 
 
+# What an SR Legacy dish is called where its own name says where it's from first.
+USDA_OTHER_NAMES = {
+    "Restaurant, family style, spaghetti and meatballs": ["Spaghetti and meatballs", "Spaghetti with meatballs"],
+}
 # SR Legacy's groups of dishes: a burger, a restaurant's lo mein, a frozen lasagna.
 USDA_DISHES = {"fast foods", "restaurant foods", "meals, entrees, and side dishes"}
 
@@ -691,7 +695,8 @@ def usda_foods(path, stats):
                    micros=checked_micros(nutrients, micros, {}, stats), portions=portions[:12], popularity=0,
                    markets="", nova=usda_processing(category, name),
                    traits=((TRAIT_FERMENTED if fermented else 0) | (TRAIT_DISH if (category or "").lower() in USDA_DISHES else 0)
-                           | usda_energy_trait(nutrients, name, stats)))
+                           | usda_energy_trait(nutrients, name, stats)),
+                   also=USDA_OTHER_NAMES.get(name, []))
 
 
 # SR Legacy's chain items are from 2006 to 2012; FNDDS, the survey database that replaced its
@@ -755,6 +760,10 @@ def fndds_portions(raw):
 FNDDS_DRINKS = {
     "Coffee", "Tea", "Liquor and cocktails", "Wine", "Beer", "Smoothies and grain drinks", "Milk shakes and other dairy drinks",
     "Flavored milk, whole", "Flavored milk, reduced fat", "Flavored milk, lowfat", "Flavored milk, nonfat",
+    # And what's poured from a can, a bottle or a fountain: a cola, an energy drink by its
+    # brand, a sports drink, sparkling water, a protein shake, lemonade and the juice drinks.
+    "Soft drinks", "Diet soft drinks", "Sport and energy drinks", "Diet sport and energy drinks", "Flavored or carbonated water",
+    "Nutritional beverages", "Fruit drinks", "Other diet drinks",
 }
 
 
@@ -775,6 +784,7 @@ FNDDS_PREPARED = {
     "Eggs and omelets", "Pancakes, waffles, French toast", "Cakes and pies", "Cookies and brownies", "Doughnuts, sweet rolls, pastries",
     "Ice cream and frozen dairy desserts", "Pudding", "Gelatins, ices, sorbets", "French fries and other fried white potatoes",
     "Mashed potatoes and white potato mixtures", "Fried vegetables", "Dips, gravies, other sauces", "Tomato-based condiments",
+    "Oatmeal", "Grits and other cooked cereals",
 }
 # The survey's own distinctions, which no one logging a plate makes: which vegetables a mixture
 # had by the survey's classes, which fat it was cooked in where butter, oil or none says it,
@@ -799,11 +809,14 @@ FNDDS_REWORDED = (
     (re.compile(r"^(Chicken or turkey (?:caesar )?garden salad(?: with [a-z ]+)?), chicken and/or turkey.*(, no dressing)$"), r"\1\2"),
     (re.compile(r",? tomato,? and/or carrots, with or without other vegetables"), ""),
     (re.compile(r", made with mayonnaise$"), ""),
+    (re.compile(r"^((?:Oatmeal|Grits|Cream of wheat|Cornmeal mush).*), no added fat$"), r"\1"),
     (re.compile(r"^(Egg omelet or scrambled egg.*), made with butter$"), r"\1"),
 )
 # The dishes that are whole foods put together or cooked: a salad without its dressing, eggs as
-# an omelet or scrambled.
-FNDDS_WHOLE = re.compile(r"^Lettuce, salad\b|^Egg omelet or scrambled egg|^Egg white omelet|^Guacamole", re.I)
+# an omelet or scrambled, oats and grits as they're cooked; not with what's added or sold made.
+FNDDS_WHOLE = re.compile(r"^Lettuce, salad\b|^Egg omelet or scrambled egg|^Egg white omelet|^Guacamole|^Oatmeal|^Grits|^Cream of (wheat|rice)|"
+                         r"^Cornmeal mush|^Whole wheat cereal, cooked|^Cereal, cooked", re.I)
+FNDDS_NOT_WHOLE = re.compile(r"cheese|meat|bacon|ham\b|sausage|dressing,|fast food|restaurant|flavored|reduced sugar|chocolate", re.I)
 # The plain foods filed with the dishes, which SR Legacy has.
 FNDDS_PLAIN = re.compile(r"^(Egg, (whole|white|yolk)|Egg substitute|Egg white, |Duck egg|Goose egg|Quail egg)|, raw$|^Lettuce, cooked$", re.I)
 
@@ -850,8 +863,23 @@ FNDDS_DISH_NAMES = {
     "Pasta with cream sauce and poultry, restaurant": ["Chicken alfredo", "Chicken fettuccine alfredo"],
     "Pasta with cream sauce and seafood, restaurant": ["Shrimp alfredo", "Seafood alfredo"],
     "Pasta with cream sauce and meat, restaurant": ["Carbonara", "Spaghetti carbonara", "Pasta carbonara"],
-    "Pasta with tomato-based sauce and meat, restaurant": ["Spaghetti bolognese", "Pasta bolognese", "Spaghetti with meat sauce"],
-    "Pasta with tomato-based sauce, restaurant": ["Spaghetti marinara", "Pasta marinara", "Pasta with marinara sauce"],
+    "Pasta with tomato-based sauce and meat, restaurant": [
+        "Spaghetti bolognese", "Pasta bolognese", "Spaghetti with meat sauce", "Pasta with meat sauce"],
+    "Pasta with tomato-based sauce and poultry, restaurant": ["Chicken pasta", "Pasta with chicken"],
+    "Chili with meat and beans": ["Beef chili", "Chili con carne", "Chili with beans"],
+    "Chili with chicken and beans": ["Turkey chili", "Chicken chili"],
+    "Chili, white": ["White chicken chili"],
+    "Oatmeal, regular or quick, made with milk": ["Oatmeal with milk", "Oatmeal made with milk", "Porridge with milk"],
+    "Oatmeal, regular or quick, made with water": ["Oatmeal with water", "Oatmeal made with water", "Porridge"],
+    "Oatmeal, regular or quick, made with non-dairy milk": ["Oatmeal with almond milk", "Oatmeal with oat milk", "Oatmeal with soy milk"],
+    "Water, carbonated, plain": ["Sparkling water", "Seltzer", "Seltzer water", "Soda water"],
+    "Water, carbonated, flavored": ["Flavored sparkling water", "Flavored seltzer"],
+    "Soft drink, fruit flavored, caffeine free": ["Lemon lime soda", "Orange soda"],
+    "Nutritional drink or shake, high protein, ready-to-drink": ["Protein shake", "Protein drink"],
+    "Nutritional drink or shake, ready-to-drink": ["Meal replacement shake", "Nutrition shake"],
+    "Lemonade, fruit juice drink": ["Lemonade"],
+    "Pasta with tomato-based sauce, restaurant": [
+        "Spaghetti marinara", "Pasta marinara", "Pasta with marinara sauce", "Spaghetti with tomato sauce", "Pasta with tomato sauce"],
     "Pasta with tomato-based sauce and cheese": ["Baked ziti"],
     "Macaroni or noodles with cheese": ["Mac and cheese", "Macaroni and cheese"],
     "Chicken or turkey parmigiana": ["Chicken parmesan", "Chicken parm"],
@@ -860,7 +888,8 @@ FNDDS_DISH_NAMES = {
     "Chicken curry": ["Chicken tikka masala", "Butter chicken", "Tikka masala"],
     "Chicken or turkey caesar garden salad, no dressing": ["Chicken caesar salad"],
     "Chicken or turkey garden salad, no dressing": ["Grilled chicken salad", "Chicken salad with lettuce"],
-    "Lettuce, salad with assorted vegetables, no dressing": ["Garden salad", "Side salad", "House salad", "Tossed salad", "Green salad"],
+    "Lettuce, salad with assorted vegetables, no dressing": [
+        "Garden salad", "Side salad", "House salad", "Tossed salad", "Green salad", "Lettuce salad"],
     "Roll with meat and/or shrimp, vegetables and rice paper, not fried": ["Spring roll", "Summer roll", "Fresh spring roll"],
     "Wonton, dumpling or pot sticker, steamed": ["Dumplings", "Steamed dumplings", "Gyoza", "Potstickers"],
     "Wonton, dumpling or pot sticker, fried": ["Fried dumplings", "Fried wontons", "Fried potstickers"],
@@ -941,10 +970,14 @@ def fndds_other_names(description, name):
 
 def fndds_drink_processing(category, name):
     """An estimate of the NOVA group for one of FNDDS's drinks. Spirits and cocktails are 4, as
-    are sweetened, flavoured, bottled and instant drinks and anything made with ice cream or
-    chocolate; beer, wine and cider are 3, with the drinks cultured or cooked at home (kombucha,
-    horchata, atole); coffee, tea and a smoothie of whole fruit, with or without milk, are 1."""
+    are soft, sports, energy and nutritional drinks, juice drinks, sweetened, flavoured, bottled
+    and instant drinks and anything made with ice cream or chocolate; beer, wine and cider are 3,
+    with the drinks cultured or cooked at home (kombucha, horchata, atole); coffee, tea, plain
+    sparkling water, unsweetened coconut water and a smoothie of whole fruit, with or without
+    milk, are 1."""
     n = name.lower()
+    if re.search(r"^water, carbonated, plain|^coconut water, unsweetened", n):
+        return 1
     if category == "Liquor and cocktails" or re.search(r"malt beverage|seltzer|wine cooler", n):
         return 4
     if category in ("Wine", "Beer"):
@@ -1010,9 +1043,10 @@ def fndds_foods(path, stats):
         stats["fnddsOtherNames"] += len(also) - len(chains)
         if category in FNDDS_DRINKS and not fast and not FNDDS_RESTAURANT.search(name):
             nova = fndds_drink_processing(category, name)
-        elif FNDDS_WHOLE.search(name) and not re.search(r"cheese|meat|bacon|ham\b|sausage|dressing,|from fast food|restaurant", name, re.I):
-            # A dish is processed as a restaurant's is; a salad of raw vegetables and eggs
-            # scrambled or folded into an omelet are still whole foods.
+        elif FNDDS_WHOLE.search(name) and not FNDDS_NOT_WHOLE.search(name):
+            # A dish is processed as a restaurant's is; a salad of raw vegetables, eggs
+            # scrambled or folded into an omelet and oats or grits cooked in water or milk are
+            # still whole foods.
             nova = 1
         else:
             nova = usda_processing("fast foods" if fast else "restaurant foods", dish)

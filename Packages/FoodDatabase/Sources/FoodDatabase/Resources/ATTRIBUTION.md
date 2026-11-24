@@ -5,8 +5,9 @@
 USDA SR Legacy, April 2018, and from FNDDS 2021–2023 (the Food and Nutrient Database for Dietary
 Studies, October 2024) its fast-food and restaurant foods, the foods it files chains' menu items
 under, with FNDDS's names for those items, its drinks (coffee, tea, wine, beer, spirits and
-cocktails, smoothies, shakes and flavored milk) and its dishes (sandwiches, mixed dishes, soups,
-salads, pizza, egg dishes, baked goods and desserts); both from
+cocktails, smoothies, shakes, flavored milk, soft, sports, energy and nutritional drinks, juice
+drinks and carbonated water) and its dishes (sandwiches, mixed dishes, soups, salads, pizza, egg
+dishes, cooked cereals, baked goods and desserts); both from
 [FoodData Central](https://fdc.nal.usda.gov/download-datasets/). USDA describes its data as
 [public domain / CC0](https://fdc.nal.usda.gov/api-guide/).
 

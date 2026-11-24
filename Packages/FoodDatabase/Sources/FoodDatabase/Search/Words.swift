@@ -112,7 +112,8 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
         // Monterey Jack is its "Cheese, monterey".
         (["monterey", "jack"], [(1, "monterey")]),
         // Jasmine and basmati rice are its white rice, which it lists cooked; a label's is the
-        // dry rice in the bag.
+        // dry rice in the bag. Sticky rice is its glutinous rice.
+        (["sticky", "rice"], [(0, "glutinous")]),
         (["jasmine", "rice"], [(0, "white")]),
         (["basmati", "rice"], [(0, "white")]),
         // A tuna steak is its fresh tuna, not the canned; a burger patty its ground beef patty.
@@ -189,6 +190,8 @@ let shortNames: [String: String] = [
     // Red pepper flakes are its red or cayenne pepper.
     "red pepper flakes": "spices pepper red cayenne", "crushed red pepper": "spices pepper red cayenne",
     "cayenne pepper": "spices pepper red cayenne", "cayenne": "spices pepper red cayenne",
+    // A cheese stick is string cheese.
+    "cheese stick": "string cheese", "cheese sticks": "string cheese",
     // Mac and cheese is macaroni and cheese, not the one named "Easy Mac".
     "mac and cheese": "macaroni and cheese", "mac n cheese": "macaroni and cheese", "mac cheese": "macaroni and cheese",
 ]

@@ -189,6 +189,12 @@ private let everydayVarieties: [String: Usual] = [
         "banana taro bagel tortilla corn pita apple plantain kale veggie vegetable sweet chocolate rice pea lentil bean"
             .split(separator: " ").map(String.init)),
     "popcorn": Usual(["popped"], "cake caramel cheese microwave kettle chicken".split(separator: " ").map(String.init)),
+    // Water is still water, from a bottle or the tap.
+    "water": Usual(
+        ["bottled", "tap"],
+        "tonic carbonated flavored coconut sparkling seltzer enhanced vitamin rose fruit sweetened".split(separator: " ").map(String.init)),
+    // Pretzels from a bag are the hard ones.
+    "pretzel": Usual(["hard"], "soft chocolate yogurt coating coated filled combos gluten bun roll".split(separator: " ").map(String.init)),
     // Bacon is cured pork and a steak is beef, which USDA files under "Pork" and "Beef"; the kinds
     // filed under the word itself are the unusual ones ("Bacon, turkey", "Game meat, bison, steak").
     "bacon": Usual(["pork"], "turkey canadian beef meatless bits vegetarian chicken".split(separator: " ").map(String.init)),
@@ -359,9 +365,10 @@ let heats: [String: Heat] = {
 }()
 
 /// How a food is cut, or how young it was picked, which USDA mostly leaves unsaid: a salmon
-/// fillet is its salmon, broccoli florets its broccoli and baby spinach its spinach. Not "diced"
-/// or "sliced", which more often name what's sold in a can.
-private let cutWords = stems("fillet filet slice piece chunk floret spear halves stalk clove cutlet baby")
+/// fillet is its salmon, broccoli florets its broccoli, baby spinach its spinach and shredded
+/// chicken its cooked chicken. Not "diced" or "sliced", which more often name what's sold in a
+/// can, nor "pulled", which names a dish of its own.
+private let cutWords = stems("fillet filet slice piece chunk floret spear halves stalk clove cutlet baby shredded")
 
 /// What a food said to be trimmed mustn't have: "skinless" chicken is USDA's "meat only", not its
 /// "meat and skin".
@@ -1109,10 +1116,13 @@ struct CoverageQuery {
             for (i, w) in text.said.enumerated() { words[text.runs[i], default: []].append(w) }
             for run in text.alternate {
                 guard let after = words[run], let before = words[run - 1], let first = after.first, let last = before.last else { continue }
+                // What comes before the first name is said of both too: a "Rice dessert or
+                // salad with fruit" is a rice salad, no fruit salad.
+                let length = min(before.count, after.count)
                 if wholly(last) {
-                    spare += after.prefix(before.count).filter { !asked($0) }
+                    spare += after.prefix(length).filter { !asked($0) }
                 } else if wholly(first) {
-                    spare += before.filter { !asked($0) }
+                    spare += before.suffix(length).filter { !asked($0) }
                 }
             }
         }
@@ -1996,8 +2006,9 @@ func scoreFoods(
         if !row.text.branded, !leads, match.garnish || match.added.contains(where: { !shelf.contains($0) }) { score -= 1.5 }
         // A dish made with the food, or the food with more (see `plain`). Not one already
         // counted as named after the food ("Gyro sandwich" for "gyro"), nor a chain's own
-        // item, which is asked for by the chain.
-        if row.dish, !row.text.branded, !plain.isEmpty, !match.modifies {
+        // item, which is asked for by the chain, nor one that has what a model said the food
+        // comes with: spaghetti and meatballs for "spaghetti with meatballs".
+        if row.dish, !row.text.branded, !plain.isEmpty, !match.modifies, match.sides == 0 {
             let more = { (word: String) in !shelf.contains(word) && !row.text.group.contains(word) && !fromWords.contains(word) }
             // It leads by its own words, whole, or by where it's filed.
             let itself = match.headsWhole || (leads && !match.heads)
@@ -2081,9 +2092,11 @@ func scoreFoods(
     // drink. The chain's own has the name's every word outside brackets, so a Big Mac "(without
     // Big Mac Sauce)" isn't Big Mac sauce.
     // A chain's name for an item, that is: a label listed under "Carnita" isn't whose
-    // carnitas the catalog's other name "Carnitas" means.
+    // carnitas the catalog's other name "Carnitas" means, nor is a label that shouts "PASTA"
+    // with no brand the maker of its "Pasta with chicken".
     let isTheirs = { (row: Row, other: FoodText) in
         row.other == nil && row.name == 1 && !row.text.own.isEmpty && other.titled.count > row.text.own.count
+            && (row.food.source == .usda || row.food.brand != nil)
             && row.text.own.allSatisfy { w in other.titled.contains { same($0, w) } }
             && other.titled.allSatisfy { w in row.text.own.contains { same(w, $0) } || row.text.said.contains { same(w, $0) } }
     }

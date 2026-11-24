@@ -58,10 +58,11 @@ struct MatchLimits {
     var branded: Int
 
     static let few = MatchLimits(generic: 30, branded: 30)
-    /// The generic catalog is small, so a deeper limit there reaches plain foods that rank below variations.
-    static let typed = MatchLimits(generic: 150, branded: 60)
+    /// The generic catalog is small, so a deeper limit there reaches plain foods that rank below
+    /// variations, and below the dishes made with them: a thousand of its foods have "chicken".
+    static let typed = MatchLimits(generic: 500, branded: 60)
     /// What AI matching reads per query.
-    static let matching = MatchLimits(generic: 100, branded: 30)
+    static let matching = MatchLimits(generic: 400, branded: 30)
     /// Enough foods to say what a name's foods are usually like.
     static let sample = MatchLimits(generic: 12, branded: 12)
 }
@@ -682,11 +683,14 @@ extension FoodCatalog {
         if let remembered = brandish.withLock({ $0[key] }) { return remembered }
         let stems = words.map(stem)
         let popular = PopularBrands.names.contains { FoodDatabase.words($0).map(stem) == stems }
+        // By each word rather than as a phrase: the words searched leave out the "with" of
+        // "Pasta with meat sauce".
+        let each = words.map { "\"\($0)\"" }.joined(separator: " AND ")
         let named =
             !popular
             && catalogs.contains { catalog in
                 catalog.kind == .generic
-                    && catalog.match("{name also}: \"\(said)\"", limit: 10).contains { hit in
+                    && catalog.match("{name also}: (\(each))", limit: 40).contains { hit in
                         FoodDatabase.words(hit.entry.food.name).map(stem) == stems || hit.entry.also.contains { $0.text.titled == stems }
                     }
             }
@@ -932,7 +936,10 @@ extension FoodCatalog {
         // What a model says comes with a food or about it ("toast with butter", "yogurt
         // (nonfat)") is kept apart from its name: the food is found by its own words. A brand's
         // product keeps its whole name.
-        let (food, sides, beside) = brand.isEmpty ? seenName(said) : (said, [], [])
+        var (food, sides, beside) = brand.isEmpty ? seenName(said) : (said, [], [])
+        // What the catalog names by exactly the words seen is that food, whatever it's said to
+        // come with: its "Pasta with meat sauce", its "Biscuit with gravy".
+        if !sides.isEmpty, isPlainName(words(said)[...]) { (food, sides, beside) = (said, [], []) }
         // A plain dish is looked up in the catalog's words.
         let dish = brand.isEmpty ? catalogDish(food) : said
         // Its names are read as a typed search's are: written the way most labels write them
