@@ -735,9 +735,12 @@ extension FoodCatalog {
     /// "little". A search of two or three words that is a brand as a whole ("trader joes", "great
     /// value") is that brand, not "trader" and a food called "joes"; a brand of one word alone
     /// ("kirkland", or "pop" on its way to Pop-Tarts) is searched as any other.
-    private func findBrand(_ words: [String], _ fixes: Fixes) -> Range<Int>? {
+    private func findBrand(_ words: [String], _ fixes: Fixes, typed: String = "") -> Range<Int>? {
         guard words.count > 1 else { return nil }
         let catalog = branded.first
+        // A restaurant chain is the brand, whatever the catalogs have of it, and no more of the
+        // search: the second "taco" of "taco bell taco" is the food.
+        if let chain = Chains.chain(in: words, typed: typed) { return chain.span }
         for size in stride(from: min(words.count, 3), through: 1, by: -1) {
             for start in Set([0, words.count - size]).sorted() {
                 let span = words[start..<(start + size)]
@@ -797,6 +800,33 @@ extension FoodCatalog {
     }
 
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
+        let search = searchCatalog(typed, known: known, out: nil)
+        // A restaurant chain typed with a food: where no food found is the chain's and has the
+        // other words, it's that food as a restaurant serves it. "Five guys fries" are fries
+        // from fast food and "kfc mashed potatoes" mashed potatoes from one, with what the
+        // words found after them.
+        let searched = searchedWords(readQuery(search.text).words)
+        guard let chain = Chains.chain(in: searched, typed: typed) else { return search }
+        // Its own item, or a plain food the catalog keeps the chain's name for: a Dairy Queen
+        // Blizzard is the soft serve blended with candy.
+        let theirs = search.ranked.prefix(5).contains(where: \.mine)
+        if theirs { return search }
+        let food = searched.indices.filter { !chain.span.contains($0) }.map { searched[$0] }.joined(separator: " ")
+        let plain = searchCatalog(food, known: known, out: chain.place)
+        // A plain food with every word left, as typed: a Subway "footlong" isn't oolong tea
+        // misspelt, nor a Wendy's Baconator the crisps flavoured like one.
+        guard let first = plain.ranked.first, first.name >= 1, plain.fixes.isEmpty, !FoodText(first.food).branded else { return search }
+        // Those foods first, then the ones all the words found. The reading stays the first
+        // search's, which the person's own foods are found by.
+        var both = search
+        let found = Set(plain.ranked.map(\.food.id))
+        both.ranked = plain.ranked + search.ranked.filter { !found.contains($0.food.id) }
+        both.elsewhere.formUnion(plain.elsewhere)
+        return both
+    }
+
+    /// With `out`, the food as such a place serves it comes first (see `RankHints.out`).
+    private func searchCatalog(_ typed: String, known: [String: Double], out: String?) -> CatalogSearch {
         guard !catalogs.isEmpty else { return CatalogSearch(text: typed) }
         // A name labels write as one word or as two is searched the usual way, and the other too;
         // a word that can only have been a typo is read by the names of the word it meant.
@@ -839,7 +869,7 @@ extension FoodCatalog {
         let phrases =
             reading.counts.map { "\"\($0.0) \(stem($0.1))\"*" } + reading.sizes.map { "(\"\($0)\" OR \"\($0)in\"*)" }
             + (reading.letter.isEmpty ? [] : ["\"\(reading.letter[0]) \(reading.letter[1])\""])
-        let span = findBrand(searched, fixes)
+        let span = findBrand(searched, fixes, typed: typed)
         let brand = span.map { Array(searched[$0]) } ?? []
         let named = span.map { span in searched.indices.filter { !span.contains($0) }.map { searched[$0] } } ?? []
         let product = named.filter { !isNumber($0) }
@@ -921,7 +951,7 @@ extension FoodCatalog {
             query, Array(unique), known: known,
             hints: RankHints(
                 fixes: search.readings, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
-                brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms))
+                brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms, out: out))
         return search
     }
 

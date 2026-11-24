@@ -1725,6 +1725,64 @@ struct StaplesTests {
         #expect(catalog.top("eggs benedict", 1).first == "Egg, Benedict")
     }
 
+    @Test("a chain typed with a food it has none of in the catalogs is that food from a restaurant")
+    func chains() {
+        // The chain's words at either end of the search, with something else typed.
+        #expect(Chains.chain(in: ["five", "guys", "fries"])?.span == 0..<2)
+        #expect(Chains.chain(in: ["fries", "five", "guys"])?.span == 1..<3)
+        #expect(Chains.chain(in: ["chick", "fil", "nuggets"])?.span == 0..<2)
+        #expect(Chains.chain(in: ["five", "guys"]) == nil)
+        #expect(Chains.chain(in: ["fries"]) == nil)
+        // Fast food, or a restaurant with tables: the catalog files each food by which.
+        #expect(Chains.chain(in: ["kfc", "biscuit"])?.place == "fast")
+        #expect(Chains.chain(in: ["olive", "garden", "breadsticks"])?.place == "restaurant")
+        // A word foods have for themselves is the chain as a possessive or with what it sells.
+        #expect(Chains.chain(in: ["chili", "fajitas"], typed: "chili fajitas") == nil)
+        #expect(Chains.chain(in: ["chilis", "fajitas"], typed: "chilis fajitas") == nil)
+        #expect(Chains.chain(in: ["chili", "fajitas"], typed: "Chili's fajitas")?.span == 0..<1)
+        #expect(Chains.chain(in: ["chipotle", "mayo"], typed: "chipotle mayo") == nil)
+        #expect(Chains.chain(in: ["chipotle", "burrito", "bowl"], typed: "chipotle burrito bowl")?.span == 0..<1)
+        #expect(Chains.chain(in: ["moe", "burrito"], typed: "moe's burrito")?.span == 0..<1)
+        #expect(Chains.chain(in: ["mo", "burrito"], typed: "mo burrito") == nil)
+        for (query, pattern) in [
+            // Fries from fast food, breadsticks from a restaurant: each by the kind of place it is.
+            ("five guys fries", "^Potato, french fries, fast food$"), ("kfc mashed potatoes", "^Potato, mashed, from fast food$"),
+            ("olive garden breadsticks", "^Breadsticks, soft, fast food / restaurant$"), ("chick fil a nuggets", "^Chicken nuggets, from fast food$"),
+            ("popeyes chicken sandwich", "^Chicken fillet sandwich, from fast food$"),
+            ("waffle house waffle", "^Waffle, plain, fast food / restaurant$"),
+            // The middle size of the ones a burger comes in.
+            ("five guys burger", "^Hamburger, from fast food, 1 medium patty$"), ("fries five guys", "^Potato, french fries, fast food$"),
+            // Its own item where a catalog has it, by its name or by the chain's name for it.
+            ("mcdonalds fries", "^McDONALD'S, french fries"), ("dairy queen blizzard", "^Soft serve, blended"),
+            ("mcdonald's big mac", "^McDONALD'S, BIG MAC$"),
+            // The chain is the brand and no more of the search: the second "taco" is the food.
+            ("taco bell taco", "^TACO BELL, .*Taco"),
+            // A word that is also a flavour stays one, unless what's typed with it is on the chain's menu.
+            ("chipotle mayo", "(?i)chipotle"), ("green chilis", "(?i)chil"), ("chipotle burrito bowl", "^Burrito bowl$"),
+        ] {
+            let names = catalog.top(query, 1)
+            #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.first ?? "nothing")")
+        }
+        // A word left that no plain food has as typed isn't read as another: a footlong isn't oolong.
+        #expect(catalog.top("subway footlong", 1).first.map { matches("(?i)subway|footlong", $0) } == true)
+        // The person's own food is found by everything typed, and comes before the restaurant's.
+        let own = Food(id: "custom:fries", name: "Five Guys Little Fries", basis: .g, nutrients: .zero, source: .custom)
+        let found = catalog.search("five guys fries", personal: [PersonalFood(food: own, score: 1)])
+        #expect(found.first?.food.id == own.id && found.dropFirst().first?.food.name == "Potato, french fries, fast food")
+        // From a chain, the food as a restaurant serves it before the plain one.
+        let fries = [OwnWordsTests.food("Potato, french fries"), OwnWordsTests.food("Potato, french fries, from fast food")]
+        #expect(rankSearch("french fries", fries, hints: RankHints(out: "fast")).first?.food.name == "Potato, french fries, from fast food")
+        #expect(rankSearch("french fries", fries).first?.food.name == "Potato, french fries")
+        // And of the two places, the kind the chain is.
+        let mashed = [OwnWordsTests.food("Potato, mashed, from restaurant"), OwnWordsTests.food("Potato, mashed, from fast food")]
+        #expect(rankSearch("mashed potato", mashed, hints: RankHints(out: "fast")).first?.food.name == "Potato, mashed, from fast food")
+        #expect(rankSearch("mashed potato", mashed, hints: RankHints(out: "restaurant")).first?.food.name == "Potato, mashed, from restaurant")
+        // Of sizes no one asked for, the middle one.
+        let burgers = ["small", "medium", "large"].map { OwnWordsTests.food("Hamburger, 1 \($0) patty") }
+        #expect(rankSearch("hamburger", burgers).first?.food.name == "Hamburger, 1 medium patty")
+        #expect(rankSearch("small hamburger", burgers).first?.food.name == "Hamburger, 1 small patty")
+    }
+
     @Test("a staple is still first when it's typed in capitals, with an amount, or as organic, homemade or plain")
     func reworded() {
         let ways: [(String, (String) -> String)] = [

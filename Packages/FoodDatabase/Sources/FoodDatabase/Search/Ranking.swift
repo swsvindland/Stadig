@@ -26,6 +26,10 @@ struct RankHints {
     /// ones that are other foods served with it.
     var sides: [String] = []
     var beside: [String] = []
+    /// The food was asked for from a restaurant chain the catalogs have no such food of: the
+    /// one "from fast food" or "from restaurant" comes first. The word such a place's foods
+    /// say, stemmed (see `Chains.Found.place`).
+    var out: String?
 }
 
 /// A ranked food.
@@ -36,6 +40,10 @@ struct Ranked {
     var name: Double
     /// The catalog keeps exactly what was said as another name for the food.
     var called = false
+    /// The food is the asked brand's and has every other word said, or is a plain food the
+    /// catalog keeps that brand's name for; and isn't another kind of food than the words
+    /// usually name, where it's a label: Tim Hortons' "donut creamer" isn't its donut.
+    var mine = false
 }
 
 // MARK: - Word lists
@@ -685,7 +693,14 @@ struct FoodText {
         self.ownWords = ownWords
         self.own = own
         chain = brand.isEmpty && !ownWords.isEmpty
-        let kept = own.isEmpty ? Array(said.indices) : said.indices.filter { !own.contains(said[$0]) }
+        // The brand's words are left out once each: the second "taco" of "TACO BELL, Soft Taco"
+        // is the food.
+        var owned = own
+        let kept = said.indices.filter { i in
+            guard let at = owned.firstIndex(of: said[i]) else { return true }
+            owned.remove(at: at)
+            return false
+        }
         self.said = kept.map { said[$0] }
         self.runs = kept.map { runs[$0] }
         self.served = served
@@ -1492,7 +1507,15 @@ func scoreFoods(
     let fixes = hints.fixes
     // With a brand named, the other words describe the product, and only its name is read for them.
     let asked = search && !brand.isEmpty
-    let named = asked ? target.filter { !brand.contains($0) } : target
+    // The brand's words once each: the second "taco" of "taco bell taco" names the food.
+    var branding = brand
+    let named =
+        asked
+        ? target.filter { word in
+            guard let at = branding.firstIndex(of: word) else { return true }
+            branding.remove(at: at)
+            return false
+        } : target
     // A brand alone names none of its foods over another, so how often each is scanned orders them.
     let alone = asked && named.isEmpty
     // A typed search and a food a model saw both mean the cooked form of what's usually eaten
@@ -1830,13 +1853,17 @@ func scoreFoods(
         var exact = false
         if asked {
             // The brand asked for: each of its words starts a word of the food's brand.
-            mine =
-                !text.own.isEmpty
-                && brandForms.allSatisfy { options in
-                    options.contains { form in form.allSatisfy { part in text.own.contains { isForm($0, part) } } }
-                }
+            // Or of the other name the food was found by: the soft serve also called "Dairy
+            // Queen Blizzard" is Dairy Queen's.
+            let makers = [text.own, text.own.isEmpty ? other?.titled ?? [] : []]
+            mine = makers.contains { maker in
+                !maker.isEmpty
+                    && brandForms.allSatisfy { options in
+                        options.contains { form in form.allSatisfy { part in maker.contains { isForm($0, part) } } }
+                    }
+            }
             // Word for word: "Poptart" starts with "pop", but isn't the brand Pop.
-            exact = mine && text.own.allSatisfy { word in brandParts.contains { same(word, $0) } }
+            exact = mine && !text.own.isEmpty && text.own.allSatisfy { word in brandParts.contains { same(word, $0) } }
         } else {
             mine = match.brand == true
         }
@@ -2101,13 +2128,23 @@ func scoreFoods(
         if match.missing == 0 { score += boost(known, row.food.id) }
         // Among packaged foods, the ones people scan most: Coca-Cola before a store's cola.
         if hints.popularity { score += 0.12 * row.food.popularity }
+        // Of the sizes a plain food comes in, where none was asked for, the middle one: a
+        // burger's medium patty, a pizza's medium crust.
+        if !row.text.branded, match.missing == 0, row.text.titled.contains("medium"), !saidStems.contains("medium") { score += 0.03 }
+        // From a chain, the food as a restaurant serves it, before the one named by exactly
+        // the words said: their fries have the fryer's oil. The words that say so don't count
+        // against it, and of two the one from that kind of place is a little ahead.
+        if let place = hints.out, !row.text.branded, match.missing == 0, row.text.titled.contains(where: fromWords.contains) {
+            score += 1.5 + (row.dish ? 0 : 0.25 * Double(match.extra.filter(fromWords.contains).count)) + (row.text.titled.contains(place) ? 0.1 : 0)
+        }
         // Another country's product, as much as four words the search didn't ask for: it still
         // answers a search nothing sold here matches as well ("Domino's" in France or the US).
         if hints.away.contains(row.food.id) { score -= 1 }
         // Numbers that can't be right (kilojoules as calories, a powder's values on a drink) rank
         // below every plausible food that matches as well.
         if !row.plausible { score -= 1.5 }
-        ranked.append(Ranked(food: row.food, score: score, index: index, name: row.name, called: row.called))
+        let mine = asked && row.mine && row.name >= 1 && (row.food.source == .usda || row.like >= 0)
+        ranked.append(Ranked(food: row.food, score: score, index: index, name: row.name, called: row.called, mine: mine))
     }
     // A generic food found by a chain's name for it stands in for the chain's item, so the chain's
     // own comes just before it though no brand was typed: SR Legacy's McDonald's McNuggets, then
