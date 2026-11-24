@@ -429,6 +429,25 @@ extension FoodCatalog {
             read.typed = read.typed ?? query
             return read
         }
+        // A search one typo from an everyday food is that food, where USDA has no such word
+        // and no brand people scan is called it: "french fires" is french fries, whatever
+        // labels have "fire" in their names, and "refried bens" refried beans.
+        let namedTokens = tokens.indices.filter(named)
+        if typing, let (at, word) = EverydayPhrases.misspelt(namedTokens.map { tokens[$0].word }) {
+            let token = tokens[namedTokens[at]]
+            // After other words of the food it's a word, known only as written: the "saue" of
+            // "hot saue" isn't sauerkraut begun, nor the "fires" of "french fires" a brand
+            // called Fire. Alone, it may be a name begun.
+            let known =
+                namedTokens.count == 1
+                ? isName(token.word, whole: token.end < scalars.count)
+                : catalogs.contains { catalog in
+                    catalog.kind == .generic
+                        ? !catalog.terms("SELECT term, foods FROM terms WHERE term = ?", [.text(token.word)]).isEmpty
+                        : catalog.isScanned("{brand}: \"\(token.word)\"", atLeast: 1.5)
+                }
+            if !known { return respell(makeString(scalars[..<token.start]) + word + makeString(scalars[token.end...]), typing: typing, meant: meant) }
+        }
         // A label's word for how a food was grown or made, typed first, says nothing of which
         // food it is: "organic ranch" is read as "ranch" is, and "homemade mac and cheese" as
         // mac and cheese. The word stays in the search for the foods that say it.

@@ -233,6 +233,54 @@ enum EverydayPhrases {
         return nil
     }
 
+    /// The everyday food a search is one typo from, as the word that was meant and where it
+    /// is among the words: the "fries" of "french fires", the "beans" of "baked bans", the
+    /// "sauce" of "hot saue". Every other word is the food's as typed, the word itself is none
+    /// of an everyday food's, and it's one letter added, dropped, changed or swapped with its
+    /// neighbour from the food's. Of one word typed alone, or the last of several, from four
+    /// letters: "appel", "brocoli".
+    static func misspelt(_ typed: [String]) -> (at: Int, word: String)? {
+        guard !typed.isEmpty else { return nil }
+        let said = typed.map(stem)
+        var meter = TypoMeter()
+        for phrase in content where phrase.words.count == typed.count {
+            var off = -1
+            var several = false
+            for i in said.indices where said[i] != phrase.stems[i] {
+                if off >= 0 { several = true }
+                off = i
+            }
+            guard off >= 0, !several else { continue }
+            let (was, word) = (typed[off], phrase.words[off])
+            guard was.utf8.count >= (typed.count == 1 || off == typed.count - 1 ? 4 : 3), word.utf8.count >= 4, !known.contains(said[off]),
+                [word, phrase.stems[off]].contains(where: { meter.distance(Array(was.utf16)[...], Array($0.utf16)[...], limit: 1) == 1 })
+            else { continue }
+            // Not a word that may still be on its way to a food: alone, the start of any
+            // everyday word or of a name typed without its space ("peanutb"); after others, of
+            // the word some food has there ("black bea" is on its way to black beans, not black
+            // tea, where "hot saue" is no sauerkraut).
+            let onItsWay =
+                typed.count == 1
+                ? begun.contains { $0.hasPrefix(was) } || apart(was) != nil
+                : content.contains { other in
+                    other.words.count == typed.count && other.words[off].hasPrefix(was)
+                        && said.indices.allSatisfy { $0 == off || said[$0] == other.stems[$0] }
+                }
+            if onItsWay { return nil }
+            return (off, word)
+        }
+        return nil
+    }
+
+    /// The phrases by the words a search keeps: "mac and cheese" is "mac cheese".
+    private static let content: [(words: [String], stems: [String])] = all.map { phrase in
+        let words = phrase.words.filter { !stopWords.contains($0) }
+        return (words, words.map(stem))
+    }
+
+    /// Every word of the phrases, which a word still being typed may be the start of.
+    private static let begun: Set<String> = Set(all.flatMap(\.words))
+
     /// The words that are foods of their own: every word of the foods most people log, and of
     /// the rest only the ones that are a food alone. The "roma" of a roma tomato may still be
     /// romaine begun, and the "grape" of grape juice a grapefruit.

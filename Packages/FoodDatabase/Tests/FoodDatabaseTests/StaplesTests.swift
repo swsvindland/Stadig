@@ -1487,8 +1487,43 @@ struct StaplesTests {
             if catalog.top(typed, 1).first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append(typed) }
         }
         print("Everyday foods with a typo: \(first) of \(asked) first")
-        // 85% before a typo's word was read by the names and usual kind of the word it meant.
-        #expect(Double(first) >= 0.87 * Double(asked), "\(missed.joined(separator: ", "))")
+        // 85% before a typo's word was read by the names and usual kind of the word it meant,
+        // 92% before a search one typo from an everyday food was read as that food.
+        #expect(Double(first) >= 0.93 * Double(asked), "\(missed.joined(separator: ", "))")
+        // One typo from an everyday food, in a word USDA doesn't have and no scanned brand is
+        // called: read as the food, whatever labels spell it that way.
+        #expect(catalog.searchCatalog("french fires", known: [:]).text == "french fries")
+        #expect(catalog.top("baked bans", 1).first?.hasPrefix("Beans, baked") == true)
+        #expect(catalog.top("hot saue", 1).first?.hasPrefix("Sauce, ") == true)
+        #expect(catalog.top("ice crem", 1).first == "Ice cream")
+        // Not a word the catalogs know, a brand people scan, or a word still on its way to a
+        // food: a jam sandwich is no ham sandwich, and "black bea" is black beans begun.
+        #expect(catalog.searchCatalog("jam sandwich", known: [:]).text == "jam sandwich")
+        #expect(catalog.searchCatalog("skittles", known: [:]).text == "skittles")
+        #expect(catalog.searchCatalog("cooke", known: [:]).text == "cooke", "cooked begun, as much as a cookie misspelt")
+        #expect(catalog.top("black bea", 1).first?.hasPrefix("Beans, black") == true)
+        #expect(catalog.top("green bea", 1).first?.hasPrefix("Beans, snap, green") == true)
+    }
+
+    @Test("a search one typo from an everyday food names the word that was meant")
+    func everydayTypos() {
+        let fix = { (typed: [String]) in EverydayPhrases.misspelt(typed).map { "\($0.at) \($0.word)" } }
+        #expect(fix(["french", "fires"]) == "1 fries")
+        #expect(fix(["baked", "bans"]) == "1 beans")
+        #expect(fix(["white", "bead"]) == "1 bread")
+        #expect(fix(["hot", "saue"]) == "1 sauce")
+        #expect(fix(["chese", "pizza"]) == "0 cheese")
+        #expect(fix(["mac", "cheee"]) == "1 cheese", "a phrase's small words aren't counted")
+        #expect(fix(["appel"]) == "0 apple")
+        #expect(fix(["brocoli"]) == "0 broccoli")
+        // Not a word that is an everyday food's ("jam"), a search typed right, a word still on
+        // its way to the food some phrase has there, a last word under four letters, or two
+        // typos.
+        for typed in [
+            ["jam", "sandwich"], ["french", "fries"], ["black", "bea"], ["french", "fri"], ["baked", "ban"], ["frnch", "fires"], ["peanutb"],
+        ] {
+            #expect(fix(typed) == nil, "\(typed)")
+        }
     }
 
     @Test("an everyday name finds the food the catalogs file under another")

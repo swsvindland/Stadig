@@ -341,7 +341,7 @@ struct CompoundTests {
         // A name the catalogs know isn't corrected, typed whole or as far as it's typed; a
         // typo still is, though a brand sold elsewhere starts the same.
         for name in ["skittles", "triscuit", "cholula", "halo", "skip"] { #expect(catalog.searchCatalog(name, known: [:]).fixes.isEmpty, "\(name)") }
-        #expect(catalog.searchCatalog("bred", known: [:]).fixes["bred"] != nil)
+        #expect(catalog.searchCatalog("bred", known: [:]).text == "bread", "read as the everyday food it's one letter from")
         #expect(catalog.searchCatalog("protien bar", known: [:]).fixes["protien"] == ["protein"])
         #expect(catalog.search("cholu").first?.food.brand == "Cholula")
         // The brands that go on from a word with the letter typed after it are found among the
