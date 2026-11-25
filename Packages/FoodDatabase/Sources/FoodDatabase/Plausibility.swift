@@ -49,6 +49,16 @@ enum Plausibility {
             + "sucralose aspartame polyol polyols maltitol sorbitol isomalt sukrin monkfruit truvia splenda canderel")
             .split(separator: " ").map(String.init))
 
+    /// Whether a packaged food has no calories, protein, carbs or fat at all and isn't a drink
+    /// or a sweetener, which may have none. It may still be right (salt), so this is no
+    /// problem by itself: a search compares it with the labels named the same.
+    static func isBlank(_ food: Food) -> Bool {
+        let n = food.nutrients
+        guard food.source == .off, food.basis != .ml, n.kcal <= 0, n.protein <= 0, n.carbs <= 0, n.fat <= 0 else { return false }
+        let name = Set(tokens(food.name))
+        return name.isDisjoint(with: drinkWords) && name.isDisjoint(with: sweetenerWords)
+    }
+
     static func problem(_ food: Food) -> FoodProblem? {
         guard food.basis != .serving else { return nil }
         let n = food.nutrients

@@ -64,6 +64,30 @@ struct PlausibilityTests {
         #expect(ranked.map(\.food.id) == [poured.id, powder.id])
         #expect(ranked.map(\.food.brand) == ["Nescafé Dolce Gusto", "Nestlé"])
     }
+
+    @Test("a label with no numbers comes after the labels named the same that have them")
+    func blankLabels() {
+        let blank = off("Chicken & Waffle", kcal: 0, p: 0, c: 0, f: 0)
+        let full = [
+            off("Chicken & Waffles", kcal: 533, p: 33, c: 30, f: 33), off("Chicken and Waffles", kcal: 250, p: 12, c: 24, f: 11, brand: "Devour"),
+        ]
+        #expect(Plausibility.isBlank(blank) && blank.isPlausible)
+        #expect(rankSearch("chicken and waffles", [blank] + full).last?.food.id == blank.id)
+        // With one label named the same to compare it with, or little in the ones that are,
+        // it may be right: salt, a pickle.
+        #expect(rankSearch("chicken and waffles", [blank, full[0]]).first?.food.id == blank.id)
+        let pickles = [
+            off("Dill Pickles", kcal: 0, p: 0, c: 0, f: 0), off("Dill Pickles", kcal: 12, p: 0, c: 2, f: 0, brand: "Vlasic"),
+            off("Dill pickles", kcal: 18, p: 1, c: 3, f: 0, brand: "Claussen"),
+        ]
+        let ranked = rankSearch("dill pickles", pickles)
+        #expect(ranked.first { $0.food.id == pickles[0].id }?.score == ranked.map(\.score).max())
+        // A drink and a sweetener may have none at all, and a food with any isn't blank.
+        #expect(!Plausibility.isBlank(off("Sparkling Water", .ml, kcal: 0, p: 0, c: 0, f: 0)))
+        #expect(!Plausibility.isBlank(off("Diet Cola", kcal: 0, p: 0, c: 0, f: 0)))
+        #expect(!Plausibility.isBlank(off("Stevia Sweetener", kcal: 0, p: 0, c: 0, f: 0)))
+        #expect(!Plausibility.isBlank(off("Cooking Spray", kcal: 0, p: 0, c: 0, f: 5)))
+    }
 }
 
 @Suite("Implausible packaged foods in the catalog", .enabled(if: Catalogs.hasOFF, "needs Apps/MacroTrack/Catalogs/off.db or OFF_DB"))
@@ -79,5 +103,8 @@ struct CatalogPlausibilityTests {
         // A flat white is USDA's latte, not the "Flat White" brand's coffee chocolate nor a powder.
         let first = try #require(catalog.search("flat white").first)
         #expect(first.food.name == "Coffee, Latte" && first.food.isPlausible, "\(first.food.name) [\(first.food.brand ?? "")]")
+        // A label entered without its numbers doesn't lead the ones named the same.
+        let waffles = try #require(catalog.search("chicken and waffles").first)
+        #expect(waffles.food.nutrients.kcal > 0, "\(waffles.food.name) [\(waffles.food.brand ?? "")]")
     }
 }

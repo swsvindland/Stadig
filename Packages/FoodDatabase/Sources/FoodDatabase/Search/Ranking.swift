@@ -2396,6 +2396,25 @@ func scoreFoods(
         ranked.append(
             Ranked(food: row.food, score: score, index: index, name: row.name, called: row.called, calling: row.calling, mine: mine))
     }
+    // A label with no calories, protein, carbs or fat was entered without its numbers, where
+    // labels named the same have plenty: it ranks with the foods whose numbers can't be right.
+    // Not a drink or a sweetener, which may have none; nor where the others have few, as
+    // pickles do.
+    let blanks = ranked.indices.filter { i in
+        let row = rows[ranked[i].index]
+        return row.plausible && row.match.missing == 0 && Plausibility.isBlank(row.food)
+    }
+    if !blanks.isEmpty {
+        let named = { (food: Food) in words(food.name).map(stem).sorted() }
+        var numbers: [[String]: [Double]] = [:]
+        for found in ranked where found.food.source == .off && found.food.nutrients.kcal > 0 {
+            numbers[named(found.food), default: []].append(found.food.nutrients.kcal)
+        }
+        for i in blanks {
+            let others = (numbers[named(ranked[i].food)] ?? []).sorted()
+            if others.count > 1, others[others.count / 2] >= 50 { ranked[i].score -= 1.5 }
+        }
+    }
     // A generic food found by a chain's name for it stands in for the chain's item, so the chain's
     // own comes just before it though no brand was typed: SR Legacy's McDonald's McNuggets, then
     // chicken nuggets from fast food; a Starbucks mocha Frappuccino, then a frozen mocha coffee
