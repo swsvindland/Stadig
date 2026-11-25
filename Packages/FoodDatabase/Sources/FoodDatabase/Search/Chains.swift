@@ -85,6 +85,11 @@ enum Chains {
         return nil
     }
 
+    /// Whether the words searched are a chain's name and nothing else.
+    static func isName(_ searched: [String]) -> Bool {
+        chains.contains { chain in chain.words.count == searched.count && zip(searched, chain.words).allSatisfy { stem($0) == $1 } }
+    }
+
     /// The kind of place a brand is, as a model names one for a food, when it's a chain or
     /// starts with one's name: "Chick-fil-A", "Chili's", "Panera Bread", "Five Guys Burgers and
     /// Fries". The word its foods say in the catalog, as `Found.place`.

@@ -267,6 +267,8 @@ private let everydayVarieties: [String: Usual] = [
     "sardine": Usual(["canned"], ["fresh", "raw"]),
     // Raisins are the dark seedless ones, not USDA's seeded.
     "raisin": Usual(["dark"], ["golden", "seeded"]),
+    // Curry with no more said is chicken curry; the survey's fish curry came first.
+    "curry": Usual(["chicken"], ["fish", "beef", "lentil", "vegetable", "powder", "paste", "sauce", "goat", "lamb", "shrimp", "leaf", "leaves"]),
     // Stock with no more said is chicken stock.
     "stock": Usual(["chicken"], ["fish", "beef", "vegetable", "cube"]),
     "anchov": Usual(["canned"], ["fresh", "raw", "paste"]),
@@ -2535,7 +2537,11 @@ func scoreFoods(
         row.other == nil && row.name == 1 && !row.text.own.isEmpty && other.titled.count > row.text.own.count
             && !(row.text.own.count == 1 && EverydayPhrases.isWord(row.text.own[0]))
             && !row.text.own.allSatisfy(plainSaid.contains)
-            && (row.food.source == .usda || row.food.brand != nil)
+            // A label someone has scanned, or one of a brand people scan: fish fingers
+            // aren't the one unscanned label's whose brand was entered as "Fingers", where
+            // a Frappuccino is Starbucks' whichever of its labels says only that.
+            && (row.food.source == .usda
+                || (row.food.brand != nil && (row.food.popularity > 0 || popularBrands.contains(bare(row.text.ownWords[0])))))
             && row.text.own.allSatisfy { w in other.titled.contains { same($0, w) } }
             && other.titled.allSatisfy { w in row.text.own.contains { same(w, $0) } || row.text.said.contains { same(w, $0) } }
     }

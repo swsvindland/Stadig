@@ -73,6 +73,9 @@ let alternatives: [String: [String]] = [
     // bacon, bikkies cookies and a chook a chicken.
     "silverbeet": ["silverbeet", "chard"], "rapeseed": ["rapeseed", "canola"], "groundnut": ["groundnut", "peanut"],
     "liquorice": ["liquorice", "licorice"],
+    // Words that are their own food, which a commoner word is a letter or two from: chamoy
+    // isn't chamomile, esquites mesquite or a sope spearmint.
+    "chamoy": ["chamoy"], "esquites": ["esquite"], "sope": ["sope"], "sopes": ["sope"], "tlayuda": ["tlayuda"],
     "butty": ["butty", "sandwich"], "sarnie": ["sarnie", "sandwich"], "sanga": ["sanga", "sandwich"], "sando": ["sando", "sandwich"],
     "snags": ["snag", "sausage"], "bangers": ["banger", "sausage"], "rashers": ["rasher", "bacon"], "rasher": ["rasher", "bacon"],
     "bikkies": ["bikkie", "cookie"], "bikkie": ["bikkie", "cookie"], "chook": ["chook", "chicken"],
@@ -322,6 +325,10 @@ let shortNames: [String: String] = [
     "cheese toastie": "grilled cheese sandwich", "toasted sandwich": "grilled cheese sandwich", "granary bread": "multigrain bread",
     "granary toast": "multigrain toast", "fizzy pop": "soft drink", "cuppa tea": "tea", "bacon rashers": "bacon",
     "beans on toast": "baked beans on toast", "chip butty": "french fries with bread",
+    // A rack of ribs is ribs and a bucket of chicken fried chicken: neither comes by the
+    // rack or the bucket as a food does by the bag.
+    "rack of ribs": "ribs", "half rack of ribs": "ribs", "full rack of ribs": "ribs", "bucket of chicken": "fried chicken",
+    "bucket of fried chicken": "fried chicken",
     // An ear of corn is eaten cooked, on the cob.
     "ear of corn": "corn on the cob", "ears of corn": "corn on the cob",
     // Avocado toast is the avocado and the toast, which is all the catalogs' plain foods have
@@ -437,7 +444,7 @@ let typedAlternatives: Set<String> = [
     "beetroots", "catsup", "lasagne", "decaf", "mince", "minced", "rocket", "sultana", "sultanas", "crisps", "swede", "swedes", "tinned",
     "wholemeal", "gammon", "mangetout", "capsicum", "capsicums", "rockmelon", "cornflour", "sweets", "goujons", "veggies", "taters", "spuds",
     "spud", "cuke", "cukes", "slaw", "silverbeet", "rapeseed", "groundnut", "butty", "sarnie", "sanga", "sando", "snags", "bangers", "rashers",
-    "rasher", "bikkies", "bikkie", "chook", "liquorice",
+    "rasher", "bikkies", "bikkie", "chook", "liquorice", "chamoy", "esquites", "sope", "sopes", "tlayuda",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

@@ -2963,6 +2963,26 @@ struct StaplesTests {
         #expect(regionalName(["chips"], in: nil) == nil && regionalName(["cider"], in: "us") == "apple cider")
     }
 
+    @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")
+    func oddsAndEnds() {
+        // Curry with no more said is chicken curry; the kinds asked for are themselves.
+        #expect(catalog.top("curry", 1) == ["Chicken curry"] && catalog.top("beef curry", 1) == ["Beef curry"])
+        #expect(catalog.top("curry powder", 1).first?.hasPrefix("Spices, curry powder") == true)
+        // Nori is the dried seaweed, which the survey has and SR Legacy doesn't.
+        #expect(catalog.top("nori", 1) == ["Seaweed, dried"] && catalog.top("dried seaweed", 1) == ["Seaweed, dried"])
+        // A label no one has scanned isn't the maker of a food the catalog calls by its name.
+        #expect(catalog.top("fish fingers", 1) == ["Fish sticks"])
+        // Ribs don't come by the rack as chips do by the bag, nor chicken by the bucket.
+        #expect(catalog.top("rack of ribs", 1) == ["Ribs, cooked"] && catalog.top("bucket of chicken", 1) == ["Chicken, fried, coated"])
+        // A chain's name is no misspelling, whatever the catalogs have of it.
+        #expect(catalog.searchCatalog("el pollo loco", known: [:]).fixes.isEmpty)
+        #expect(catalog.top("el pollo loco", 1).first.map { matches("(?i)coconut", $0) } != true)
+        // Nor is a word that is a food of its own: chamoy isn't chamomile, a sope spearmint.
+        #expect(catalog.top("chamoy", 1).first.map { matches("(?i)chamoy", $0) } == true)
+        #expect(catalog.top("sope", 1).first.map { matches("(?i)^sopes?$", $0) } == true)
+        #expect(catalog.top("esquites", 1).first.map { matches("(?i)esquites", $0) } == true)
+    }
+
     @Test("a food typed with what it comes in, or with its number as a word, is the food")
     func containersAndNumberWords() {
         let same = amountsSaid.filter { catalog.top($0.typed, 1) == catalog.top($0.food, 1) }

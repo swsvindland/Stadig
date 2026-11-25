@@ -1274,9 +1274,11 @@ extension FoodCatalog {
         guard !foods.isEmpty else { return CatalogSearch(text: query) }
         var fixes: Fixes = [:]
         var doubted = Set<String>()
-        // Not the words of an everyday food's whole name: "mapo tofu" isn't mayo.
+        // Not the words of an everyday food's whole name: "mapo tofu" isn't mayo. Nor a
+        // restaurant chain's: El Pollo Loco isn't coconut, whatever the catalogs have of it.
         let everyday = EverydayPhrases.isName(searched)
-        for (i, word) in searched.enumerated() where !everyday && !isNumber(word) && fixes[word] == nil {
+        let chain = Chains.chain(in: searched, typed: typed)?.span ?? (Chains.isName(searched) ? 0..<searched.count : nil)
+        for (i, word) in searched.enumerated() where !everyday && !isNumber(word) && fixes[word] == nil && chain?.contains(i) != true {
             let spelling = spell(word, whole: i < searched.count - 1)
             if !spelling.fixes.isEmpty { fixes[word] = spelling.fixes }
             if spelling.doubted { doubted.insert(word) }

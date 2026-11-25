@@ -1005,6 +1005,8 @@ FNDDS_DISH_NAMES = {
     # them: the pressed juice sold as cider, potatoes roasted, and the popover a Yorkshire
     # pudding is.
     "Apple cider": ["Sweet cider"],
+    # The dried sheets sushi is rolled in, which SR Legacy has only as raw laver.
+    "Seaweed, dried": ["Nori", "Dried seaweed"],
     "Roasted potatoes": ["Roast potatoes"],
     "Popover": ["Yorkshire pudding"],
     # Rice and beans with nothing else said are the plain ones, not the ones with meat.
