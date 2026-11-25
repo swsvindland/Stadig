@@ -138,6 +138,31 @@ struct QueryTests {
         #expect(EverydayPhrases.apart("fruitsn") == "fruit sn")
     }
 
+    @Test("a number word or a container before a food is its amount, and part of a name isn't")
+    func amountsInWords() {
+        #expect(readQuery("two eggs").words == ["eggs"] && readQuery("one banana").words == ["banana"])
+        #expect(readQuery("three slices of pizza").words == ["pizza"] && readQuery("two cups of rice").words == ["rice"])
+        #expect(readQuery("two scrambled eggs").words == ["scrambled", "eggs"] && readQuery("two large eggs").words == ["eggs"])
+        // A name: it goes on in the singular, or is no everyday food.
+        #expect(readQuery("three cheese pizza").words == ["three", "cheese", "pizza"])
+        #expect(readQuery("two egg omelet").words == ["two", "egg", "omelet"] && readQuery("seven grain bread").words.first == "seven")
+        #expect(readQuery("five guys").words == ["five", "guys"] && readQuery("three musketeers").words == ["three", "musketeers"])
+        #expect(readQuery("two good yogurt").words.first == "two" && readQuery("seven up").words == ["seven", "up"])
+        #expect(readQuery("one bar").words == ["one", "bar"] && readQuery("one a day").words.first == "one")
+        // Nor before a unit of a letter or two, which follows a figure: "two g" is Two Good begun.
+        #expect(readQuery("two g").words == ["two", "g"] && readQuery("two tablespoons butter").words == ["butter"])
+        // Only first, and not alone.
+        #expect(readQuery("two").words == ["two"] && readQuery("eggs two").words == ["eggs", "two"])
+        // What a food comes in, before "of" or after a number.
+        #expect(readQuery("bag of chips").words == ["chips"] && readQuery("head of lettuce").words == ["lettuce"])
+        #expect(readQuery("12 pack coke").words == ["coke"] && readQuery("2 ears corn").words == ["corn"])
+        #expect(readQuery("small bag of chips").words == ["chips"] && readQuery("jar of peanut butter").words == ["peanut", "butter"])
+        // Named last it's part of the food.
+        #expect(readQuery("tea bag").words == ["tea", "bag"] && readQuery("cheese stick").words == ["cheese", "stick"])
+        #expect(readQuery("juice box").words == ["juice", "box"] && readQuery("head cheese").words == ["head", "cheese"])
+        #expect(readQuery("2 fish sticks").words == ["fish", "sticks"])
+    }
+
     @Test("a search in Spanish, or a food's Hindi name, reads as its English")
     func otherLanguages() {
         #expect(inEnglish("pollo") == "chicken" && inEnglish("Frijoles") == "beans" && inEnglish("aloo") == "potato")

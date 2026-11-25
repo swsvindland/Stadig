@@ -1432,6 +1432,31 @@ let otherNames: [(String, String)] = [
     ("baking soda", "^Leavening agents, baking soda"), ("taco seasoning", "^Seasoning mix, dry, taco"), ("bok choy", "^Cabbage, chinese"),
 ]
 
+/// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
+/// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
+/// with the food alone: the same food comes first for both.
+let amountsSaid: [(typed: String, food: String)] = [
+    ("bag of chips", "chips"), ("bag of popcorn", "popcorn"), ("box of cereal", "cereal"), ("jar of peanut butter", "peanut butter"),
+    ("tub of yogurt", "yogurt"), ("carton of milk", "milk"), ("carton of eggs", "eggs"), ("packet of oatmeal", "oatmeal"),
+    ("pouch of tuna", "tuna"), ("head of lettuce", "lettuce"), ("head of garlic", "garlic"), ("ear of corn", "corn on the cob"),
+    ("bunch of grapes", "grapes"), ("bunch of bananas", "bananas"), ("stick of butter", "butter"), ("loaf of bread", "bread"),
+    ("block of cheese", "cheese"), ("block of tofu", "tofu"), ("sleeve of crackers", "crackers"), ("pack of gum", "gum"),
+    ("package of ramen", "ramen"), ("container of yogurt", "yogurt"), ("tin of sardines", "sardines"), ("sprig of parsley", "parsley"),
+    ("basket of fries", "fries"), ("portion of rice", "rice"), ("helping of mashed potatoes", "mashed potatoes"), ("tray of sushi", "sushi"),
+    ("platter of nachos", "nachos"), ("pitcher of beer", "beer"), ("jug of milk", "milk"), ("clove of garlic", "garlic"),
+    ("stalk of celery", "celery"), ("2 bags of chips", "chips"), ("12 pack coke", "coke"), ("6 pack beer", "beer"), ("2 ears corn", "corn"),
+    ("1 stick butter", "butter"), ("3 bunches kale", "kale"), ("small bag of chips", "chips"), ("two eggs", "eggs"), ("three eggs", "eggs"),
+    ("one egg", "egg"), ("one banana", "banana"), ("one apple", "apple"), ("two slices of pizza", "pizza"), ("three pancakes", "pancakes"),
+    ("four tacos", "tacos"), ("six nuggets", "nuggets"), ("two cups of rice", "rice"), ("three tablespoons peanut butter", "peanut butter"),
+    ("two scoops ice cream", "ice cream"), ("one slice of bread", "bread"), ("two pieces of toast", "toast"), ("five almonds", "almonds"),
+    ("ten grapes", "grapes"), ("twelve wings", "wings"), ("two beers", "beer"), ("three cookies", "cookies"),
+    ("two scrambled eggs", "scrambled eggs"), ("two fried eggs", "fried eggs"), ("two large eggs", "eggs"), ("four fish tacos", "fish tacos"),
+    ("two chicken breasts", "chicken breasts"), ("three chicken wings", "chicken wings"), ("two hard boiled eggs", "hard boiled eggs"),
+    ("bowl of cereal", "cereal"), ("glass of milk", "milk"), ("can of tuna", "tuna"), ("slice of pizza", "pizza"), ("piece of cake", "cake"),
+    ("scoop of ice cream", "ice cream"), ("handful of almonds", "almonds"), ("cup of coffee", "coffee"), ("bottle of water", "water"),
+    ("side of fries", "fries"),
+]
+
 /// Foods typed in Spanish, and by their Hindi or Indian-English names, each with the English
 /// search it's read as: the same food comes first for both.
 let otherLanguages: [(typed: String, english: String)] = [
@@ -2923,6 +2948,27 @@ struct StaplesTests {
         #expect(regionalName(["chips"], in: "gb") == "french fries" && regionalName(["chips"], in: "us") == nil)
         #expect(regionalName(["chips"], in: "au") == nil && regionalName(["hot", "chips"], in: "au") == "french fries")
         #expect(regionalName(["chips"], in: nil) == nil && regionalName(["cider"], in: "us") == "apple cider")
+    }
+
+    @Test("a food typed with what it comes in, or with its number as a word, is the food")
+    func containersAndNumberWords() {
+        let same = amountsSaid.filter { catalog.top($0.typed, 1) == catalog.top($0.food, 1) }
+        print("Containers and number words: \(same.count) of \(amountsSaid.count) first as the food alone is")
+        let missed = amountsSaid.filter { pair in !same.contains { $0.typed == pair.typed } }.map(\.typed)
+        #expect(Double(same.count) >= 0.95 * Double(amountsSaid.count), "\(missed.joined(separator: " | "))")
+        // A number word that is part of a name isn't how many: the name goes on in the
+        // singular, or isn't an everyday food.
+        #expect(catalog.top("three cheese pizza", 1) == ["Three cheese pizza"] && catalog.top("three bean salad", 1) == ["Three bean salad"])
+        #expect(catalog.top("two egg omelet", 1) == ["Egg, whole, cooked, omelet"])
+        #expect(catalog.names("two good yogurt", 1).first?.contains("[Two Good]") == true)
+        #expect(catalog.names("one bar", 1).first?.contains("[One]") == true && catalog.names("one protein bar", 1).first?.contains("[One]") == true)
+        // Named last, what a food comes in is part of what it is.
+        #expect(catalog.top("cheese stick", 1) == ["Cheese, mozzarella, low moisture, part-skim"] && catalog.top("fish sticks", 1) == ["Fish sticks"])
+        #expect(catalog.top("head cheese", 1) == ["Head cheese"] && catalog.top("granola bar", 1) == ["Cereal or Granola bar"])
+        #expect(catalog.top("tea bag", 1).first.map { matches("(?i)tea bag", $0) } == true)
+        #expect(catalog.top("juice box", 1).first.map { matches("(?i)juice box", $0) } == true)
+        // A model's "Two scrambled eggs" is scrambled eggs.
+        #expect(catalog.candidates(name: "Two scrambled eggs", brand: nil).first?.food.name == "Egg, whole, cooked, scrambled")
     }
 
     @Test("a food typed in Spanish or by its Hindi name is the food its English name finds")

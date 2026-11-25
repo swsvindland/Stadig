@@ -321,6 +321,8 @@ let shortNames: [String: String] = [
     "cheese toastie": "grilled cheese sandwich", "toasted sandwich": "grilled cheese sandwich", "granary bread": "multigrain bread",
     "granary toast": "multigrain toast", "fizzy pop": "soft drink", "cuppa tea": "tea", "bacon rashers": "bacon",
     "beans on toast": "baked beans on toast", "chip butty": "french fries with bread",
+    // An ear of corn is eaten cooked, on the cob.
+    "ear of corn": "corn on the cob", "ears of corn": "corn on the cob",
     // Avocado toast is the avocado and the toast, which is all the catalogs' plain foods have
     // of it.
     "avocado toast": "avocado and toast", "avo toast": "avocado and toast", "avocado on toast": "avocado and toast",
@@ -452,7 +454,39 @@ let unitWords: Set<String> = [
     "pounds", "ml", "mls", "l", "liter", "liters", "litre", "litres", "fl", "floz", "tbsp", "tbs", "tsp", "tablespoon",
     "tablespoons", "teaspoon", "teaspoons", "scoop", "scoops", "can", "cans", "bottle", "bottles", "glass", "glasses",
     "mug", "mugs", "shot", "shots", "pint", "pints", "handful", "handfuls",
+    // What a food is bought or served in or by, before "of" or after a number: a bag of chips,
+    // an ear of corn, a head of lettuce, a jar of peanut butter, a 12 pack. Named last they're
+    // part of the food: a tea bag, a juice box, a cheese stick.
+    "bag", "bags", "box", "boxes", "jar", "jars", "tub", "tubs", "packet", "packets", "pouch", "pouches", "carton", "cartons", "head", "heads",
+    "ear", "ears", "bunch", "bunches", "stick", "sticks", "loaf", "loaves", "sleeve", "sleeves", "pack", "packs", "package", "packages",
+    "container", "containers", "tin", "tins", "block", "blocks", "sprig", "sprigs", "sheet", "sheets", "square", "squares", "basket",
+    "baskets", "bucket", "buckets", "helping", "helpings", "tray", "trays", "platter", "platters", "pitcher", "pitchers", "jug", "jugs",
+    "clove", "cloves", "stalk", "stalks",
 ]
+
+/// A number written as a word, which is how many of a food when it comes first and the food is
+/// counted or measured after it: "two eggs", "three slices of pizza", "one banana".
+private let numberWords: Set<String> = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
+
+/// What follows "one" in a name that isn't one of a food: ONE's protein bars, One A Day.
+private let afterOne: Set<String> = ["bar", "bars", "protein", "a"]
+
+/// Whether the number word a search starts with counts the food after it. The next word is
+/// how it's counted or measured ("two slices", "three large", "two cups"), or what follows is
+/// an everyday food in the plural ("two eggs", "two scrambled eggs", "four fish tacos"). A
+/// name isn't: "three cheese pizza", "seven grain bread" and "five spice" go on in the
+/// singular, and "five guys", "three musketeers" and "two good" are no everyday food. After
+/// "one" the food is in the singular: "one egg", not "one bar".
+private func countsWhatFollows(_ number: String, _ rest: ArraySlice<Token>) -> Bool {
+    guard let next = rest.first?.word else { return false }
+    // Not a unit of a letter or two, which is written after a figure: "two g" is as far as
+    // Two Good is typed, not two grams.
+    if countWords.contains(next) || (unitWords.contains(next) && length(next) > 2) { return true }
+    let food = rest.map(\.word).filter { !stopWords.contains($0) && !countWords.contains($0) && !unitWords.contains($0) }
+    guard let last = food.last, EverydayPhrases.isName(food) else { return false }
+    if number == "one" { return !afterOne.contains(next) }
+    return last.hasSuffix("s") && !last.hasSuffix("ss")
+}
 
 /// An amount said without a number, before the food.
 let vagueAmounts: Set<String> = ["half", "some", "few", "couple", "several"]
@@ -910,6 +944,8 @@ func readQuery(_ query: String) -> QueryReading {
             roles.append(.amount)
         } else if word.count > 1, word.last == "x", isNumber(String(word.dropLast())), i + 1 < found.count {
             // "2x" is two of what follows.
+            roles.append(.amount)
+        } else if i == 0, numberWords.contains(word), countsWhatFollows(word, found[1...]) {
             roles.append(.amount)
         } else if measured(word) {
             roles.append(.amount)
