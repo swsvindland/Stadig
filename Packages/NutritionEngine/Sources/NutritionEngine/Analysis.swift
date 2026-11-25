@@ -119,6 +119,13 @@ public struct MacroAnalysis: Sendable {
     /// The check-in in force today, and a new one when this week's is due.
     public var checkIn: CheckIn?
     public var dueCheckIn: CheckIn?
+    /// The change to the plan the week's check-in found (`CheckIn.planCheck`), as the data has it
+    /// today, so using it starts any new phase today rather than on the check-in's day. Nil once it
+    /// no longer holds, and until the next check-in after it's used or kept: a rule that starts to
+    /// hold midweek waits for the Monday.
+    public var planCheck: PhasePlan?
+    /// What Today shows over the day about the week's check-in (`CheckIns.shown`).
+    public var weekCheckIn: WeekCheckIn?
     /// The person's own targets, while they're in force over the plan's (`OwnTargets`).
     public var own: OwnTargets.InForce?
     /// The plan's numbers for today, whatever life or a deload is doing and whether or not the
@@ -312,6 +319,8 @@ public enum MacroAnalyst {
                 phase: state.plan?.phase(on: today), weightKg: weight, referenceKg: referenceKg,
                 fallbackExpenditure: maintenance.kcal, steps: state.lift?.steps,
                 longFast: Fasting.recentLongFast(fastRuns, today: today, now: state.now, calendar: calendar))
+            // The plan is looked at with the targets, once a week.
+            dueCheckIn?.planCheck = state.plan.flatMap { PhasePlanner.check($0, input: input)?.headline }
         }
         // A day's targets as they stood that day: its life modes, the check-in then in force, the
         // plan's phase, a deload, and only protein before the plan began.
@@ -371,6 +380,11 @@ public enum MacroAnalyst {
             todayIntake: intakeByDay[today] ?? .zero, intakeByDay: intakeByDay, discipline: discipline,
             loggingRate: loggingRate, actions: [], life: life, plannerInput: input, usable: complete,
             dayTargets: dayTargets, checkIn: checkIn, dueCheckIn: dueCheckIn, referenceKg: referenceKg)
+        if let plan = state.plan, (dueCheckIn ?? checkIn)?.planCheck != nil {
+            analysis.planCheck = PhasePlanner.check(plan, input: input)
+        }
+        analysis.weekCheckIn = CheckIns.shown(
+            state.checkIns + [dueCheckIn].compactMap { $0 }, planCheck: analysis.planCheck, putAway: state.settings.checkInPutAway, today: today)
         analysis.own = OwnTargets.inForce(state.checkIns, due: dueCheckIn, on: today)
         analysis.planNumbers = planNumbers
         analysis.planSource = planToday.kcal == nil ? .maintenance : .plan
@@ -479,20 +493,16 @@ public enum MacroAnalyst {
                         "A fast of \(days >= 1.5 ? "\(days.formatted(.number.precision(.fractionLength(0...1)))) days" : "a day or more") empties glycogen and the water it holds; eating brings most of it back over a few days.",
                     action: "Weigh in as usual: these days stay out of the trend, and the check-in waits for it to settle.", priority: 2))
         }
+        // The plan check isn't one of these: it comes with the weekly check-in (`planCheck`), which
+        // Today shows over the day.
         if let plan = a.plan, let last = plan.phases.last, today > last.end {
-            // Targets hold the last phase after a plan ends; without this, only Stadig Lift's block
-            // ending or a visit to the Plan tab would say so.
+            // Targets hold the last phase after a plan ends; without this, only a visit to the Plan
+            // tab would say so.
             list.append(
                 MacroAction(
                     id: "plan-ended-\(last.end.iso)", kind: .reviewPlan, title: "Plan finished",
                     detail: "The plan's last phase is over; targets stay where it left them until you choose what comes next.",
                     action: "See the new recommendation.", priority: 7))
-        } else if let plan = a.plan, state.calendar?.currentBlock?.end == today, PhasePlanner.review(plan, input: a.plannerInput) != nil {
-            list.append(
-                MacroAction(
-                    id: "review-\(today.iso)", kind: .reviewPlan, title: "Plan check",
-                    detail: "The training block ends today, so the plan was checked against the data.",
-                    action: "Review the suggested change.", priority: 7))
         }
         return list.sorted { $0.priority > $1.priority }
     }

@@ -70,9 +70,9 @@ public enum PhasePace {
         return (trendKg * (1 + phase.ratePerWeek * weeksLeft), phase.end)
     }
 
-    /// The next weekly check-in: a week after the last, or today when one's due.
+    /// The next weekly check-in: the Monday nearest a week after the last, or today when one's due.
     public static func nextCheckIn(last: CheckIn?, today: Day) -> Day {
         guard let last, !CheckIns.isDue(last: last, today: today) else { return today }
-        return last.day.adding(days: 7)
+        return CheckIns.next(after: last.day)
     }
 }

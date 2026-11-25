@@ -56,20 +56,19 @@ struct ModeLine: View {
     }
 }
 
-/// The prescriptive cards: what was seen, and the one thing to do. Above the food: the check-in,
-/// the plan's actions, and a nutrient over its safe upper limit, which is about safety, not food
-/// quality. The rest of what the week's food calls for is `FoodSuggestionsSection`, below the log.
+/// The prescriptive cards: what was seen, and the one thing to do. Above the food: the plan's
+/// actions, and a nutrient over its safe upper limit, which is about safety, not food quality. The
+/// week's check-in is over the day, under the numbers (`WeekCheckInCard`), and the rest of what the
+/// week's food calls for is `FoodSuggestionsSection`, below the log.
 struct ActionsSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         if let analysis = model.analysis {
             let actions = Self.actions(analysis)
-            let checkIn = recentCheckIn
             let urgent = Self.foodActions(analysis, model: model).filter(\.isUrgent)
-            if !actions.isEmpty || checkIn != nil || !urgent.isEmpty {
+            if !actions.isEmpty || !urgent.isEmpty {
                 Section {
-                    if let checkIn { CheckInRow(checkIn: checkIn, previous: model.checkIns.last { $0.day < checkIn.day }) }
                     ForEach(Array(actions)) { action in
                         ActionRow(action: action)
                     }
@@ -128,12 +127,6 @@ struct ActionsSection: View {
             list.append(.quality(.fermented))
         }
         return Array(list.prefix(room))
-    }
-
-    /// This week's check-in, for a couple of days after it moved the targets.
-    var recentCheckIn: CheckIn? {
-        guard let last = model.checkIns.last, last.day.days(until: model.today) <= 2, model.checkIns.count > 1 else { return nil }
-        return last
     }
 }
 
@@ -257,37 +250,6 @@ struct WeightSection: View {
         focused = false
         weight = ""
         model.weighIn(kg: kg, date: day == model.today ? Date() : day.at(hour: 7, minute: 0))
-    }
-}
-
-struct CheckInRow: View {
-    let checkIn: CheckIn
-    let previous: CheckIn?
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(Color.accentColor).frame(width: 24)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.subheadline.weight(.semibold))
-                Text(checkIn.reason).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    var title: String {
-        // The person's own: set, or kept by the week's check-in; and the way back from them.
-        if checkIn.isOwn {
-            if let previous, previous.isOwn, previous.own == checkIn.own {
-                return "Weekly check-in: your targets hold at \(Format.kcal(checkIn.kcal))"
-            }
-            return "Your targets: \(Format.kcal(checkIn.kcal))"
-        }
-        if previous?.isOwn == true { return "Back to the plan's targets: \(Format.kcal(checkIn.kcal))" }
-        guard let previous else { return "Targets set: \(Format.kcal(checkIn.kcal))" }
-        let change = checkIn.kcal - previous.kcal
-        if abs(change) < 5 { return "Weekly check-in: targets hold at \(Format.kcal(checkIn.kcal))" }
-        return "Weekly check-in: \(Format.kcal(checkIn.kcal)) (\(change > 0 ? "+" : "−")\(Format.whole(abs(change))))"
     }
 }
 

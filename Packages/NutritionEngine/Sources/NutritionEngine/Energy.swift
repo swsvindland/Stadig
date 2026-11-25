@@ -304,11 +304,17 @@ public struct CheckIn: Hashable, Codable, Sendable, Identifiable {
     /// check-ins, on the person's set before the plan had calories (the assessment), and in records
     /// from before own targets: optional, so those read as they are and older builds skip it.
     public var plan: MacroTargets?
+    /// The change to the plan this check-in found worth making (`PhasePlanner.check`), in its own
+    /// words: Plan and Today offer it until it's used or the person keeps their plan, so a rule
+    /// that holds is asked about once a week rather than every day. Nil when the plan stood, once
+    /// it's kept, and in check-ins from before the plan check was weekly: optional, so those read
+    /// as they are and older builds skip it.
+    public var planCheck: String?
     public var updatedAt: Date
 
     public init(
         id: UUID = UUID(), day: Day, expenditure: Double, kcal: Double, protein: Double, carbs: Double, fat: Double,
-        status: Status, reason: String, plan: MacroTargets? = nil, updatedAt: Date = Date()
+        status: Status, reason: String, plan: MacroTargets? = nil, planCheck: String? = nil, updatedAt: Date = Date()
     ) {
         self.id = id
         self.day = day
@@ -320,6 +326,7 @@ public struct CheckIn: Hashable, Codable, Sendable, Identifiable {
         self.status = status
         self.reason = reason
         self.plan = plan
+        self.planCheck = planCheck
         self.updatedAt = updatedAt
     }
 
@@ -335,9 +342,23 @@ public enum CheckIns {
     /// How far the expenditure moves toward a new observation each week.
     public static let damping = 0.35
 
+    /// The day of the week check-ins land on: the first of the app's week (the Week desk's and meal
+    /// prep's), so a week on the desk runs on one set of targets and the plan is looked at once, as
+    /// the week starts.
+    public static let weekday = Weekday.monday
+
+    /// When the check-in after one made on `day` is due: the Monday nearest a week on, four to ten
+    /// days later. A plan started midweek gets its first on whichever Monday is closer to a week,
+    /// so it's never a day or two after the targets were set, and a check-in made late (the app
+    /// wasn't opened on the Monday) is followed by the next Monday's, not by one a week after it.
+    public static func next(after day: Day) -> Day {
+        let earliest = day.adding(days: 4)
+        return earliest.adding(days: (weekday.rawValue - earliest.weekday.rawValue + 7) % 7)
+    }
+
     public static func isDue(last: CheckIn?, today: Day) -> Bool {
         guard let last else { return true }
-        return last.day.days(until: today) >= 7
+        return today >= next(after: last.day)
     }
 
     /// A plan's first targets, straight from the maintenance estimate: nothing in this plan came

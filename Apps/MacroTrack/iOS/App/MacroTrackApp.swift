@@ -37,6 +37,7 @@ struct MacroTrackApp: App {
         // UI test's steps take longer than its few seconds. For checking screens quickly, and for the UI tests.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
         if launch.has("-seedOwnTargets") { SampleData.seedOwnTargets(model) }
+        if launch.has("-seedCheckIn") { SampleData.seedCheckIn(model) }
         if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
         if launch.has("-seedUpcoming") { SampleData.seedUpcoming(model) }

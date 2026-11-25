@@ -97,7 +97,7 @@ struct MacroActionTests {
             confidence: nil, arc: "", created: start.adding(days: 7).date())
         let ended = try #require(actions(state(plan: short)).first { $0.kind == .reviewPlan })
         #expect(ended.id == "plan-ended-\(short.phases[0].end.iso)" && ended.title == "Plan finished")
-        // Mid-plan, with no block ending today, there's nothing to review.
+        // Mid-plan there's nothing to review: a plan check comes with the weekly check-in.
         #expect(!kinds(state()).contains(.reviewPlan))
     }
 
