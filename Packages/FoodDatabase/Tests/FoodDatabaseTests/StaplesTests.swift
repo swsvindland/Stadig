@@ -1440,6 +1440,40 @@ let otherNames: [(String, String)] = [
     ("baking soda", "^Leavening agents, baking soda"), ("taco seasoning", "^Seasoning mix, dry, taco"), ("bok choy", "^Cabbage, chinese"),
 ]
 
+/// A restaurant chain typed with nothing after it, as it's written or most of the way typed,
+/// with the food that comes first: what it's known for. And the names left as they were,
+/// which are a food's word or a brand's in shops.
+let chainsAlone: [(String, String)] = [
+    ("mcdonalds", "^McDONALD'S, BIG MAC"), ("burger king", "^Whopper"), ("wendys", "^WENDY'S, CLASSIC SINGLE"),
+    ("taco bell", "^TACO BELL, Original Taco"), ("subway", "^SUBWAY, turkey breast sub"), ("starbucks", "^Coffee, Latte"),
+    ("dunkin donuts", "^Doughnut"), ("dunkin", "^Doughnut"), ("dominos", "^DOMINO'S 14\" Pepperoni"),
+    ("papa johns", "^PAPA JOHN'S 14\" Pepperoni"), ("pizza hut", "^PIZZA HUT 14\" Pepperoni"), ("chick-fil-a", "^CHICK-FIL-A, chicken sandwich"),
+    ("popeyes", "^POPEYES, Fried Chicken"), ("kfc", "^KFC, Fried Chicken"), ("arbys", "^ARBY'S, roast beef sandwich"),
+    ("sonic", "^Cheeseburger, from fast food"), ("jack in the box", "^Cheeseburger, from fast food"), ("dairy queen", "^Soft serve, blended"),
+    ("white castle", "^Cheeseburger slider"), ("hardees", "^Cheeseburger, from fast food"), ("carls jr", "^Cheeseburger, from fast food"),
+    ("little caesars", "^LITTLE CAESARS 14\" Original Round Pepperoni"), ("krispy kreme", "^Doughnut"), ("panera", "^Sandwich"),
+    ("panera bread", "^Sandwich"), ("in-n-out", "^Cheeseburger, from fast food"), ("five guys", "^Cheeseburger, from fast food"),
+    ("shake shack", "^Cheeseburger, from fast food"), ("whataburger", "^Hamburger, from fast food"), ("culvers", "^Cheeseburger, from fast food"),
+    ("panda express", "^Restaurant, Chinese, orange chicken"), ("olive garden", "^Breadsticks, soft"), ("ihop", "^Pancakes, plain, fast food"),
+    ("red lobster", "^Shrimp, cooked"), ("outback", "^Steak, cooked"), ("texas roadhouse", "^Steak, cooked"),
+    ("cheesecake factory", "^Cake, cheesecake"), ("buffalo wild wings", "^Chicken \"wings\", plain"), ("wingstop", "^Chicken \"wings\", plain"),
+    ("raising canes", "^Chicken tenders or strips"), ("zaxbys", "^Chicken tenders or strips"), ("bojangles", "^Chicken, fried"),
+    ("jimmy johns", "^Turkey sandwich or sub"), ("jersey mikes", "^Turkey sandwich or sub"), ("firehouse subs", "^Turkey sandwich or sub"),
+    ("qdoba", "^Burrito"), ("moes", "^Burrito"), ("del taco", "^Taco"), ("el pollo loco", "^Chicken, grilled"), ("sweetgreen", "^Lettuce, salad"),
+    ("tim hortons", "^Doughnut"), ("jamba", "^Fruit smoothie"), ("smoothie king", "^Fruit smoothie"), ("auntie annes", "^Pretzels, soft"),
+    ("cinnabon", "^Roll, sweet, cinnamon bun"), ("baskin robbins", "^Ice cream"), ("cold stone", "^Ice cream"),
+    ("waffle house", "^Waffle, plain"), ("steak n shake", "^Cheeseburger, from fast food"), ("red robin", "^Cheeseburger, from fast food"),
+    ("pf changs", "^Rice, fried"), ("noodles and company", "^Macaroni or noodles with cheese"), ("portillos", "^Hot dog"),
+    ("costco food court", "^Hot dog"), ("chickfila", "^Chicken fillet sandwich|^CHICK-FIL-A"), ("innout", "^Cheeseburger, from fast food"),
+    ("steak and shake", "^Cheeseburger, from fast food"), ("mcdonald's", "^McDONALD'S, BIG MAC"), ("wendy's", "^WENDY'S, CLASSIC SINGLE"),
+    ("in n out", "^Cheeseburger, from fast food"), ("chick fil a", "^CHICK-FIL-A, chicken sandwich"), ("papa john's", "^PAPA JOHN'S"),
+    ("five guy", "^Cheeseburger, from fast food"), ("wingsto", "^Chicken"), ("jimmy jo", "^Turkey sandwich or sub"),
+    ("five guys b", "^Cheeseburger, from fast food"), ("five guys fr", "^Potato, french fries"),
+    ("five guys bu", "^Cheeseburger, from fast food"), ("five guys burger", "^Hamburger, from fast food"), ("chipotle", "^Chipotle dip"),
+    ("chilis", "^Chili"), ("cracker barrel", "(?i)cheese"), ("out", "(?i)outshine"), ("five g", "(?i)five"), ("five cheese", "(?i)five cheese"),
+    ("applebees", "^APPLEBEE'S"), ("dennys", "^DENNY'S"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -2961,6 +2995,36 @@ struct StaplesTests {
         #expect(regionalName(["chips"], in: "gb") == "french fries" && regionalName(["chips"], in: "us") == nil)
         #expect(regionalName(["chips"], in: "au") == nil && regionalName(["hot", "chips"], in: "au") == "french fries")
         #expect(regionalName(["chips"], in: nil) == nil && regionalName(["cider"], in: "us") == "apple cider")
+    }
+
+    @Test("a chain typed with nothing after it leads with what it's known for")
+    func chainsTypedAlone() {
+        var missed: [String] = []
+        for (query, pattern) in chainsAlone where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Chains typed alone: \(chainsAlone.count - missed.count) of \(chainsAlone.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(chainsAlone.count), "\(missed.joined(separator: " | "))")
+        // Its own item where USDA has it, else the food as such a place serves it, in the
+        // order it's known for them; then what shops sell under its name.
+        #expect(catalog.top("mcdonalds", 2) == ["McDONALD'S, BIG MAC", "McDONALD'S, Cheeseburger"])
+        #expect(catalog.top("five guys", 2) == ["Cheeseburger, from fast food, 1 medium patty", "Potato, french fries, fast food"])
+        #expect(catalog.top("wendys", 4).last == "WENDY'S, Frosty Dairy Dessert")
+        #expect(catalog.names("taco bell", 8).contains { $0.hasSuffix("[Taco Bell]") })
+        // A few letters after it are a food begun: what it's known for that starts so.
+        #expect(catalog.top("five guys fr", 1) == ["Potato, french fries, fast food"])
+        // A food it isn't known for is that food from such a place, as before.
+        #expect(catalog.top("five guys grilled cheese", 1).first.map { matches("(?i)grilled cheese", $0) } == true)
+        // The words alone: however it's written, most of the way there, and not a food's word.
+        #expect(Chains.alone("in n out")?.name == "in-n-out" && Chains.alone("Wendy's")?.name == "wendys")
+        #expect(Chains.alone("five guy")?.name == "five guys" && Chains.alone("five g") == nil && Chains.alone("out") == nil)
+        #expect(Chains.alone("chipotle") == nil && Chains.alone("five guys b")?.name == "five guys")
+        #expect(Chains.begun("fr", of: ["cheeseburger", "french fries"]) == ["french fries"])
+        #expect(Chains.begun("bu", of: ["cheeseburger", "french fries"]) == ["cheeseburger"])
+        // The suggestions go on to the same foods, and from most of a name to the chain.
+        #expect(FoodCompletions.suggest("five guys", from: []).first == "five guys cheeseburger")
+        #expect(FoodCompletions.suggest("five guys f", from: []).first == "five guys french fries")
+        #expect(FoodCompletions.suggest("five gu", from: []).first == "five guys")
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

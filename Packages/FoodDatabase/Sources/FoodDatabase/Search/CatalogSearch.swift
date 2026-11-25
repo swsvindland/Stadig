@@ -918,6 +918,14 @@ extension FoodCatalog {
                 return both
             }
         }
+        // A chain typed with nothing after it leads with what it's known for: its own item
+        // where USDA has it (a Big Mac, a Frosty), else the food as such a place serves it,
+        // which is how the chain typed with that food is read. Then what its name found,
+        // which is what shops sell under it: "five guys" was a label called Five, "taco
+        // bell" its bottled sauces and "wingstop" nothing.
+        if let chain = Chains.alone(typed), let known = knownFoods(chain.foods, of: chain.name, place: chain.place, known: known, search) {
+            return known
+        }
         if let apart = searchApart(typed, search, known: known) { return apart }
         if let with = searchWith(search, known: known) { return with }
         // A restaurant chain typed with a food: where no food found is the chain's and has the
@@ -931,15 +939,45 @@ extension FoodCatalog {
         let theirs = search.ranked.prefix(5).contains(where: \.mine)
         if theirs { return search }
         let food = searched.indices.filter { !chain.span.contains($0) }.map { searched[$0] }.joined(separator: " ")
+        // A few letters after the chain are a food begun: what it's known for that they
+        // start or are in ("five guys fr" is its fries, "five guys bu" its cheeseburger),
+        // before whatever food starts so.
+        let name = searched[chain.span].joined(separator: " ")
+        if length(food) < 4, let theirs = Chains.alone(name) {
+            let begun = Chains.begun(food, of: theirs.foods)
+            if !begun.isEmpty, let known = knownFoods(begun, of: name, place: theirs.place, known: known, search) { return known }
+        }
         let plain = searchCatalog(food, known: known, out: chain.place)
         // A plain food with every word left, as typed: a Subway "footlong" isn't oolong tea
         // misspelt, nor a Wendy's Baconator the crisps flavoured like one.
-        guard let first = plain.ranked.first, first.name >= 1, plain.fixes.isEmpty, !FoodText(first.food).branded else { return search }
+        guard let first = plain.ranked.first, first.name >= 1, plain.fixes.isEmpty, !FoodText(first.food).branded else {
+            // No food the catalogs have, after a letter or two: all the chain is known for.
+            guard length(food) < 3, let theirs = Chains.alone(name) else { return search }
+            return knownFoods(theirs.foods, of: name, place: theirs.place, known: known, search) ?? search
+        }
         // Those foods first, then the ones all the words found. The reading stays the first
         // search's, which the person's own foods are found by.
         var both = search
         both.ranked = Self.joined(plain.ranked, search.ranked)
         both.elsewhere.formUnion(plain.elsewhere)
+        return both
+    }
+
+    /// What a chain is known for, each as the chain typed with that food is read: its own
+    /// item where USDA has one, else the food as such a place serves it. Then what `search`
+    /// found. Nil where the catalogs have none of them.
+    private func knownFoods(_ foods: [String], of chain: String, place: String, known: [String: Double], _ search: CatalogSearch) -> CatalogSearch? {
+        var firsts: [Ranked] = []
+        for food in foods {
+            let plain = { (found: Ranked?) in found.flatMap { $0.name >= 1 && $0.food.source == .usda ? $0 : nil } }
+            let found =
+                plain(searchCatalog("\(chain) \(food)", known: known).ranked.first)
+                ?? plain(searchCatalog(food, known: known, out: place).ranked.first)
+            if let found, !firsts.contains(where: { $0.food.id == found.food.id }) { firsts.append(found) }
+        }
+        guard !firsts.isEmpty else { return nil }
+        var both = search
+        both.ranked = Self.joined(firsts, search.ranked)
         return both
     }
 
@@ -1277,7 +1315,7 @@ extension FoodCatalog {
         // Not the words of an everyday food's whole name: "mapo tofu" isn't mayo. Nor a
         // restaurant chain's: El Pollo Loco isn't coconut, whatever the catalogs have of it.
         let everyday = EverydayPhrases.isName(searched)
-        let chain = Chains.chain(in: searched, typed: typed)?.span ?? (Chains.isName(searched) ? 0..<searched.count : nil)
+        let chain = Chains.chain(in: searched, typed: typed)?.span ?? (Chains.isName(typed) ? 0..<searched.count : nil)
         for (i, word) in searched.enumerated() where !everyday && !isNumber(word) && fixes[word] == nil && chain?.contains(i) != true {
             let spelling = spell(word, whole: i < searched.count - 1)
             if !spelling.fixes.isEmpty { fixes[word] = spelling.fixes }

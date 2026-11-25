@@ -65,6 +65,18 @@ public enum FoodCompletions {
     public static func suggest(_ query: String, from matches: [FoodMatch], limit: Int = options, label: (Food) -> String = \.name) -> [String] {
         let whole = phrases(query, from: matches, limit: limit, label: label)
         let typed = phraseWords(query)
+        // A chain with a food begun after it goes on to the ones it's known for that start
+        // so: "five guys f" is its fries.
+        let place = typed.dropLast().joined(separator: " ")
+        if typed.count > 1, let last = typed.last, Chains.isName(place), let chain = Chains.alone(place) {
+            let begun = Chains.begun(last, of: chain.foods).map { "\(place) \($0)" }
+            if !begun.isEmpty { return Array((begun + whole.filter { !begun.contains($0) }).prefix(limit)) }
+        } else if let chain = Chains.alone(query) {
+            // Typed whole, the chain with each; most of the way there, the chain first.
+            let name = Chains.isName(query) ? typed.joined(separator: " ") : chain.name
+            let named = (Chains.isName(query) ? [] : [chain.name]) + chain.foods.map { "\(name) \($0)" }
+            return Array((named + whole.filter { !named.contains($0) }).prefix(limit))
+        }
         guard let kept = lead(of: typed, in: query), !whole.contains(where: { goesOn($0, from: typed) }) else { return whole }
         let food = typed[kept...].joined(separator: " ")
         var onward = suggest(food, from: matches, limit: limit, label: label)
