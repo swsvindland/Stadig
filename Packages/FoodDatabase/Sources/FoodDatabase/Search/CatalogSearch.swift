@@ -993,7 +993,46 @@ extension FoodCatalog {
         let read = seenName(search.text)
         guard !read.sides.isEmpty, !isPlainName(Self.foodWords(search.text, fixes: search.fixes)[...]) else { return nil }
         if let first = search.ranked.first, first.called || first.calling { return nil }
-        return searchCatalog(read.main, known: known, out: nil, sides: read.sides, beside: read.beside)
+        var with = searchCatalog(read.main, known: known, out: nil, sides: read.sides, beside: read.beside)
+        // What it comes with is a food to log too: where the food found doesn't have it, each
+        // comes right after it, as foods typed together do. Toast, then butter; coffee, then
+        // cream and sugar. Not after the tea that is "with milk".
+        guard let first = with.ranked.first, with.ranked.count > 1 else { return with }
+        let text = FoodText(first.food)
+        let without = wordsWithout(text)
+        var beside: [Ranked] = []
+        for food in Self.besideTyped(search.text) {
+            // The salad "with assorted vegetables, no dressing" doesn't have the dressing.
+            let named = Self.foodWords(food).filter(read.beside.contains)
+            let lacks = named.contains { word in without.contains { same($0, stem(word)) } }
+            guard !named.isEmpty, lacks || !hasEach(text, [named]) else { continue }
+            let found = searchCatalog(food, known: known, out: nil)
+            guard found.fixes.isEmpty, let side = found.ranked.first, side.name >= 1, side.food.source == .usda else { continue }
+            beside.append(side)
+        }
+        if !beside.isEmpty { with.ranked = Self.joined([first] + beside, with.ranked) }
+        return with
+    }
+
+    /// The foods typed after "with", apart: the cream and the sugar of "coffee with cream
+    /// and sugar".
+    private static func besideTyped(_ text: String) -> [String] {
+        var foods: [[Substring]] = []
+        for word in text.lowercased().split(separator: " ") {
+            if word == "with" || word == "w" {
+                if foods.isEmpty { foods.append([]) }
+            } else if foods.isEmpty {
+                continue
+            } else if word == "and" || word == "&" || word == "+" {
+                foods.append([])
+            } else if word.hasSuffix(",") {
+                foods[foods.count - 1].append(word.dropLast())
+                foods.append([])
+            } else {
+                foods[foods.count - 1].append(word)
+            }
+        }
+        return foods.map { $0.joined(separator: " ") }.filter { !$0.isEmpty }
     }
 
     /// Lists in turn: the first of each, then `then`, then the second of each and so on, no

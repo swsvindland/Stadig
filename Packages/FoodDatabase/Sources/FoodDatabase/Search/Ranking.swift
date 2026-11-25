@@ -849,6 +849,27 @@ func isJoint(_ text: FoodText, _ foods: [[String]]) -> Bool {
     return (only(one, foods[0]) && only(other, foods[1])) || (only(one, foods[1]) && only(other, foods[0]))
 }
 
+/// What a name says the food comes without, up to the next comma or "with": the sauce and
+/// the dressing of "Pasta with vegetables, no sauce or dressing".
+func wordsWithout(_ text: FoodText) -> [String] {
+    var lacked: [String] = []
+    var without = -1
+    for (i, w) in text.said.enumerated() {
+        if w == "no" || w == "without" {
+            without = text.runs[i]
+        } else if without >= 0 {
+            let run = text.runs[i]
+            if run == without || (run == without + 1 && (text.alternate.contains(run) || text.joint.contains(run))) {
+                lacked.append(w)
+                without = run
+            } else {
+                without = -1
+            }
+        }
+    }
+    return lacked
+}
+
 /// Whether a name has a word of each of the foods typed together.
 func hasEach(_ text: FoodText, _ foods: [[String]]) -> Bool {
     foods.allSatisfy { food in
@@ -1076,6 +1097,10 @@ struct CoverageQuery {
     /// What was said to come with the food or about it, stemmed: words a food has by being
     /// asked for, and none it lacks.
     fileprivate let sides: [String]
+    /// The same with the two words of one everyday food together, which count only with each
+    /// other: toast with butter isn't toast with peanut butter, nor chocolate ice cream ice
+    /// cream with chocolate syrup.
+    fileprivate let sideFoods: [[String]]
     /// The ones of those that are other foods served with it.
     fileprivate let beside: [String]
 
@@ -1087,6 +1112,15 @@ struct CoverageQuery {
         self.nameOnly = nameOnly
         ease = eases.isEmpty ? [] : words.map { eases[$0] }
         self.sides = sides.map(stem)
+        var foods: [[String]] = []
+        for (i, side) in sides.enumerated() {
+            if i > 0, foods[foods.count - 1].count == 1, EverydayPhrases.isName([sides[i - 1], side]) {
+                foods[foods.count - 1].append(stem(side))
+            } else {
+                foods.append([stem(side)])
+            }
+        }
+        sideFoods = foods
         self.beside = beside.map(stem)
         // A typed search's last word may only be begun.
         let likely = prefix ? EverydayPhrases.likely(words) : nil
@@ -1501,25 +1535,7 @@ struct CoverageQuery {
                     && !kinds.contains { w in usual.otherStems.contains { same(w, $0) } }
             } ?? false
         let fried = found.contains("fried") && !mentioned.contains("fried") && !entire.contains("fried")
-        // What the name says the food comes without, up to the next comma or "with": the sauce
-        // and the dressing of "Pasta with vegetables, no sauce or dressing".
-        var lacked: [String] = []
-        if !sides.isEmpty, !served {
-            var without = -1
-            for (i, w) in text.said.enumerated() {
-                if w == "no" || w == "without" {
-                    without = text.runs[i]
-                } else if without >= 0 {
-                    let run = text.runs[i]
-                    if run == without || (run == without + 1 && (text.alternate.contains(run) || text.joint.contains(run))) {
-                        lacked.append(w)
-                        without = run
-                    } else {
-                        without = -1
-                    }
-                }
-            }
-        }
+        let lacked = sides.isEmpty || served ? [] : wordsWithout(text)
         return Coverage(
             name: total > 0 ? hits / total : 0,
             missing: missing,
@@ -1538,7 +1554,9 @@ struct CoverageQuery {
             added: added,
             garnish: garnish,
             sides: sides.isEmpty || served
-                ? 0 : sides.filter { side in found.contains { same($0, side) } && !lacked.contains { same($0, side) } }.count,
+                ? 0
+                : sideFoods.filter { $0.allSatisfy { side in found.contains { same($0, side) } && !lacked.contains { same($0, side) } } }
+                    .reduce(0) { $0 + $1.count },
             served: served,
             comes: !sides.isEmpty && !served && variations == 0 && !fried
                 && extra.filter { w in !sides.contains { same(w, $0) } }.count < 2

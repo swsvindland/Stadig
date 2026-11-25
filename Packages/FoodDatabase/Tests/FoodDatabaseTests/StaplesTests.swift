@@ -1524,6 +1524,15 @@ struct EverydayFormTests {
         #expect(seen("Sandwich", ["Sandwich spread, meatless", "Turkey sandwich on white"], ["turkey"], ["turkey"]) == "Turkey sandwich on white")
         #expect(seen("Rice", ["Beans, black, mature seeds, cooked", "Rice and beans"], ["beans"], ["beans"]) == "Rice and beans")
         #expect(seen("Salad", ["Salad dressing, ranch", "Salad, garden"], ["dressing"], ["dressing"]) == "Salad, garden")
+        // Two words of one everyday food count only together: toast with butter isn't toast
+        // with peanut butter.
+        let toast = ["Bread, wheat, toasted, with butter", "Bread, wheat, toasted"]
+        #expect(seen("Toast", toast, ["butter"], ["butter"]) == "Bread, wheat, toasted, with butter")
+        let buttered = FoodText(OwnWordsTests.food(toast[0]))
+        let has = { (sides: [String]) in
+            CoverageQuery(seen: Named(name: "Toast", brand: ""), target: ["toast"], sides: sides, beside: sides).cover(buttered).sides
+        }
+        #expect(has(["butter"]) == 1 && has(["peanut", "butter"]) == 0 && has(["butter", "jam"]) == 1)
         // The entry that says it comes with all of it, and little else, before the usual one.
         let teas = ["Beverages, tea, black, brewed, prepared with tap water", "Tea, hot, with milk"]
         #expect(seen("Tea", teas, ["milk"], ["milk"]) == "Tea, hot, with milk")
@@ -1571,6 +1580,10 @@ struct EverydayFormTests {
         // An everyday name with its last word still being typed is on its way to that name.
         #expect(EverydayPhrases.isBegun(["mac", "and", "che"]) && EverydayPhrases.isBegun(["fish", "and", "chips"]))
         #expect(!EverydayPhrases.isBegun(["burger", "and", "che"]) && !EverydayPhrases.isBegun(["che"]))
+        // What a name says the food comes without, up to the next comma or "with".
+        #expect(wordsWithout(FoodText(OwnWordsTests.food("Lettuce, salad with assorted vegetables, no dressing"))) == ["dressing"])
+        #expect(wordsWithout(FoodText(OwnWordsTests.food("Pasta with vegetables, no sauce or dressing"))) == ["sauce", "dressing"])
+        #expect(wordsWithout(FoodText(OwnWordsTests.food("Potatoes, mashed, without milk, with gravy"))) == ["milk"])
         // A name has a word of each, however it joins them.
         #expect(hasEach(FoodText(OwnWordsTests.food("Crackers, cheese, regular")), [["cheese"], ["crackers"]]))
         #expect(!hasEach(FoodText(OwnWordsTests.food("Crackers, saltines")), [["cheese"], ["crackers"]]))
@@ -2389,6 +2402,32 @@ struct StaplesTests {
         #expect(catalog.top("spaghetti with sauce", 1).first != "Pasta with vegetables, no sauce or dressing")
         // A food the catalog names by all of it is found as before.
         #expect(catalog.top("biscuit with gravy", 1).first == "Biscuit with gravy")
+        // What it comes with is a food to log too: right after the food, where the food found
+        // doesn't have it, as foods typed together are.
+        let beside = [
+            ("toast with butter", "^Butter, salted"), ("toast with jam", "^Jams"), ("toast with peanut butter", "^Peanut butter"),
+            ("toast with avocado", "^Avocados"), ("bagel with cream cheese", "^Cheese, cream"), ("coffee with sugar", "^Sugars, granulated"),
+            ("tea with honey", "^Honey"), ("cereal with milk", "^Milk, whole"), ("oatmeal with banana", "^Bananas, raw"),
+            ("yogurt with honey", "^Honey"), ("apple with peanut butter", "^Peanut butter"), ("celery with peanut butter", "^Peanut butter"),
+            ("salad with dressing", "^Salad dressing"), ("salad with ranch", "^Salad dressing, ranch"), ("pancakes with syrup", "^Syrups"),
+            ("waffles with syrup", "^Syrups"), ("bread with butter", "^Butter, salted"), ("pita with hummus", "^Hummus"),
+            ("fries with ketchup", "^Ketchup"), ("hot dog with bun", "^Rolls, hamburger or hotdog"), ("rice with butter", "^Butter, salted"),
+            ("baked potato with sour cream", "^Cream, sour"), ("steak with potatoes", "^Potato"), ("salmon with rice", "^Rice"),
+            ("toast with eggs", "^Egg, whole"), ("tomato soup with grilled cheese", "^Grilled cheese sandwich"),
+        ]
+        let second = beside.filter { typed, pattern in catalog.top(typed, 2).dropFirst().first.map { matches(pattern, $0) } == true }
+        print("Foods with what they come with: that food is second for \(second.count) of \(beside.count)")
+        #expect(Double(second.count) >= 0.95 * Double(beside.count))
+        #expect(catalog.top("coffee with cream and sugar", 3).dropFirst().allSatisfy { $0.hasPrefix("Cream") || $0.hasPrefix("Sugars") })
+        // Not after the food that has it.
+        #expect(catalog.top("tea with milk", 2).last?.hasPrefix("Milk") == false)
+        #expect(catalog.top("mashed potatoes with gravy", 2).allSatisfy { $0.hasPrefix("Potato") })
+        // Two words of one food count together: chocolate ice cream isn't ice cream with
+        // chocolate syrup.
+        #expect(catalog.top("ice cream with chocolate syrup", 2) == ["Ice cream", "Syrups, chocolate, fudge-type"])
+        // A hamburger with cheese is a cheeseburger, and a bun the roll it comes in.
+        #expect(catalog.top("burger with cheese", 1).first == "Cheeseburger")
+        #expect(catalog.top("bun", 1).first == "Rolls, hamburger or hotdog, plain")
         // Fries a model names are french fries, whatever else is cut like them.
         #expect(catalog.candidates(name: "Fries", brand: nil).first?.food.name == "Potato, french fries")
         #expect(catalog.candidates(name: "Sweet potato fries", brand: nil).first?.food.name == "Sweet potato fries")

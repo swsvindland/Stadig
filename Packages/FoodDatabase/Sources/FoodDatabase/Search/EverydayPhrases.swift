@@ -49,7 +49,8 @@ enum EverydayPhrases {
         "pecans", "almond butter", "sunflower seeds", "chia seeds", "flax seeds", "pumpkin seeds", "trail mix", "nuts",
         // Oils, sauces and sweeteners.
         "canola oil", "coconut oil", "vegetable oil", "mustard", "soy sauce", "salsa", "ranch", "bbq sauce", "hot sauce", "vinegar",
-        "maple syrup", "jam", "jelly", "guacamole", "marinara sauce", "tomato sauce", "alfredo sauce", "salad dressing", "italian dressing",
+        "maple syrup", "chocolate syrup", "caramel sauce", "jam", "jelly", "guacamole", "marinara sauce", "tomato sauce", "alfredo sauce",
+        "salad dressing", "italian dressing",
         "caesar dressing",
         // Drinks.
         "iced coffee", "decaf coffee", "latte", "cappuccino", "espresso", "green tea", "iced tea", "apple juice", "lemonade", "soda", "coke",
