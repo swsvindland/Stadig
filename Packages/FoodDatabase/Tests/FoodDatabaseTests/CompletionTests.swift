@@ -245,6 +245,40 @@ struct CompletionTests {
         #expect(FoodCompletions.suggest("2 e", from: []).isEmpty && FoodCompletions.suggest("cup of r", from: []).isEmpty)
     }
 
+    @Test func whatAFoodIsLeftWithoutAndAChainsPlateGoOn() {
+        let first = { (typed: String) in FoodCompletions.suggest(typed, from: []).first }
+        // After "no" and "without", what that kind of food usually has, kept after what's typed.
+        #expect(first("burger no b") == "burger no bun" && first("salad no d") == "salad no dressing")
+        #expect(first("coffee no s") == "coffee no sugar" && first("toast no b") == "toast no butter")
+        #expect(first("chicken breast no s") == "chicken breast no skin" && first("latte no f") == "latte no foam")
+        // Before a letter of it is typed, the likeliest three.
+        #expect(FoodCompletions.suggest("coffee without", from: []) == ["coffee without sugar", "coffee without milk", "coffee without cream"])
+        #expect(Array(FoodCompletions.suggest("burger no", from: []).prefix(2)) == ["burger no bun", "burger no cheese"])
+        // And nothing that only starts so: no steak for "peanut butter no st".
+        #expect(!FoodCompletions.suggest("peanut butter no st", from: []).contains { $0.hasPrefix("peanut butter no") })
+        // With, by the kind of food too: a steak comes with rice and goes without sauce.
+        #expect(first("burger with b") == "burger with bacon" && first("pancakes with s") == "pancakes with syrup")
+        #expect(FoodCompletions.suggest("coffee with cr", from: []) == ["coffee with cream", "coffee with creamer"])
+        #expect(first("steak with") == "steak with rice" && first("steak no") == "steak no skin")
+        // A chain's plate goes on to what else the chain is known for, and the "five" of
+        // Five Guys counts nothing.
+        #expect(first("five guys burger and") == "five guys burger and french fries")
+        #expect(first("five guys burger and f") == "five guys burger and french fries")
+        #expect(first("mcdonalds big mac and fr") == "mcdonalds big mac and french fries")
+        #expect(!FoodCompletions.suggest("five guys burger and", from: []).contains { $0.hasPrefix("five hamburger") })
+        // A way of two words goes on by a letter: "sugar free j", "gluten free b".
+        #expect(FoodCompletions.suggest("sugar free j", from: []).first == "sugar free jello")
+        #expect(FoodCompletions.suggest("gluten free b", from: []).first == "gluten free bread")
+        #expect(first("decaf t") == "decaf tea" && first("low sodium s") == "low sodium soy sauce")
+        // One that starts with a food's own name waits for its second word.
+        #expect(FoodCompletions.suggest("sugar", from: []).allSatisfy { !$0.hasPrefix("sugar free") })
+        #expect(first("sugar f") == "sugar free jello")
+        // A phrase doesn't end on a title: Diet Dr Pepper isn't cut at "diet dr".
+        let pepper = [label("Diet Dr Pepper", brand: "Dr Pepper", popularity: 3), label("Diet Dr Pepper Cherry", brand: "Dr Pepper")]
+        let diet = FoodCompletions.suggest("diet d", from: pepper)
+        #expect(diet.contains("diet dr pepper") && !diet.contains("diet dr"))
+    }
+
     @Test func theCatalogsResultsComplete() {
         let found = Catalogs.usda.search("chick", limit: 60)
         #expect(FoodCompletions.suggest("chick", from: found).contains("chicken"))

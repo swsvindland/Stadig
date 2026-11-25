@@ -31,7 +31,10 @@ public enum FoodCompletions {
     private static let brandWeights = (most: 6.0, least: 2.5)
 
     /// Words a phrase doesn't end on.
-    private static let connectors: Set<String> = ["a", "an", "and", "for", "from", "in", "of", "on", "or", "the", "to", "with", "without", "&"]
+    /// Nor on a title: "diet dr" is as far as Diet Dr Pepper was cut.
+    private static let connectors: Set<String> = [
+        "a", "an", "and", "for", "from", "in", "of", "on", "or", "the", "to", "with", "without", "&", "dr", "mr", "mrs",
+    ]
 
     /// A way a food is said ("grilled salmon") found by the food's word counts this much: after
     /// "oni", onion rings come before sauteed onions.
@@ -77,15 +80,63 @@ public enum FoodCompletions {
             let named = (Chains.isName(query) ? [] : [chain.name]) + chain.foods.map { "\(name) \($0)" }
             return Array((named + whole.filter { !named.contains($0) }).prefix(limit))
         }
-        guard let kept = lead(of: typed, in: query), !whole.contains(where: { goesOn($0, from: typed) }) else { return whole }
+        // A chain's plate goes on to what else the chain is known for: after "five guys
+        // burger and", its fries, hot dog and milkshake, and after "f" the fries.
+        if let plate = Chains.apart(typed.joined(separator: " ")), typed.joined(separator: " ").hasSuffix(plate.rest),
+            let chain = Chains.alone(plate.name)
+        {
+            let rest = plate.rest.split(separator: " ").map(String.init)
+            if let join = rest.lastIndex(where: { ["and", "with", "&", "+"].contains($0) }), join > 0, join >= rest.count - 2 {
+                let begun = join == rest.count - 1 ? "" : rest[rest.count - 1]
+                // Not the food already typed: the cheeseburger after "burger and".
+                let foods = chain.foods.filter { food in !rest[..<join].contains { food.contains(singular($0)) } }
+                let next = begun.isEmpty ? Array(foods.prefix(afterLead)) : Chains.begun(begun, of: foods)
+                if !next.isEmpty {
+                    let before = typed.dropLast(begun.isEmpty ? 0 : 1).joined(separator: " ")
+                    let offered = next.map { "\(before) \($0)" }
+                    return Array((offered + whole.filter { !offered.contains($0) && goesOn($0, from: typed) }).prefix(limit))
+                }
+            }
+        }
+        let goes = whole.contains { goesOn($0, from: typed) }
+        // Nothing typed yet after "no" or "without": what the food usually has, to leave off.
+        // After "with", where the foods found offer nothing, what it usually comes with.
+        if typed.count > 1, let last = typed.last, lacking.contains(last) || (last == "with" && !goes) {
+            let offered = usual(with: Array(typed.dropLast()), lacking: last != "with", then: last == "with" ? comesWith : leftOff).prefix(afterLead)
+                .map { "\(typed.joined(separator: " ")) \($0)" }
+            return Array((offered + whole.filter { !offered.contains($0) }).prefix(limit))
+        }
+        guard let kept = lead(of: typed, in: query), !goes else {
+            // One letter after other words is too little to go on, as it is to search by:
+            // "sugar free j" offers what "sugar free" does, the ones with a word that starts so
+            // first, where the foods found offered syrups and cookies.
+            // Unless a name reads as the letters typed, apart: "cap n" is Cap'n Crunch.
+            let letters = typed.map(plain).joined()
+            let apart = whole.contains { $0.split(separator: " ").map { plain(String($0)) }.joined().hasPrefix(letters) }
+            if !goes, !apart, typed.count > 1, let last = typed.last, last.count == 1 {
+                let before = suggest(typed.dropLast().joined(separator: " "), from: matches, limit: limit, label: label)
+                let begun = before.filter { $0.split(separator: " ").contains { $0.hasPrefix(last) } }
+                if !before.isEmpty { return begun + before.filter { !begun.contains($0) } }
+            }
+            return whole
+        }
         let food = typed[kept...].joined(separator: " ")
         var onward = suggest(food, from: matches, limit: limit, label: label)
         // After "with", what most often comes with a food leads: "coffee with cr" goes on to
-        // cream before cream cheese, "toast with bu" to butter.
-        if typed[kept - 1] == "with" || typed[kept - 1] == "w" {
-            // The likeliest one or two: after a single letter, mayo isn't what coffee comes with.
-            let sides = Array(comesWith.filter { $0.hasPrefix(food) && $0 != food }.prefix(food.count > 1 ? 2 : 1))
-            onward = sides + onward.filter { !sides.contains($0) }
+        // cream before cream cheese, "toast with bu" to butter. After "no" and "without",
+        // what it's usually left without: "burger no b" is its bun, "salad no d" the dressing.
+        let join = typed[kept - 1]
+        if join == "with" || join == "w" || lacking.contains(join) {
+            let begun = { (sides: [String]) in sides.filter { $0.hasPrefix(food) && $0 != food } }
+            let own = begun(usual(with: Array(typed[..<(kept - 1)]), lacking: lacking.contains(join), then: []))
+            let any = begun(lacking.contains(join) ? leftOff : comesWith).filter { !own.contains($0) }
+            // The likeliest one or two. After a single letter, only what that kind of food
+            // has, or the one likeliest of all: mayo isn't what coffee comes with, where
+            // milk is.
+            let sides = Array((food.count > 1 ? own + any : own.isEmpty ? Array(any.prefix(1)) : own).prefix(2))
+            // And then nothing else that only starts so: coffee with cream, not with crab.
+            // Left off is one of the things a food has, or nothing is offered.
+            onward = sides.isEmpty && !lacking.contains(join) ? onward : sides
         }
         guard !onward.isEmpty else { return whole }
         let before = typed[..<kept].joined(separator: " ")
@@ -93,7 +144,9 @@ public enum FoodCompletions {
         // little after "cup of", and "bag of chi" is chicken or chips, not three of chicken.
         var different: [String] = []
         for phrase in onward where !different.contains(where: { phrase.hasPrefix($0 + " ") }) { different.append(phrase) }
-        return different.prefix(afterLead).map { "\(before) \($0)" }
+        // A phrase that brings its own number isn't counted by the one typed: "three musk"
+        // is on its way to 3 Musketeers.
+        return different.prefix(afterLead).map { $0.first?.isNumber == true && numberWords.contains(before) ? $0 : "\(before) \($0)" }
     }
 
     /// How many are offered after an amount or another food.
@@ -107,8 +160,72 @@ public enum FoodCompletions {
         "dressing", "croutons", "vegetables", "salad", "chips", "bread",
     ]
 
+    /// What a food is most often left without, where it's none of the foods below.
+    private static let leftOff: [String] = [
+        "sugar", "cheese", "salt", "butter", "bun", "mayo", "dressing", "milk", "ice", "sauce", "onions", "skin", "oil", "rice", "beans",
+        "meat", "cream", "bacon", "syrup", "croutons", "pickles", "tomato", "lettuce", "egg", "gravy", "ketchup", "mustard", "bread",
+        "sour cream", "guacamole", "whipped cream", "sweetener", "foam", "pulp", "bones", "yolk", "breading", "nuts", "seeds",
+    ]
+
+    /// What a kind of food usually has, the likeliest first: what it's typed with, and where
+    /// that differs what it's left without (a steak comes with rice and goes without sauce).
+    private static let usuallyHas: [(foods: Set<String>, with: [String], without: [String]?)] = [
+        (
+            ["burger", "hamburger", "cheeseburger", "sandwich", "sub", "wrap", "whopper", "mac", "dog", "slider"],
+            ["cheese", "bacon", "fries", "mayo", "ketchup", "lettuce", "tomato", "onions", "pickles", "mustard", "bun", "sauce"],
+            ["bun", "cheese", "bacon", "mayo", "ketchup", "mustard", "onions", "pickles", "tomato", "lettuce", "sauce"]
+        ),
+        (
+            ["coffee", "tea", "latte", "cappuccino", "espresso", "americano", "mocha", "matcha", "chai", "macchiato"],
+            [
+                "sugar", "milk", "cream", "ice", "sweetener", "foam", "whipped cream", "honey", "lemon", "almond milk", "oat milk", "syrup",
+                "cinnamon", "caramel", "vanilla", "half and half", "creamer",
+            ], nil
+        ),
+        (["salad"], ["dressing", "croutons", "cheese", "chicken", "bacon", "onions", "ranch", "tomato", "egg"], nil),
+        (
+            ["toast", "bagel", "bread", "muffin", "biscuit", "roll"], ["butter", "jam", "jelly", "cream cheese", "honey", "peanut butter", "cheese"],
+            nil
+        ),
+        (["pancake", "waffle"], ["syrup", "butter", "fruit", "berries", "whipped cream", "honey", "sugar"], nil),
+        (
+            ["popcorn", "rice", "potato", "pasta", "noodle", "corn", "grits", "vegetable", "broccoli"],
+            ["butter", "salt", "sauce", "cheese", "gravy", "oil", "sour cream"], nil
+        ),
+        (
+            ["taco", "burrito", "bowl", "nacho", "quesadilla", "enchilada", "fajita"],
+            ["cheese", "sour cream", "rice", "beans", "meat", "salsa", "guacamole", "lettuce", "onions", "sauce"], nil
+        ),
+        (["pizza"], ["cheese", "meat", "pepperoni", "sauce", "onions", "mushrooms", "olives"], nil),
+        (
+            ["fries", "fry", "chip", "nuts", "nut", "almond", "peanut", "cashew", "pretzel", "cracker"],
+            ["ketchup", "cheese", "gravy", "ranch", "mayo", "salsa", "salt"], ["salt", "ketchup", "cheese", "salsa", "ranch", "gravy"]
+        ),
+        (
+            ["chicken", "breast", "thigh", "wing", "turkey", "salmon", "fish", "steak", "pork", "ribs", "rib", "drumstick"],
+            ["rice", "vegetables", "potatoes", "sauce", "gravy", "fries", "salad", "broccoli", "beans", "butter"],
+            ["skin", "sauce", "bones", "breading", "butter", "salt", "gravy", "oil"]
+        ),
+        (["cereal", "granola", "oats", "oatmeal"], ["milk", "sugar", "fruit", "berries", "honey", "butter", "salt"], nil),
+        (
+            ["egg", "omelet", "omelette"], ["cheese", "bacon", "toast", "butter", "salsa", "ketchup", "salt"],
+            ["cheese", "butter", "oil", "salt", "yolk"]
+        ),
+        (["soda", "coke", "water", "juice", "lemonade", "smoothie"], ["ice", "lemon", "sugar"], ["ice", "sugar", "pulp"]),
+    ]
+
+    /// What a food usually has, by its last word that is one of those kinds, then `rest`.
+    private static func usual(with food: [String], lacking: Bool, then rest: [String]) -> [String] {
+        let kind = food.reversed().lazy.compactMap { word in usuallyHas.first { $0.foods.contains(word) || $0.foods.contains(singular(word)) } }.first
+        let own = kind.map { lacking ? $0.without ?? $0.with : $0.with } ?? []
+        return own + rest.filter { !own.contains($0) }
+    }
+
+    /// The words that say a food is without what's typed after them.
+    private static let lacking: Set<String> = ["no", "without"]
+
     /// What joins a food to the one typed after it.
-    private static let joiners: Set<String> = ["with", "on", "over", "and", "&", "+", "w"]
+    private static let joiners: Set<String> = ["with", "on", "over", "and", "&", "+", "w", "no", "without"]
 
     /// Where the food still being typed starts, after an amount or after a food and what joins
     /// the next to it; nil where what's typed is one food from its first word.
@@ -117,7 +234,8 @@ public enum FoodCompletions {
         // The amount, as the search reads it: everything before its first word for the food.
         if let first = readQuery(query).words.first, let at = typed.firstIndex(of: first), at > 0, at < typed.count { return at }
         // A number as a word counts what follows once nothing typed so far is a name: "two eg".
-        if typed.count > 1, let first = typed.first, numberWords.contains(first) { return 1 }
+        // Not the "five" of Five Guys.
+        if typed.count > 1, let first = typed.first, numberWords.contains(first), Chains.apart(query) == nil { return 1 }
         return nil
     }
 
@@ -145,7 +263,9 @@ public enum FoodCompletions {
             if let found = place(of: wanted, in: phrase.compared) {
                 // A brand found by a later word is a longer reach than a food: "ban" isn't La Banderita.
                 // And a way is only offered by words typed in its order: "chicken b" isn't baked chicken.
-                guard phrase.way == nil || found.ordered else { continue }
+                // One that starts with a food's own name, from its second word: "sugar" is
+                // on its way to sugar cookies before sugar free jello.
+                guard phrase.way == nil || (found.ordered && (wanted.count > 1 || !everyday.contains(Tally.key([phrase.words[0]])))) else { continue }
                 let reach = found.fit == 1 ? 1 : phrase.brand ? found.fit * laterBrand : phrase.way != nil ? laterWay : found.fit
                 tally.add(listed: phrase.words, weight: phrase.weight * reach, way: phrase.way)
             } else if wanted.count == 1, phrase.compared.count > 1, wanted[0].count > phrase.compared[0].count,

@@ -193,6 +193,13 @@ enum EverydayPhrases {
         ("hard boiled", ["eggs"]),
         ("crunchy", ["peanut butter"]),
         ("creamy", ["peanut butter"]),
+        ("sugar free", ["jello", "gum", "syrup", "pudding", "ice cream", "cookies", "candy", "energy drink", "jam", "creamer", "popsicle"]),
+        ("gluten free", ["bread", "pasta", "pizza", "crackers", "bagel", "tortilla", "oats", "pancakes", "cookies", "brownie"]),
+        ("decaf", ["coffee", "tea", "latte", "espresso", "green tea"]),
+        ("light", ["beer", "yogurt", "mayo", "cream cheese", "sour cream", "ranch", "ice cream", "tuna"]),
+        ("low sodium", ["soy sauce", "chicken broth", "soup", "bacon", "ham"]),
+        ("reduced fat", ["milk", "cheese", "peanut butter", "mayo", "sour cream"]),
+        ("low carb", ["tortilla", "bread", "wrap"]),
     ]
 
     /// Those as phrases. They count less than any everyday food, the first a word goes on to
