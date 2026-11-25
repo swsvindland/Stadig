@@ -3,7 +3,8 @@
 `Scripts/build-catalogs.py` builds all of Stadig Macro's catalogs. `off.db` (Open Food Facts, about
 600 MB) and `supplements.db` (the NIH Dietary Supplement Label Database, about 43 MB, public domain)
 are bundled from this folder but aren't in git. `usda.db` (SR Legacy, plus FNDDS's fast-food and
-restaurant foods, its drinks, its dishes and its sweets and snacks) is in `Packages/FoodDatabase`,
+restaurant foods, its drinks, its dishes, its sweets and snacks and its plain meats, fish and
+cereals) is in `Packages/FoodDatabase`,
 in git.
 
     python3 Scripts/build-catalogs.py update              # what's newer upstream

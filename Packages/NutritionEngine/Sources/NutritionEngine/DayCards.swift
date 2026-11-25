@@ -166,7 +166,7 @@ public enum FoodLabel {
         "cookies": "cookies", "doughnut": "doughnut", "muffin": "muffin", "muffins": "muffins", "pudding": "pudding", "puddings": "pudding",
         "cobbler": "cobbler", "crisp": "crisp", "taco": "taco", "burrito": "burrito", "quesadilla": "quesadilla", "enchilada": "enchilada",
         "tamale": "tamale", "fajita": "fajita", "nachos": "nachos", "lasagna": "lasagna", "gravy": "gravy", "frozen yogurt": "frozen yogurt",
-        "ice cream": "ice cream", "ice creams": "ice cream", "sushi roll": "roll", "candy": "candy",
+        "ice cream": "ice cream", "ice creams": "ice cream", "sushi roll": "roll", "candy": "candy", "cereal": "cereal",
     ]
     /// Words that say how a dish comes, is made or is sold, not which kind it is: "Pizza, no
     /// cheese" and "Soup, canned" stay as they're filed.
@@ -205,7 +205,13 @@ public enum FoodLabel {
             title = parts.remove(at: index)
             let said = naming[title.lowercased()] ?? []
             parts.removeAll { said.contains($0.lowercased()) }
-        } else if filing.contains(head), !parts.isEmpty {
+        } else if let deli = parts.firstIndex(where: { $0.lowercased() == "prepackaged or deli" }) {
+            // The survey's sliced meats: "Turkey, prepackaged or deli, luncheon meat" is deli turkey.
+            parts.remove(at: deli)
+            parts.removeAll { $0.lowercased() == "luncheon meat" }
+            title = "Deli \(head)"
+        } else if filing.contains(head), let first = parts.first, !saysHow(first) {
+            // Not where what follows only says how it comes: "Fish, cooked" is fish.
             title = parts.removeFirst()
         } else if head == "egg", parts.first?.lowercased() == "whole" {
             // An egg is whole unless it's said to be the white or the yolk.
@@ -216,6 +222,12 @@ public enum FoodLabel {
         } else if let first = parts.first, describing.contains(first.lowercased()) {
             title = "\(first) \(head)"
             parts.removeFirst()
+        } else if meats.contains(head), let steak = parts.firstIndex(where: { $0.lowercased() == "steak" }) {
+            // A steak by its cut, where the survey names one: "Beef, steak, sirloin, cooked" is
+            // a sirloin steak.
+            parts.remove(at: steak)
+            let cut = steak < parts.count && !saysHow(parts[steak]) && !parts[steak].contains(" ") ? parts.remove(at: steak) : head
+            title = "\(cut) steak"
         } else if meats.contains(head), let index = parts.firstIndex(where: { part in cuts.contains { part.lowercased().contains($0) } }) {
             let cut = parts.remove(at: index).lowercased()
             title = cut.contains("ground") ? "Ground \(head)" : "\(head) \(cut)"
@@ -225,6 +237,15 @@ public enum FoodLabel {
         let detail = parts.joined(separator: ", ")
         return (title.prefix(1).uppercased() + title.dropFirst(), detail.isEmpty ? nil : detail)
     }
+
+    /// Whether a part only says how the food was cooked or comes: "cooked", "baked or broiled".
+    private static func saysHow(_ part: String) -> Bool {
+        let words = part.lowercased().split(whereSeparator: { $0 == " " || $0 == "," }).map(String.init)
+        return !words.isEmpty && words.allSatisfy { cooking.contains($0) || states.contains($0) || coatings.contains($0) || $0 == "or" }
+    }
+
+    /// What a food was cooked in, which isn't a cut or a kind of it: "Pork, steak, coated".
+    private static let coatings: Set<String> = ["coated", "breaded", "battered"]
 
     /// How a food was cooked, the most particular way first: "cooked, roasted" was roasted.
     private static let cooking: Set<String> = [

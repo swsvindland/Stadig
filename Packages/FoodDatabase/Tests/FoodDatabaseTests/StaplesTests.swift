@@ -9,27 +9,27 @@ import Testing
 /// mayonnaise", "Frankfurter").
 let staples: [(String, String)] = [
     // Meat, fish and eggs.
-    ("chicken", "^Chicken, (broilers or fryers|roasting), .*cooked, roasted"),
-    ("chicken breast", "^Chicken, broilers or fryers, breast, .*cooked, roasted"),
-    ("chicken thigh", "^Chicken, broilers or fryers, thigh, .*cooked"),
-    ("chicken wings", "^Chicken, broilers or fryers, wing, .*cooked"),
+    ("chicken", "^Chicken, (broilers or fryers|roasting), .*cooked, roasted|^Chicken, cooked"),
+    ("chicken breast", "^Chicken, broilers or fryers, breast, .*cooked, roasted|^Chicken breast, cooked"),
+    ("chicken thigh", "^Chicken, broilers or fryers, thigh, .*cooked|^Chicken thigh, cooked"),
+    ("chicken wings", "^Chicken, broilers or fryers, wing, .*cooked|^Chicken wing, cooked"),
     ("ground beef", "^Beef, ground, .*cooked"),
-    ("steak", "^Beef, .*steak.*cooked"),
-    ("ribeye", "^Beef, rib ?eye"),
+    ("steak", "^Beef, .*steak.*cooked|^Steak, cooked"),
+    ("ribeye", "^Beef, rib ?eye|^Beef, steak, ribeye"),
     ("sirloin", "^Beef, .*sirloin"),
-    ("pork chop", "^Pork, fresh, .*chops.*cooked"),
-    ("bacon", "^Pork, cured, bacon, .*cooked"),
+    ("pork chop", "^Pork, fresh, .*chops.*cooked|^Pork, chop"),
+    ("bacon", "^Pork, cured, bacon, .*cooked|^Bacon, cooked"),
     ("ham", "^Ham, "),
     ("sausage", "^Sausage, "),
-    ("hot dog", "^Frankfurter, (beef|meat|pork)"),
-    ("turkey", "^Turkey, .*cooked, roasted"),
+    ("hot dog", "^Frankfurter, (beef|meat|pork)|^Hot dog"),
+    ("turkey", "^Turkey, .*cooked, roasted|^Turkey, cooked"),
     ("ground turkey", "^Turkey, [Gg]round, .*cooked"),
     ("turkey breast", "^Turkey, .*breast, .*(cooked|roasted)"),
-    ("salmon", "^Fish, salmon, .*cooked"),
+    ("salmon", "^Fish, salmon, .*cooked|^Fish, salmon, (baked|grilled|steamed|cooked)"),
     ("tuna", "^Fish, tuna, "),
-    ("shrimp", "^Crustaceans, shrimp, .*cooked"),
-    ("tilapia", "^Fish, tilapia, cooked"),
-    ("cod", "^Fish, cod, .*cooked"),
+    ("shrimp", "^Crustaceans, shrimp, .*cooked|^Shrimp, cooked"),
+    ("tilapia", "^Fish, tilapia, cooked|^Fish, tilapia, (baked|grilled|steamed|cooked)"),
+    ("cod", "^Fish, cod, .*cooked|^Fish, cod, (baked|grilled|steamed|cooked)"),
     ("egg", "^Egg, whole, cooked"),
     ("egg white", "^Egg, white, "),
     ("tofu", "^Tofu, (raw|firm|extra firm|soft|hard)"),
@@ -74,7 +74,7 @@ let staples: [(String, String)] = [
     ("flour tortilla", "^Tortillas, ready-to-bake or -fry, flour"),
     ("corn tortilla", "^Tortillas, ready-to-bake or -fry, corn"),
     ("oatmeal", "^Cereals, oats, .*cooked"),
-    ("granola", "^Cereals ready-to-eat, granola"),
+    ("granola", "^Cereals ready-to-eat, granola|^Cereal, granola"),
     ("quinoa", "^Quinoa, cooked"),
     ("couscous", "^Couscous, cooked"),
     ("pancake", "^Pancakes, plain|^Pancakes$"),
@@ -209,8 +209,8 @@ let staples: [(String, String)] = [
 let pantry: [(String, String)] = [
     ("beef", "^Beef, ground, .*cooked"),
     ("pork", "^Pork, fresh, .*cooked"),
-    ("ribs", "^Pork, fresh, .*ribs.*cooked"),
-    ("cereal", "^Cereals ready-to-eat"),
+    ("ribs", "^Pork, fresh, .*ribs.*cooked|^Ribs, cooked"),
+    ("cereal", "^Cereals ready-to-eat|^Cereal, ready-to-eat"),
     ("nuts", "^Nuts, mixed nuts"),
     ("coconut milk", "^(Nuts|Beverages), coconut milk"),
     ("tomato sauce", "^Tomato (sauce|products), canned"),
@@ -225,8 +225,8 @@ let pantry: [(String, String)] = [
     ("chicken noodle soup", "^Soup, chicken noodle, canned, prepared|^Soup, chicken noodle$"),
     ("pickles", "^Pickles, cucumber, dill"),
     ("sardines", "^Fish, sardine"),
-    ("tuna", "^Fish, tuna, (light|white), canned"),
-    ("canned tuna", "^Fish, tuna, (light|white), canned"),
+    ("tuna", "^Fish, tuna, (light|white), canned|^Fish, tuna, canned"),
+    ("canned tuna", "^Fish, tuna, (light|white), canned|^Fish, tuna, canned"),
     ("anchovies", "^Fish, anchovy, european, canned"),
     ("sourdough bread", "^Bread, french or vienna"),
     ("cornbread", "^Bread, cornbread, (prepared|dry mix, prepared)"),
@@ -258,12 +258,12 @@ let pantry: [(String, String)] = [
     ("fried chicken", "^Chicken, .*fried"),
     ("chicken nuggets", "^Chicken nuggets"),
     ("chicken tenders", "^Chicken tenders"),
-    ("turkey bacon", "^Bacon, turkey"),
-    ("pulled pork", "^Pulled pork"),
-    ("pork tenderloin", "^Pork, fresh, loin, tenderloin, .*cooked"),
+    ("turkey bacon", "^Bacon, turkey|^Turkey bacon, cooked"),
+    ("pulled pork", "^Pulled pork|^Barbecue pork"),
+    ("pork tenderloin", "^Pork, fresh, loin, tenderloin, .*cooked|^Pork, tenderloin"),
     ("tuna salad", "^Fish, tuna salad|^Tuna salad$"),
-    ("crab", "^Crustaceans, crab, .*cooked"),
-    ("lobster", "^Crustaceans, lobster, .*cooked"),
+    ("crab", "^Crustaceans, crab, .*cooked|^Crab, cooked"),
+    ("lobster", "^Crustaceans, lobster, .*cooked|^Lobster, cooked"),
     ("2% milk", "^Milk, reduced fat, fluid, 2% milkfat"),
     ("chocolate milk", "^Milk, chocolate"),
     ("provolone", "^Cheese, provolone"),
@@ -316,18 +316,18 @@ let pantry: [(String, String)] = [
 /// cooked food one or two ways, and mostly leaves a cut unsaid.
 let forms: [(String, String)] = [
     // Fish and shellfish, by a way of cooking or a cut USDA doesn't list.
-    ("baked salmon", "^Fish, salmon, .*cooked, dry heat"),
-    ("grilled salmon", "^Fish, salmon, .*cooked, dry heat"),
-    ("roasted salmon", "^Fish, salmon, .*cooked, dry heat"),
-    ("salmon fillet", "^Fish, salmon, .*cooked"),
-    ("grilled salmon fillet", "^Fish, salmon, .*cooked, dry heat"),
-    ("poached salmon", "^Fish, salmon, .*cooked"),
-    ("baked cod", "^Fish, cod, .*cooked"),
-    ("baked tilapia", "^Fish, tilapia, cooked"),
-    ("grilled tilapia", "^Fish, tilapia, cooked"),
-    ("cod fillet", "^Fish, cod, .*cooked"),
-    ("grilled shrimp", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)"),
-    ("steamed shrimp", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)"),
+    ("baked salmon", "^Fish, salmon, .*cooked, dry heat|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("grilled salmon", "^Fish, salmon, .*cooked, dry heat|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("roasted salmon", "^Fish, salmon, .*cooked, dry heat|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("salmon fillet", "^Fish, salmon, .*cooked|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("grilled salmon fillet", "^Fish, salmon, .*cooked, dry heat|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("poached salmon", "^Fish, salmon, .*cooked|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("baked cod", "^Fish, cod, .*cooked|^Fish, cod, (baked|grilled|steamed|cooked)"),
+    ("baked tilapia", "^Fish, tilapia, cooked|^Fish, tilapia, (baked|grilled|steamed|cooked)"),
+    ("grilled tilapia", "^Fish, tilapia, cooked|^Fish, tilapia, (baked|grilled|steamed|cooked)"),
+    ("cod fillet", "^Fish, cod, .*cooked|^Fish, cod, (baked|grilled|steamed|cooked)"),
+    ("grilled shrimp", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)|^Shrimp, grilled|^Shrimp, steamed or boiled"),
+    ("steamed shrimp", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)|^Shrimp, grilled|^Shrimp, steamed or boiled"),
     ("raw salmon", "^Fish, salmon, .*raw"),
     // Vegetables.
     ("steamed broccoli", "^Broccoli, cooked"),
@@ -368,21 +368,21 @@ let forms: [(String, String)] = [
     // Rice, meat and tofu.
     ("steamed rice", "^Rice, white, (steamed|.*cooked)"),
     ("boiled rice", "^Rice, white, .*cooked"),
-    ("grilled chicken breast", "^Chicken, .*breast.*grilled"),
+    ("grilled chicken breast", "^Chicken, .*breast.*grilled|^Chicken breast, grilled"),
     ("baked chicken breast", "^Chicken.*breast.*(roasted|baked)"),
     ("roasted chicken breast", "^Chicken, .*breast.*roasted"),
     ("boiled chicken breast", "^Chicken, .*breast.*(stewed|cooked)"),
-    ("grilled chicken thigh", "^Chicken, .*thigh.*(roasted|grilled|cooked)"),
-    ("baked chicken thigh", "^Chicken, .*thigh, meat.*roasted"),
-    ("skinless chicken thigh", "^Chicken, .*thigh, meat only"),
-    ("boneless skinless chicken thigh", "^Chicken, .*thigh, meat only"),
+    ("grilled chicken thigh", "^Chicken, .*thigh.*(roasted|grilled|cooked)|^Chicken thigh, grilled"),
+    ("baked chicken thigh", "^Chicken, .*thigh, meat.*roasted|^Chicken thigh, baked"),
+    ("skinless chicken thigh", "^Chicken, .*thigh, meat only|^Chicken thigh, cooked"),
+    ("boneless skinless chicken thigh", "^Chicken, .*thigh, meat only|^Chicken thigh, cooked"),
     ("boneless skinless chicken breast", "^Chicken, .*breast.*(skinless|meat only)"),
     ("chicken cutlet", "^Chicken, "),
-    ("grilled pork chop", "^Pork, .*chops.*(broiled|grilled)"),
-    ("baked pork chop", "^Pork, .*chops.*(broiled|roasted)"),
+    ("grilled pork chop", "^Pork, .*chops.*(broiled|grilled)|^Pork, chop"),
+    ("baked pork chop", "^Pork, .*chops.*(broiled|roasted)|^Pork, chop"),
     ("grilled pork tenderloin", "^Pork, .*tenderloin.*(broiled|roasted)"),
     ("roasted turkey breast", "^Turkey, .*breast.*roasted"),
-    ("grilled steak", "^Beef, .*steak.*(grilled|broiled)"),
+    ("grilled steak", "^Beef, .*steak.*(grilled|broiled)|^Steak, cooked"),
     ("grilled tofu", "^Tofu, (raw|firm|fried|extra firm)"),
     ("baked tofu", "(?i)tofu"),
     ("chicken pieces", "(?i)chicken"),
@@ -424,8 +424,8 @@ let forms: [(String, String)] = [
 /// comes with, how it was cooked and cut. Each with the plain food the meal AI's matching
 /// should offer first.
 let plates: [(String, String)] = [
-    ("Grilled chicken breast (skinless)", "^Chicken, .*breast.*grilled"),
-    ("Grilled chicken breast, sliced", "^Chicken, .*breast.*grilled"),
+    ("Grilled chicken breast (skinless)", "^Chicken, .*breast.*grilled|^Chicken breast, grilled"),
+    ("Grilled chicken breast, sliced", "^Chicken, .*breast.*grilled|^Chicken breast, grilled"),
     ("White rice, cooked", "^Rice, white, .*cooked"),
     ("Brown rice (cooked)", "^Rice, brown, .*cooked"),
     ("Jasmine rice", "^Rice, white, .*cooked"),
@@ -446,8 +446,8 @@ let plates: [(String, String)] = [
     ("Glass of whole milk", "^Milk, whole"),
     ("French fries (medium serving)", "^Potato(es)?, french fri"),
     ("Cheeseburger with lettuce and tomato", "(?i)^cheeseburger"),
-    ("Hamburger patty", "^Beef, ground, .*patty, cooked"),
-    ("Beef burger patty (grilled)", "^Beef, ground, .*patty, cooked"),
+    ("Hamburger patty", "^Beef, ground, .*patty, cooked|^Beef, ground, patty"),
+    ("Beef burger patty (grilled)", "^Beef, ground, .*patty, cooked|^Beef, ground, patty"),
     ("Pasta with marinara sauce", "^Pasta, cooked|^Pasta with tomato-based sauce, restaurant$"),
     ("Spaghetti with tomato sauce", "^(Pasta, cooked|Spaghetti)|^Pasta with tomato-based sauce, restaurant$"),
     ("Penne pasta", "^Pasta, cooked"),
@@ -470,17 +470,17 @@ let plates: [(String, String)] = [
     ("Almonds (raw)", "^Nuts, almonds$"),
     ("Tortilla chips with salsa", "^(Snacks, t|T)ortilla chips"),
     ("Black beans (canned)", "^Beans, black.*canned"),
-    ("Chicken thigh, roasted, with skin", "^Chicken, .*thigh, meat and skin, cooked, roasted"),
-    ("Chicken wings (buffalo)", "^Chicken, .*wing.*cooked|^Chicken .wings. with hot sauce"),
+    ("Chicken thigh, roasted, with skin", "^Chicken, .*thigh, meat and skin, cooked, roasted|^Chicken thigh, baked"),
+    ("Chicken wings (buffalo)", "^Chicken, .*wing.*cooked|^Chicken .wings. with hot sauce|^Chicken wing, cooked"),
     ("Ground beef, cooked", "^Beef, ground, .*cooked"),
     ("Ground turkey (93% lean)", "^Turkey, ground, 93% lean"),
-    ("Pan-seared salmon fillet", "^Fish, salmon, .*cooked, dry heat"),
-    ("Salmon, baked", "^Fish, salmon, .*cooked, dry heat"),
+    ("Pan-seared salmon fillet", "^Fish, salmon, .*cooked, dry heat|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("Salmon, baked", "^Fish, salmon, .*cooked, dry heat|^Fish, salmon, (baked|grilled|steamed|cooked)"),
     ("Tuna steak, seared", "^Fish, tuna, .*fresh.*cooked"),
-    ("Shrimp, grilled", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)"),
-    ("Bacon strips (2)", "^Pork, cured, bacon, .*cooked"),
+    ("Shrimp, grilled", "^Crustaceans, shrimp, (mixed species, )?cooked(?!, breaded)|^Shrimp, grilled|^Shrimp, steamed or boiled"),
+    ("Bacon strips (2)", "^Pork, cured, bacon, .*cooked|^Bacon, cooked"),
     ("Sausage patty", "^Pork sausage, .*cooked"),
-    ("Pork chop, grilled", "^Pork, fresh, .*chops.*cooked"),
+    ("Pork chop, grilled", "^Pork, fresh, .*chops.*cooked|^Pork, chop"),
     ("Sirloin steak, grilled", "^Beef, .*sirloin.*cooked"),
     ("Baked potato with sour cream", "^Potatoes, baked"),
     ("Mashed potatoes with gravy", "^Potato(es)?, mashed.*gravy"),
@@ -513,7 +513,7 @@ let plates: [(String, String)] = [
     ("French toast with syrup", "^French toast"),
     ("Oatmeal with banana", "^Cereals, oats, .*cooked"),
     ("Oatmeal (cooked)", "^Cereals, oats, .*cooked"),
-    ("Cereal with milk", "^Cereals ready-to-eat"),
+    ("Cereal with milk", "^Cereals ready-to-eat|^Cereal, ready-to-eat"),
     ("Vanilla ice cream scoop", "^Ice creams, vanilla"),
     ("Slice of cheese pizza", "^Pizza, cheese"),
     ("Slice of pepperoni pizza", "^Pizza.*pepperoni"),
@@ -660,13 +660,16 @@ let kitchen: [(String, String)] = [
     ("capers", "^Capers"), ("horseradish", "^Horseradish"), ("wasabi", "^Wasabi"), ("miso", "^Miso"), ("tempeh", "^Tempeh"),
     ("oat bran", "^Oat bran"), ("wheat germ", "^Wheat germ"), ("barley", "^Barley, pearled, cooked"), ("bulgur", "^Bulgur, cooked"),
     ("rice cakes", "^Snacks, rice cakes"), ("rice noodles", "^Rice noodles, cooked"), ("soba", "^Noodles, japanese, soba"),
-    ("ravioli", "^Ravioli"), ("tortellini", "^Tortellini"), ("bratwurst", "^Bratwurst"), ("chorizo", "^Sausage, pork, chorizo"),
-    ("pastrami", "^Pastrami, beef|^Beef, cured, pastrami"), ("corned beef", "^Beef, cured, corned beef"),
-    ("liver", "^Beef, variety meats and by-products, liver"), ("chicken liver", "^Chicken, liver"), ("lamb", "^Lamb"),
-    ("duck", "^Duck, domesticated"), ("venison", "^Game meat, deer"), ("bison", "^Game meat, bison"), ("anchovies", "^Fish, anchovy"),
+    ("ravioli", "^Ravioli"), ("tortellini", "^Tortellini"), ("bratwurst", "^Bratwurst"), ("chorizo", "^Sausage, pork, chorizo|^Chorizo, cooked"),
+    ("pastrami", "^Pastrami, beef|^Beef, cured, pastrami|^Pastrami$"), ("corned beef", "^Beef, cured, corned beef|^Beef, corned"),
+    ("liver", "^Beef, variety meats and by-products, liver|^Liver, beef"), ("chicken liver", "^Chicken, liver|^Liver, chicken"), ("lamb", "^Lamb"),
+    ("duck", "^Duck, domesticated|^Duck, cooked"), ("venison", "^Game meat, deer|^Venison, cooked"), ("bison", "^Game meat, bison|^Bison, cooked"),
+    ("anchovies", "^Fish, anchovy"),
     ("mackerel", "^Fish, mackerel, Atlantic"), ("trout", "^Fish, trout"), ("halibut", "^Fish, halibut"), ("mahi mahi", "^Fish, mahimahi"),
-    ("swordfish", "^Fish, swordfish"), ("catfish", "^Fish, catfish"), ("clams", "^Mollusks, clam"), ("mussels", "^Mollusks, mussel"),
-    ("oysters", "^Mollusks, oyster"), ("calamari", "^Mollusks, squid"), ("octopus", "^Mollusks, octopus"), ("crawfish", "^Crustaceans, crayfish"),
+    ("swordfish", "^Fish, swordfish"), ("catfish", "^Fish, catfish"), ("clams", "^Mollusks, clam|^Clams, cooked"),
+    ("mussels", "^Mollusks, mussel|^Mussels, cooked"),
+    ("oysters", "^Mollusks, oyster|^Oysters, raw"), ("calamari", "^Mollusks, squid|^Calamari, cooked"),
+    ("octopus", "^Mollusks, octopus|^Octopus, cooked"), ("crawfish", "^Crustaceans, crayfish|^Crayfish, cooked"),
     ("egg noodles", "^Noodles, egg"), ("whipped topping", "(?i)whipped.*topping|topping"), ("evaporated milk", "^Milk, canned, evaporated"),
     ("buttermilk", "^Milk, buttermilk"), ("eggnog", "^Eggnog|^Eggnog"),
     ("custard", "^Desserts, egg custard|^Egg custards|^Pie, egg custard|^Custard$"),
@@ -821,7 +824,8 @@ let dishes: [(String, String)] = [
     ("chicken stir fry", "(?i)chicken.*(stir|vegetables)|stir.*chicken"), ("beef stir fry", "(?i)beef.*(stir|vegetables)|stir.*beef"),
     ("vegetable stir fry", "(?i)vegetable.*stir|stir.*vegetable|^Tofu and vegetables, with soy-based sauce$"),
     ("chicken nuggets", "(?i)chicken nuggets"), ("fish and chips", "(?i)fish and chips|fish.*(battered|fried)|(?i)^fish (&|and) chips$"),
-    ("fish sticks", "(?i)fish sticks?"), ("crab cake", "(?i)crab cake|^Crab, cake$"), ("shrimp scampi", "(?i)scampi|^Shrimp in garlic sauce"),
+    ("fish sticks", "(?i)fish sticks?|^Fish, stick"), ("crab cake", "(?i)crab cake|^Crab, cake$"),
+    ("shrimp scampi", "(?i)scampi|^Shrimp in garlic sauce"),
     ("fried shrimp", "(?i)shrimp.*(fried|breaded)"), ("shrimp cocktail", "(?i)shrimp cocktail"),
     ("lobster roll", "(?i)lobster.*(roll|sandwich|salad)"), ("poke bowl", "(?i)poke"),
     ("stuffed cabbage", "(?i)cabbage.*(stuffed|roll)|stuffed cabbage"), ("pierogi", "(?i)pierog"), ("samosa", "(?i)samosa"),
@@ -871,8 +875,10 @@ let fresh: [(String, String)] = [
     ("fresh fennel", "^Fennel, bulb, raw"), ("fresh brussels sprouts", "^Brussels sprouts, raw"), ("fresh pumpkin", "^Pumpkin, raw"),
     ("fresh potatoes", "^Potatoes, .*raw"), ("fresh lemon juice", "^Lemon juice, raw"), ("fresh lime juice", "^Lime juice, raw"),
     ("fresh orange juice", "^Orange juice, raw"), ("fresh squeezed orange juice", "(?i)orange juice"), ("fresh salmon", "^Fish, salmon, .*raw"),
-    ("fresh salmon fillet", "^Fish, salmon, .*raw"), ("fresh tuna", "^Fish, tuna, fresh"), ("fresh cod", "^Fish, cod, Atlantic, raw"),
-    ("fresh shrimp", "^Crustaceans, shrimp, raw"), ("fresh scallops", "^Mollusks, scallop, .*raw"), ("fresh oysters", "^Mollusks, oyster, .*raw"),
+    ("fresh salmon fillet", "^Fish, salmon, .*raw"), ("fresh tuna", "^Fish, tuna, fresh|^Fish, tuna, raw"),
+    ("fresh cod", "^Fish, cod, Atlantic, raw"),
+    ("fresh shrimp", "^Crustaceans, shrimp, raw"), ("fresh scallops", "^Mollusks, scallop, .*raw"),
+    ("fresh oysters", "^Mollusks, oyster, .*raw|^Oysters, raw"),
     ("fresh salsa", "^Salsa"), ("fresh mozzarella", "(?i)mozzarella"), ("fresh pasta", "^Pasta, fresh-refrigerated"),
     ("fresh eggs", "^Egg, whole, raw, fresh"), ("fresh bread", "^Bread, (white|wheat)"), ("fresh fruit salad", "(?i)fruit salad"),
     ("fresh milk", "^Milk, (whole|reduced fat|lowfat)"), ("fresh strawberry", "^Strawberries, raw"), ("fresh blueberry", "^Blueberries, raw"),
@@ -886,10 +892,10 @@ let cookedFoods: [(String, String)] = [
     ("cooked white rice", "^Rice, white, long-grain, regular, enriched, cooked"), ("cooked brown rice", "^Rice, brown, .*cooked"),
     ("cooked jasmine rice", "^Rice, white, long-grain, regular, enriched, cooked"),
     ("cooked basmati rice", "^Rice, white, long-grain, regular, enriched, cooked"), ("cooked wild rice", "^Wild rice, cooked"),
-    ("cooked chicken", "^Chicken, broilers or fryers, meat only, cooked, roasted"),
-    ("cooked chicken breast", "^Chicken, broilers or fryers, breast, meat only, cooked, roasted"),
-    ("cooked chicken thigh", "^Chicken, broilers or fryers, thigh, meat only, cooked, roasted"),
-    ("cooked ground chicken", "^Chicken, ground, .*cooked"), ("cooked chicken wings", "^Chicken, .*wing.*cooked"),
+    ("cooked chicken", "^Chicken, broilers or fryers, meat only, cooked, roasted|^Chicken, cooked"),
+    ("cooked chicken breast", "^Chicken, broilers or fryers, breast, meat only, cooked, roasted|^Chicken breast, cooked"),
+    ("cooked chicken thigh", "^Chicken, broilers or fryers, thigh, meat only, cooked, roasted|^Chicken thigh, cooked"),
+    ("cooked ground chicken", "^Chicken, ground, .*cooked"), ("cooked chicken wings", "^Chicken, .*wing.*cooked|^Chicken wing, cooked"),
     ("cooked pasta", "^Pasta, cooked"), ("cooked spaghetti", "^Pasta, cooked"), ("cooked macaroni", "^Pasta, cooked"),
     ("cooked noodles", "^Noodles, egg, enriched, cooked"), ("cooked egg noodles", "^Noodles, egg, enriched, cooked"),
     ("cooked rice noodles", "^Rice noodles, cooked"), ("cooked quinoa", "^Quinoa, cooked"),
@@ -909,17 +915,24 @@ let cookedFoods: [(String, String)] = [
     ("cooked black beans", "^Beans, black, mature seeds, cooked"), ("cooked beans", "^Beans, (black|pinto), mature seeds, cooked"),
     ("cooked chickpeas", "^Chickpeas .*cooked"), ("cooked kidney beans", "^Beans, kidney, red, mature seeds, cooked"),
     ("cooked pinto beans", "^Beans, pinto, mature seeds, cooked"), ("cooked ground beef", "^Beef, ground, .*cooked"),
-    ("cooked beef", "^Beef, .*cooked"), ("cooked steak", "^Beef, .*steak.*cooked"), ("cooked pork", "^Pork, fresh, (composite|loin).*cooked"),
-    ("cooked pork chop", "^Pork, fresh, loin.*chops.*cooked"), ("cooked pork tenderloin", "^Pork, fresh, loin, tenderloin.*cooked"),
-    ("cooked ground pork", "^Pork, fresh, ground, cooked"), ("cooked bacon", "^Pork, cured, bacon, cooked"),
+    ("cooked beef", "^Beef, .*cooked"), ("cooked steak", "^Beef, .*steak.*cooked|^Steak, cooked"),
+    ("cooked pork", "^Pork, fresh, (composite|loin).*cooked|^Pork, cooked"),
+    ("cooked pork chop", "^Pork, fresh, loin.*chops.*cooked|^Pork, chop"),
+    ("cooked pork tenderloin", "^Pork, fresh, loin, tenderloin.*cooked|^Pork, tenderloin"),
+    ("cooked ground pork", "^Pork, fresh, ground, cooked|^Pork, ground"), ("cooked bacon", "^Pork, cured, bacon, cooked|^Bacon, cooked"),
     ("cooked ham", "^(Ham|Pork, cured, ham)"), ("cooked sausage", "^(Sausage|Pork sausage).*cooked"), ("cooked lamb", "^Lamb, .*cooked"),
-    ("cooked veal", "^Veal, .*cooked"), ("cooked turkey", "^Turkey, whole, meat only, cooked"),
+    ("cooked veal", "^Veal, .*cooked"), ("cooked turkey", "^Turkey, whole, meat only, cooked|^Turkey, cooked"),
     ("cooked turkey breast", "^Turkey, whole, breast, meat only, cooked"), ("cooked ground turkey", "^Turkey, [Gg]round, cooked"),
     ("cooked duck", "^Duck, .*cooked"), ("cooked egg", "^Egg, whole, cooked"), ("cooked eggs", "^Egg, whole, cooked"),
-    ("cooked salmon", "^Fish, salmon, .*cooked"), ("cooked shrimp", "^Crustaceans, shrimp, cooked"), ("cooked tilapia", "^Fish, tilapia, cooked"),
-    ("cooked cod", "^Fish, cod, (Pacific|Atlantic), cooked"), ("cooked tuna", "^Fish, tuna, .*cooked"), ("cooked trout", "^Fish, trout, .*cooked"),
-    ("cooked halibut", "^Fish, halibut, .*cooked"), ("cooked catfish", "^Fish, catfish, .*cooked"), ("cooked crab", "^Crustaceans, crab, .*cooked"),
-    ("cooked lobster", "^Crustaceans, lobster, northern, cooked"), ("cooked scallops", "^Mollusks, scallop.*cooked"), ("cooked tofu", "^Tofu"),
+    ("cooked salmon", "^Fish, salmon, .*cooked|^Fish, salmon, (baked|grilled|steamed|cooked)"),
+    ("cooked shrimp", "^Crustaceans, shrimp, cooked|^Shrimp, cooked"),
+    ("cooked tilapia", "^Fish, tilapia, cooked|^Fish, tilapia, (baked|grilled|steamed|cooked)"),
+    ("cooked cod", "^Fish, cod, (Pacific|Atlantic), cooked|^Fish, cod, cooked"), ("cooked tuna", "^Fish, tuna, .*cooked"),
+    ("cooked trout", "^Fish, trout, .*cooked"),
+    ("cooked halibut", "^Fish, halibut, .*cooked"), ("cooked catfish", "^Fish, catfish, .*cooked"),
+    ("cooked crab", "^Crustaceans, crab, .*cooked|^Crab, cooked"),
+    ("cooked lobster", "^Crustaceans, lobster, northern, cooked|^Lobster, cooked"), ("cooked scallops", "^Mollusks, scallop.*cooked"),
+    ("cooked tofu", "^Tofu"),
     ("cooked edamame", "^Edamame"),
 ]
 
@@ -1070,10 +1083,10 @@ let withSides: [(String, String)] = [
     ("french toast with syrup", "^French toast"), ("ice cream with chocolate syrup", "^Ice cream"), ("bread with butter", "^Bread, (white|wheat)"),
     ("pita with hummus", "^Bread, pita"), ("tortilla with cheese", "^(Tortillas|Quesadilla)"), ("quesadilla with chicken", "^Quesadilla, chicken"),
     ("nachos with cheese", "^(Nachos, cheese only|Fast foods, nachos, with cheese)"), ("fries with ketchup", "^Potato(es)?, french fri"),
-    ("fries with cheese", "^Potato, french fries, with cheese"), ("hot dog with bun", "^(Hot dog sandwich|Frankfurter)"),
+    ("fries with cheese", "^Potato, french fries, with cheese"), ("hot dog with bun", "^(Hot dog sandwich|Frankfurter)|^Hot dog"),
     ("hot dog with ketchup", "^(Hot dog|Frankfurter)"), ("hamburger with cheese", "^(Cheeseburger|Hamburger)"),
     ("burger with cheese", "^(Cheeseburger|Hamburger)"), ("sandwich with turkey", "^Turkey sandwich"), ("wrap with chicken", "(?i)chicken.*wrap"),
-    ("steak with potatoes", "^Beef"), ("chicken breast with rice", "^Chicken"), ("salmon with rice", "^Fish, salmon"),
+    ("steak with potatoes", "^Beef|^Steak, cooked"), ("chicken breast with rice", "^Chicken"), ("salmon with rice", "^Fish, salmon"),
     ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk"), ("cereal with almond milk", "^Cereal"),
     ("toast with eggs", "^Bread, .*toasted"),
 ]
@@ -1097,8 +1110,8 @@ let together: [(typed: String, first: String, second: String)] = [
     ("chicken and vegetables", "^Chicken or turkey and vegetables", ""), ("salt and vinegar chips", "(?i)salt (and|&) vinegar", ""),
     ("mike and ike", "(?i)mike and ike", ""), ("cookies and cream", "(?i)cookies? (and|&|'?n'?) cre(a|me)", ""),
     ("burger and fries", "^Hamburger", "^Potato, french fries"), ("burger & fries", "^Hamburger", "^Potato, french fries"),
-    ("eggs and bacon", "^Egg, whole", "^Pork, cured, bacon"), ("bacon and eggs", "^Pork, cured, bacon", "^Egg, whole"),
-    ("steak and potatoes", "^Beef, .*steak", "^Potato"), ("steak and eggs", "^Beef, .*steak", "^Egg, whole"),
+    ("eggs and bacon", "^Egg, whole", "^Pork, cured, bacon|^Bacon, cooked"), ("bacon and eggs", "^Pork, cured, bacon|^Bacon, cooked", "^Egg, whole"),
+    ("steak and potatoes", "^Beef, .*steak|^Steak, cooked", "^Potato"), ("steak and eggs", "^Beef, .*steak|^Steak, cooked", "^Egg, whole"),
     ("chips and salsa", "(?i)^(potato chips|tortilla chips|snacks, tortilla chips)", "^Salsa"),
     ("chips and guacamole", "(?i)^(potato chips|tortilla chips|snacks, tortilla chips)", "^Guacamole"),
     ("bread and butter", "^Bread, (wheat|white)", "^Butter, salted"), ("cheese and crackers", "^Cheese, cheddar", "^Crackers"),
@@ -1109,24 +1122,64 @@ let together: [(typed: String, first: String, second: String)] = [
     ("pancakes and syrup", "^Pancakes", "^Syrup"), ("salt and pepper", "^Salt, table", "^Spices, pepper, black"),
     ("big mac and fries", "(?i)big mac", "^Potato, french fries"), ("peanut butter and banana", "^Peanut butter", "^Bananas, raw"),
     ("apple and peanut butter", "^Apples, raw", "^Peanut butter"), ("milk and cookies", "^Milk, whole", "^Cookie"),
-    ("chicken and broccoli", "^Chicken", "^Broccoli"), ("salmon and rice", "(?i)salmon", "^Rice"), ("steak and salad", "^Beef, .*steak", "(?i)salad"),
+    ("chicken and broccoli", "^Chicken", "^Broccoli"), ("salmon and rice", "(?i)salmon", "^Rice"),
+    ("steak and salad", "^Beef, .*steak|^Steak, cooked", "(?i)salad"),
     ("bagel and cream cheese", "^Bagel", "^Cheese, cream"), ("tuna and crackers", "(?i)tuna", "^Crackers"), ("pizza and wings", "^Pizza", "(?i)wing"),
     ("burger and shake", "^Hamburger", "(?i)shake"), ("coffee and bagel", "^(Coffee|Beverages, coffee)", "^Bagel"),
     ("oatmeal and banana", "(?i)oat", "^Bananas, raw"), ("wine and cheese", "(?i)wine", "^Cheese, cheddar"), ("beer and pizza", "(?i)beer", "^Pizza"),
     ("lettuce and tomato", "^Lettuce", "^Tomato"), ("turkey and cheese", "^Turkey", "^Cheese, cheddar"), ("rice and broccoli", "^Rice", "^Broccoli"),
     ("chicken and potatoes", "^Chicken or turkey and potatoes", ""), ("eggs and sausage", "^Egg, whole", "(?i)sausage"),
     ("sausage and eggs", "(?i)sausage", "^Egg, whole"), ("waffles and syrup", "^Waffle", "^Syrup"), ("banana and yogurt", "^Bananas, raw", "^Yogurt"),
-    ("eggs, bacon and toast", "^Egg, whole", "^Pork, cured, bacon"), ("burger, fries and a coke", "^Hamburger", "^Potato, french fries"),
+    ("eggs, bacon and toast", "^Egg, whole", "^Pork, cured, bacon|^Bacon, cooked"),
+    ("burger, fries and a coke", "^Hamburger", "^Potato, french fries"),
+]
+
+/// Plain meats, poultry, fish and cereals by the names they're bought, cooked and ordered by:
+/// the survey's entry as it's eaten ("Steak, cooked", "Chicken breast, cooked, without skin",
+/// "Fish, salmon, grilled"), where SR Legacy has a cut, a grade and a trim.
+let proteins: [(String, String)] = [
+    ("steak", "^Steak, cooked"), ("sirloin steak", "^Beef, steak, sirloin"), ("ribeye steak", "^Beef, steak, ribeye"),
+    ("t-bone steak", "^Beef, steak, T-bone"), ("filet mignon", "^Beef, steak, tenderloin"), ("new york strip", "^Beef, steak, strip"),
+    ("strip steak", "^Beef, steak, strip"), ("flank steak", "^Beef, steak, flank"), ("skirt steak", "^Beef, plate, inside skirt steak"),
+    ("roast beef", "^Beef, roast"), ("pot roast", "^Beef, pot roast"), ("brisket", "^Beef, brisket"), ("short ribs", "^Beef, shortribs"),
+    ("prime rib", "^Beef, rib"), ("ground beef", "^Beef, ground, cooked"), ("hamburger patty", "^Beef, ground, patty"), ("beef jerky", "^Beef jerky"),
+    ("corned beef", "^Beef, corned"), ("pork chop", "^Pork, chop, cooked"), ("pork loin", "^Pork, fresh, loin"),
+    ("pork tenderloin", "^Pork, tenderloin"), ("pulled pork", "^(Barbecue pork|Pulled pork)"), ("pork ribs", "^Pork, ribs"),
+    ("baby back ribs", "^Pork, (ribs|fresh, backribs)"), ("ribs", "^Ribs, cooked"), ("pork roast", "^Pork, roast"), ("carnitas", "^Pork, carnitas"),
+    ("ham", "^Ham"), ("deli ham", "^Ham, prepackaged or deli"), ("bacon", "^Bacon, cooked"), ("turkey bacon", "^Turkey bacon"),
+    ("canadian bacon", "^Canadian bacon"), ("sausage", "^Sausage, cooked"), ("breakfast sausage", "^Pork sausage"), ("sausage link", "^Pork sausage"),
+    ("sausage patty", "^Pork sausage"), ("italian sausage", "^Italian sausage"), ("bratwurst", "^Bratwurst"),
+    ("kielbasa", "^(Polish sausage|Kielbasa)"), ("chorizo", "^Chorizo"), ("hot dog", "^Hot dog"), ("salami", "^Salami"), ("pepperoni", "^Pepperoni"),
+    ("bologna", "^Bologna"), ("pastrami", "^Pastrami"), ("prosciutto", "^Ham, prosciutto"), ("spam", "^Spam"),
+    ("deli turkey", "^Turkey, prepackaged or deli"), ("turkey breast", "^Turkey, .*breast"), ("turkey", "^Turkey, cooked"),
+    ("ground turkey", "^Turkey, [Gg]round"), ("chicken", "^Chicken, cooked$"), ("chicken breast", "^Chicken breast, cooked, without skin"),
+    ("skinless chicken breast", "^Chicken breast, cooked, without skin|^Chicken, broiler or fryers, breast, skinless"),
+    ("grilled chicken", "^Chicken, grilled"), ("grilled chicken breast", "^Chicken breast, grilled"), ("baked chicken", "^Chicken, baked"),
+    ("baked chicken breast", "^Chicken breast, baked"), ("fried chicken", "^Chicken, fried"), ("rotisserie chicken", "^Chicken, rotisserie"),
+    ("chicken thigh", "^Chicken thigh, cooked"), ("chicken wings", "^Chicken wing"), ("chicken drumstick", "^Chicken drumstick, cooked"),
+    ("chicken tenders", "^Chicken tenders"), ("chicken nuggets", "^Chicken nuggets"), ("ground chicken", "^Chicken, ground"),
+    ("lamb", "^Lamb, cooked"), ("lamb chop", "^Lamb, chop"), ("ground lamb", "^Lamb, ground"), ("duck", "^Duck, cooked"), ("venison", "^Venison"),
+    ("liver", "^Liver, beef"), ("salmon", "^Fish, salmon, cooked"), ("baked salmon", "^Fish, salmon, baked"),
+    ("grilled salmon", "^Fish, salmon, grilled"), ("smoked salmon", "^Fish, salmon, smoked"), ("tuna", "^Fish, tuna, canned"),
+    ("cod", "^Fish, cod, cooked"), ("fried cod", "^Fish, cod, fried"), ("tilapia", "^Fish, tilapia, cooked"), ("halibut", "^Fish, halibut"),
+    ("trout", "^Fish, trout"), ("catfish", "^Fish, catfish"), ("fried catfish", "^Fish, catfish, fried"), ("sardines", "^Fish, sardine"),
+    ("fish", "^Fish, cooked"), ("fried fish", "^Fish, fried"), ("baked fish", "^Fish, baked"), ("shrimp", "^Shrimp, cooked"),
+    ("grilled shrimp", "^Shrimp, grilled"), ("fried shrimp", "^Shrimp, fried"), ("crab", "^Crab, cooked"), ("lobster", "^Lobster, cooked"),
+    ("scallops", "^Scallops"), ("clams", "^Clams, cooked"), ("oysters", "^Oysters"), ("mussels", "^Mussels, cooked"), ("calamari", "^Calamari"),
+    ("fried calamari", "^Calamari, fried"), ("fish sticks", "^Fish sticks"), ("cereal", "^Cereal, ready-to-eat"),
+    ("corn flakes", "^Cereal, corn flakes"), ("granola", "^Cereal, granola"), ("shredded wheat", "^Cereal, shredded wheat"),
+    ("bran flakes", "^Cereal, bran flakes"), ("berries", "^Berries$"), ("mixed berries", "^Berries"), ("frozen berries", "^Berries, frozen"),
+    ("fruit salad", "^Fruit salad"), ("frozen fruit", "^Fruit mixture, frozen"), ("fruit cocktail", "^Fruit cocktail"),
 ]
 
 let snacks: [(String, String)] = [
     ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk$"), ("protein shake", "^Nutritional drink or shake, high protein"),
     ("yogurt parfait", "^Yogurt parfait"), ("egg and cheese sandwich", "^Egg sandwich on .*with cheese"),
-    ("blueberry pancakes", "^Pancakes, blueberry"), ("turkey bacon", "^Bacon, turkey"), ("turkey sausage", "^Sausage, turkey"),
-    ("sausage patty", "^Pork sausage, link/patty"), ("hash brown patty", "hash browns, round pieces or patty"),
+    ("blueberry pancakes", "^Pancakes, blueberry"), ("turkey bacon", "^Bacon, turkey|^Turkey bacon, cooked"), ("turkey sausage", "^Sausage, turkey"),
+    ("sausage patty", "^Pork sausage, link/patty|^Pork sausage, cooked"), ("hash brown patty", "hash browns, round pieces or patty"),
     ("english muffin", "^Muffins, English"), ("granola", "granola"), ("granola bar", "^(Snacks, granola bars|Cereal or Granola bar)"),
     ("trail mix", "^Snacks, trail mix"),
-    ("beef jerky", "beef jerky"), ("rice cakes", "^Snacks, rice cakes"), ("pretzels", "^Snacks, pretzels, hard, plain"),
+    ("beef jerky", "beef jerky|^Beef jerky"), ("rice cakes", "^Snacks, rice cakes"), ("pretzels", "^Snacks, pretzels, hard, plain"),
     ("popcorn", "^(Snacks, popcorn|Popcorn$)"), ("microwave popcorn", "^Popcorn, microwave"), ("crackers", "^Crackers"),
     ("pita chips", "^Snacks, pita chips"),
     ("tortilla chips", "^Tortilla chips|^Snacks, tortilla chips"), ("applesauce", "^Applesauce"), ("fruit salad", "^Fruit salad"),
@@ -1135,7 +1188,7 @@ let snacks: [(String, String)] = [
     ("tuna wrap", "^Tuna salad sandwich wrap"),
     ("burrito bowl", "^Burrito bowl"), ("spaghetti squash", "^Squash, winter, spaghetti"), ("sweet potato", "^Sweet potato, cooked"),
     ("mixed vegetables", "^Vegetables, mixed"), ("side salad", "^Lettuce, salad with assorted vegetables"), ("rotisserie chicken", "rotisserie"),
-    ("grilled chicken", "^Chicken, .*grilled"), ("shredded chicken", "^Chicken, broilers or fryers, .*cooked"),
+    ("grilled chicken", "^Chicken, .*grilled"), ("shredded chicken", "^Chicken, broilers or fryers, .*cooked|^Chicken, cooked"),
     ("boneless wings", "^Chicken .wings., boneless"), ("chicken drumstick", "drumstick"), ("ground turkey", "^Turkey, [Gg]round"),
     ("turkey chili", "^Chili with chicken and beans$"), ("chicken chili", "^Chili with chicken"), ("beef chili", "^Chili with meat and beans$"),
     ("vegetarian chili", "^Chili, vegetarian"), ("chicken and dumplings", "^Chicken or turkey with dumplings"),
@@ -1946,7 +1999,7 @@ struct StaplesTests {
         // A kind of food typed alone, where the usual one is far down the foods with the word,
         // and the words that mean a food of their own alone.
         #expect(catalog.top("juice", 1).first.map { matches("^Orange juice", $0) } == true)
-        #expect(catalog.top("meat", 1).first.map { matches("^Beef, ground", $0) } == true)
+        #expect(catalog.top("meat", 1).first.map { matches("^(Beef|Meat), ground", $0) } == true)
         #expect(catalog.top("protein", 1).first.map { matches("(?i)protein powder", $0) } == true)
         #expect(catalog.top("salad", 1).first.map { matches("^Lettuce, salad", $0) } == true)
         // A few letters aren't the start of a brand that isn't sold here.
@@ -1969,7 +2022,7 @@ struct StaplesTests {
         #expect(catalog.names("mcchicken", 1).first.map { matches("McCHICKEN", $0) } == true)
         #expect(catalog.names("egg mcmuffin", 1).first.map { matches("Egg McMUFFIN", $0) } == true)
         // A typo is still read: no food people look for is spelt that way.
-        #expect(catalog.top("chiken brest", 1).first.map { matches("^Chicken, .*breast", $0) } == true)
+        #expect(catalog.top("chiken brest", 1).first.map { matches("^Chicken.*breast", $0) } == true)
         #expect(catalog.top("crunchy taco", 1).first.map { matches("taco with beef.*hard shell", $0) } == true)
         // "Mc" typed apart is the start of the one word.
         #expect(catalog.respell("mc flurry").text == "mcflurry")
@@ -2048,7 +2101,7 @@ struct StaplesTests {
         #expect(catalog.top("parmesan", 1).first?.hasPrefix("Cheese, parmesan") == true)
         #expect(catalog.top("flour tortilla", 1).first?.hasPrefix("Tortillas") == true)
         #expect(catalog.top("american cheese", 1).first?.hasPrefix("Cheese") == true)
-        #expect(catalog.top("liver", 1).first?.hasPrefix("Beef, variety meats and by-products, liver") == true)
+        #expect(catalog.top("liver", 1).first?.hasPrefix("Liver, beef") == true)
         // The dish named by nothing but what was said, before its kinds.
         #expect(catalog.top("burrito", 1).first == "Burrito")
         #expect(catalog.top("tomato soup", 1).first == "Soup, tomato")
@@ -2196,7 +2249,7 @@ struct StaplesTests {
         #expect(catalog.candidates(name: "Toast with butter", brand: nil).first?.food.name.hasPrefix("Bread") == true)
         // A plain food reached past the dishes made with it, however many there are.
         #expect(
-            catalog.candidates(name: "Shredded chicken", brand: nil).first?.food.name == "Chicken, broilers or fryers, meat only, cooked, roasted")
+            catalog.candidates(name: "Shredded chicken", brand: nil).first?.food.name == "Chicken, cooked")
     }
 
     @Test("a food said to be fresh is the raw one, typed and named as a model would")
@@ -2484,6 +2537,48 @@ struct StaplesTests {
         #expect(!eggs.contains { $0.food.name == "Egg burrito, with bacon" })
         // A dish it names is named.
         #expect(catalog.candidates(name: "Biscuits and gravy", brand: nil).first?.named == true)
+    }
+
+    @Test("plain meats, fish and cereals come first as they're eaten, typed and named as a model would")
+    func plainProteins() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in proteins {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Plain meats, fish and cereals \(seen ? "as a model names them" : "typed"): \(first) of \(proteins.count) first")
+            #expect(
+                Double(first) >= 0.95 * Double(proteins.count),
+                "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // The one that only says it's cooked, where no way of cooking is asked for, and the
+        // one that says nothing of its skin, or is without it: a chicken breast before the
+        // grilled one and the one with skin.
+        #expect(catalog.top("chicken", 3) == ["Chicken, cooked", "Chicken, cooked, without skin", "Chicken, grilled"])
+        #expect(catalog.top("chicken breast", 2) == ["Chicken breast, cooked, without skin", "Chicken breast, cooked, with skin"])
+        #expect(catalog.top("chicken thigh with skin", 1).first == "Chicken thigh, cooked, with skin")
+        #expect(catalog.top("skinless chicken thigh", 1).first == "Chicken thigh, cooked, without skin")
+        #expect(catalog.top("grilled chicken breast", 1).first == "Chicken breast, grilled, without skin")
+        // Named by nothing but what was said, cooked, before a cut or a composite of cuts.
+        #expect(catalog.top("lamb", 1).first == "Lamb, cooked")
+        #expect(catalog.top("steak", 1).first == "Steak, cooked")
+        // A steak by its cut, as it's ordered; and the food is cooked whichever name found it.
+        #expect(catalog.top("filet mignon", 1).first == "Beef, steak, tenderloin, cooked")
+        #expect(catalog.candidates(name: "New York strip", brand: nil).first?.food.name == "Beef, steak, strip, cooked")
+        #expect(catalog.top("turkey bacon", 1).first == "Turkey bacon, cooked")
+        // Fish of no one kind is fish, not the kind most logged.
+        #expect(catalog.top("fish", 1).first == "Fish, cooked")
+        #expect(catalog.top("fried fish", 1).first == "Fish, fried")
+        // A label listed under a food's own word isn't whose "Sausage patty" the catalog means.
+        #expect(catalog.candidates(name: "Sausage patty", brand: nil).first?.food.name == "Pork sausage, cooked")
+        // Shellfish that are steamed are the cooked ones; oysters are still raw.
+        #expect(catalog.top("clams", 1).first == "Clams, cooked")
+        #expect(catalog.top("oysters", 1).first == "Oysters, raw")
+        // The survey's plain meats are read as plain foods, its cold cuts as processed.
+        #expect(catalog.search("steak").first?.food.processing == .whole)
+        #expect(catalog.search("salami").first?.food.processing == .ultraProcessed)
     }
 
     @Test("a product is first before its name is typed out")

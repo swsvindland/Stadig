@@ -300,9 +300,6 @@ private let everydayVarieties: [String: Usual] = [
             String.init)),
     "cream": Usual(["heavy"], "ice sour whipped cheese light half coffee table coconut soup pie puff soda".split(separator: " ").map(String.init)),
     "syrup": Usual(["maple"], "chocolate corn pancake agave simple cane sorghum malt rice date fruit".split(separator: " ").map(String.init)),
-    "fish": Usual(
-        ["tilapia"],
-        "tuna salmon cod oil sauce stick sticks taco tacos fillet sandwich cake cakes fried chips gefilte roe".split(separator: " ").map(String.init)),
     "salad": Usual(
         ["lettuce"],
         "tuna chicken egg potato pasta macaroni fruit caesar greek cobb taco bean dressing seafood crab shrimp ham turkey kit".split(separator: " ")
@@ -368,8 +365,9 @@ private let eatenCooked = stems(
     "rice pasta noodle spaghetti macaroni quinoa lentil oatmeal porridge chicken beef pork turkey lamb steak bacon sausage "
         + "salmon fish tuna cod tilapia shrimp egg potato bean chickpea barley couscous bulgur farro millet grits polenta "
         + "duck goose veal bison venison ribeye sirloin brisket tenderloin crab lobster scallop trout halibut catfish haddock "
-        + "rib sparerib backrib roast")
+        + "rib sparerib backrib roast clam mussel calamari squid octopus crayfish")
 private let cookedWords = stems("cooked roasted baked boiled broiled grilled steamed poached scrambled fried braised microwaved")
+private let plainlyCooked = stem("cooked")
 
 /// How a food is cooked: with dry heat, in water or steam, or in fat.
 enum Heat: Sendable { case dry, moist, fat }
@@ -467,7 +465,10 @@ struct Ease {
     /// Whether a food is one the word needn't be said of.
     func fits(_ text: FoodText) -> Bool {
         if listed { return false }
-        if let unless, text.all.contains(unless) { return false }
+        // Not where the food says it's without it: a thigh "without skin" is the skinless one.
+        if let unless, text.all.indices.contains(where: { text.all[$0] == unless && ($0 == 0 || text.all[$0 - 1] != "without") }) {
+            return false
+        }
         if raw { return !text.cooking.cooked && !text.titled.contains(where: keptWords.contains) }
         guard let heat else { return true }
         let cooking = text.cooking
@@ -730,7 +731,9 @@ struct FoodText {
         // USDA files some foods under a group: "Fish, salmon".
         let head = makeString(scalars[..<(commas.first ?? scalars.count)]).trimmingCharacters(in: .whitespaces)
         let secondPart = commas.isEmpty ? 0 : (commas.count > 1 ? commas[1] : scalars.count) - commas[0] - 1
-        let grouped = groups.contains(head) && secondPart > 0
+        // Not where what follows only says how it comes: "Fish, cooked" and "Fish, baked or
+        // broiled" are fish, of no one kind.
+        let grouped = groups.contains(head) && secondPart > 0 && !parts[1].allSatisfy { saysHow($0) || partWords.contains($0) }
         // A chain USDA writes before the food leads with the food: pepperoni pizza in
         // `PAPA JOHN'S 14" Pepperoni Pizza`. "McDONALD'S, BIG MAC" keeps the chain, its whole first part.
         var first = parts[0]
@@ -2037,8 +2040,10 @@ func scoreFoods(
         var calling = false
         if match.name < 1 {
             for name in entry.also where mentionForms.contains(where: { $0.contains { starts(name.head, $0) } }) {
-                let named = query.cover(name.text)
+                var named = query.cover(name.text)
                 if named.name > match.name {
+                    // The food is cooked as its own name says, whichever name found it.
+                    named.cooked = max(named.cooked, match.cooked)
                     match = named
                     other = name.text
                     called = named.exact && name.text.titled == saidStems && saidJoins.isSubset(of: name.joins)
@@ -2050,8 +2055,9 @@ func scoreFoods(
             // too: "manicotti" is the one the catalog also calls "Manicotti", among the four
             // it lists.
             for name in entry.also where name.text.titled == saidStems && saidJoins.isSubset(of: name.joins) {
-                let named = query.cover(name.text)
+                var named = query.cover(name.text)
                 if named.exact {
+                    named.cooked = max(named.cooked, match.cooked)
                     match = named
                     other = name.text
                     called = true
@@ -2373,6 +2379,23 @@ func scoreFoods(
         {
             score -= 0.5
         }
+        // Of two plain foods that match as well, the one that only says it's cooked, where no
+        // way of cooking was asked for: a chicken breast is "Chicken breast, cooked, without
+        // skin" before the grilled one.
+        if !row.text.branded, match.missing == 0 {
+            let said = row.text.titled
+            // Where "cooked" isn't the word being typed, which names no food.
+            let onlyCooked = !saidCooked && said.contains(plainlyCooked) && !saidStems.contains(where: { starts(plainlyCooked, $0) })
+            if onlyCooked, !said.contains(where: { $0 != plainlyCooked && cookedWords.contains($0) }) { score += 0.02 }
+            // Skin that wasn't said is left off, and one that doesn't say is the food either way.
+            if !saidStems.contains("skin") {
+                let name = row.food.name
+                score -= name.hasSuffix(", with skin") ? 0.02 : name.hasSuffix(", without skin") ? 0.01 : 0
+            }
+            // And the one named by nothing but what was said, cooked: "Lamb, cooked" before the
+            // composite of its retail cuts.
+            if onlyCooked, match.others == 0, said.allSatisfy({ w in w == plainlyCooked || saidStems.contains { same(w, $0) } }) { score += 0.1 }
+        }
         // Of the sizes a plain food comes in, where none was asked for, the middle one: a
         // burger's medium patty, a pizza's medium crust.
         if !row.text.branded, match.missing == 0, row.text.titled.contains("medium"), !saidStems.contains("medium") { score += 0.03 }
@@ -2425,9 +2448,13 @@ func scoreFoods(
     // with no brand the maker of its "Pasta with chicken".
     // Nor is a label listed under a food's own word the maker of the food by that name: a
     // crisp bar listed under "Cereal" isn't whose "Cereal bar" the catalog means.
+    // Nor one listed under words the plain foods found have for themselves: a sausage roll
+    // listed under "Patties" isn't whose "Sausage patty" the catalog means.
+    let plainSaid = Set(rows.lazy.filter { !$0.text.branded }.flatMap(\.text.said))
     let isTheirs = { (row: Row, other: FoodText) in
         row.other == nil && row.name == 1 && !row.text.own.isEmpty && other.titled.count > row.text.own.count
             && !(row.text.own.count == 1 && EverydayPhrases.isWord(row.text.own[0]))
+            && !row.text.own.allSatisfy(plainSaid.contains)
             && (row.food.source == .usda || row.food.brand != nil)
             && row.text.own.allSatisfy { w in other.titled.contains { same($0, w) } }
             && other.titled.allSatisfy { w in row.text.own.contains { same(w, $0) } || row.text.said.contains { same(w, $0) } }

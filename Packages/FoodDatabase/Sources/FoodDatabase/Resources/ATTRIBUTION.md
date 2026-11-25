@@ -7,8 +7,9 @@ Studies, October 2024) its fast-food and restaurant foods, the foods it files ch
 under, with FNDDS's names for those items, its drinks (coffee, tea, wine, beer, spirits and
 cocktails, smoothies, shakes, flavored milk, soft, sports, energy and nutritional drinks, juice
 drinks and carbonated water), its dishes (sandwiches, mixed dishes, soups, salads, pizza, egg
-dishes, cooked cereals, baked goods and desserts) and its sweets and snacks (candy, chips,
-popcorn, cereal and nutrition bars); both from
+dishes, cooked cereals, baked goods and desserts), its sweets and snacks (candy, chips,
+popcorn, cereal and nutrition bars) and its plain meats, poultry, fish, shellfish, cured meats
+and ready-to-eat cereals, with its berries and fruit of no one kind; both from
 [FoodData Central](https://fdc.nal.usda.gov/download-datasets/). USDA describes its data as
 [public domain / CC0](https://fdc.nal.usda.gov/api-guide/).
 

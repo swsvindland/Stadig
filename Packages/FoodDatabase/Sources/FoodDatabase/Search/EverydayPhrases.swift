@@ -131,7 +131,8 @@ enum EverydayPhrases {
         "milk chocolate", "white chocolate", "chocolate bar", "candy bar", "peanut butter cup", "fudge", "truffles", "gummy bears", "jelly beans",
         "licorice", "lollipop", "marshmallows", "caramels", "toffee", "cotton candy", "hard candy", "mints", "gum", "kettle corn", "caramel corn",
         "corn chips", "cheese puffs", "pork rinds", "plantain chips", "pita chips", "veggie straws", "energy bar", "cereal bar", "fruit snacks",
-        "graham crackers", "animal crackers", "saltines", "biscotti", "shortbread", "macaron", "macarons", "macaroon", "smores", "donut holes",
+        "shredded wheat", "new york strip", "strip steak", "filet mignon", "graham crackers", "animal crackers", "saltines", "biscotti", "shortbread",
+        "macaron", "macarons", "macaroon", "smores", "donut holes",
         "scone", "danish", "eclair", "cream puff", "funnel cake", "cobbler", "creme brulee", "tapioca pudding", "popsicle", "sorbet", "jello",
         "cookie dough", "lemon bar", "peanut brittle", "soft pretzel", "snack mix",
         // Supplements.

@@ -799,6 +799,57 @@ FNDDS_GROUPS = {
     "Candy containing chocolate": "sweets", "Candy not containing chocolate": "sweets", "Nutrition bars": "snacks", "Cereal bars": "snacks",
     "Popcorn": "snacks", "Potato chips": "snacks", "Tortilla, corn, other chips": "snacks",
 }
+# And the plain meats, poultry, fish and cereals, which the survey names as they're cooked and
+# eaten where SR Legacy names a cut, a grade and a trim: "Beef, steak", "Pork, chop", "Chicken
+# breast, grilled, without skin", "Fish, cod, fried", "Bratwurst" and "Cereal, corn flakes",
+# where SR has "Beef, flank, steak, separable lean only, trimmed to 0" fat, choice, cooked,
+# broiled" and a cereal by each maker. By the SR Legacy group each is read as for how
+# processed it is.
+FNDDS_PLAIN_FOODS = {
+    "Beef, excludes ground": "beef products", "Ground beef": "beef products", "Pork": "pork products",
+    "Lamb, goat, game": "lamb, veal, and game products", "Liver and organ meats": "beef products",
+    "Chicken, whole pieces": "poultry products", "Chicken patties, nuggets and tenders": "poultry products",
+    "Turkey, duck, other poultry": "poultry products", "Fish": "finfish and shellfish products",
+    "Shellfish": "finfish and shellfish products", "Bacon": "pork products", "Sausages": "sausages and luncheon meats",
+    "Frankfurters": "sausages and luncheon meats", "Cold cuts and cured meats": "sausages and luncheon meats",
+    "Ready-to-eat cereal, higher sugar (>21.2g/100g)": "breakfast cereals",
+    "Ready-to-eat cereal, lower sugar (=<21.2g/100g)": "breakfast cereals",
+    "Blueberries and other berries": "fruits and fruit juices", "Other fruits and fruit salads": "fruits and fruit juices",
+}
+# The ones of those the survey weighed cooked, as eaten, without always saying so: its "Beef,
+# steak" has a grilled steak's numbers. The name says "cooked" where it says no other way, so
+# no one logs a raw weight against it.
+FNDDS_COOKED = {
+    "Beef, excludes ground", "Ground beef", "Pork", "Lamb, goat, game", "Liver and organ meats", "Chicken, whole pieces",
+    "Turkey, duck, other poultry", "Fish", "Shellfish", "Sausages",
+}
+FNDDS_STATED = re.compile(r"cooked|raw|baked|broiled|roast|grilled|fried|stewed|sauteed|steamed|boiled|smoked|rotisserie|canned|dried|"
+                          r"pickled|cured|jerky|breaded|coated|barbecue|carnitas|\bstick|nugget|patty|peking|cocktail|scampi|sauce|"
+                          r"imitation|mock|caviar|rinds|cracklings|pate|bones|tail$|feet|ears|^chicken skin$|cow head|thuringer", re.I)
+# What says how much of it was eaten, which comes after how it was cooked.
+FNDDS_EATEN = re.compile(r"(, (?:with skin|without skin|lean and fat|lean only|skinless|skin and coating removed))?$")
+
+
+def fndds_cooked(name):
+    """A plain meat's name with "cooked" where it says no way of cooking: "Steak, cooked",
+    "Chicken breast, cooked, without skin"."""
+    if FNDDS_STATED.search(name) or FNDDS_RESTAURANT.search(name):
+        return name
+    return FNDDS_EATEN.sub(lambda m: ", cooked" + (m.group(1) or ""), name, count=1)
+
+
+# Of the fruit, only what SR Legacy has no entry for: berries or fruit of no one kind, a fruit
+# salad, a fruit cocktail. The rest repeats it ("Blueberries, raw").
+FNDDS_FRUIT = re.compile(r"^(Berries|Fruit)\b", re.I)
+# Where the survey's answer came from, which the same food cooked at home is entered without
+# ("from raw"), and which repeats it otherwise: bought cooked, frozen, or from a school lunch.
+# And two that the words of a search take for another food: fried chicken "prepared skinless"
+# for a skinless thigh, and the thin "sandwich steak" for a roast beef sandwich.
+FNDDS_SOURCED = re.compile(r", from (pre-?cooked|frozen|school lunch|other sources)$|, skinless$|^Beef, sandwich steak", re.I)
+# Game that SR Legacy has under "Game meat" and few log, whose one-word names would answer
+# other searches: "goat" is the cheese, "mocha" isn't mock chicken legs begun.
+FNDDS_RARE = re.compile(r"^(Goat|Bear|Beaver|Raccoon|Opossum|Squirrel|Groundhog|Armadillo|Turtle|Dove|Wild pig|Caribou|Moose|"
+                        r"Mock chicken legs)\b")
 # The survey's own distinctions, which no one logging a plate makes: which vegetables a mixture
 # had by the survey's classes, which fat it was cooked in where butter, oil or none says it,
 # which of nine dressings a salad was made with, and a pasta dish "ready-to-heat" beside the
@@ -824,6 +875,23 @@ FNDDS_REWORDED = (
     (re.compile(r", made with mayonnaise$"), ""),
     (re.compile(r"^((?:Oatmeal|Grits|Cream of wheat|Cornmeal mush).*), no added fat$"), r"\1"),
     (re.compile(r"^(Egg omelet or scrambled egg.*), made with butter$"), r"\1"),
+    # What was eaten of a cut or a piece, as it's said: a chicken breast "without skin", a
+    # ribeye "lean only". Fried chicken is eaten with its coating unless it was taken off, and
+    # home is where a food is cooked unless it says where it's from.
+    (re.compile(r", prepared skinless, coating eaten"), ", skinless"),
+    (re.compile(r", skin / coating not eaten"), ", skin and coating removed"),
+    (re.compile(r", skin / coating eaten"), ""),
+    (re.compile(r", skin not eaten"), ", without skin"),
+    (re.compile(r", skin eaten"), ", with skin"),
+    (re.compile(r",\s+lean and fat eaten"), ", lean and fat"),
+    (re.compile(r", lean only eaten"), ", lean only"),
+    (re.compile(r"grilled without sauce"), "grilled"),
+    (re.compile(r", from raw$"), ""),
+    # Fish the survey files by a word that isn't a fish on its own.
+    (re.compile(r"^Fish, white, mixed species"), "Fish, white fish"),
+    (re.compile(r"^Fish, stick$"), "Fish sticks"),
+    (re.compile(r"^Fish, pickled$"), "Pickled fish"),
+    (re.compile(r"^(Fruit salad), fresh or raw, (?:ex|in)cluding citrus fruits?, no dressing$"), r"\1"),
 )
 # The dishes that are whole foods put together or cooked: a salad without its dressing, eggs as
 # an omelet or scrambled, oats and grits as they're cooked; not with what's added or sold made.
@@ -866,6 +934,34 @@ FNDDS_OTHER_NAMES = {
 # each: the survey files a chicken parmesan under "Chicken or turkey parmigiana" and fettuccine
 # alfredo under "Pasta with cream sauce".
 FNDDS_DISH_NAMES = {
+    # Plain meats, fish and cereals by the names they're bought and ordered by: the survey
+    # files a sirloin steak under "Beef, steak, sirloin" and a kielbasa under "Polish sausage".
+    "Beef, steak, sirloin, cooked": ["Sirloin steak", "Sirloin"],
+    "Beef, steak, ribeye, cooked": ["Ribeye steak", "Rib eye steak", "Ribeye"],
+    "Beef, steak, T-bone, cooked": ["T-bone steak", "Porterhouse steak"],
+    "Beef, steak, strip, cooked": ["New York strip", "Strip steak", "NY strip steak"],
+    "Beef, steak, tenderloin, cooked": ["Filet mignon", "Beef tenderloin"],
+    "Beef, steak, round, cooked": ["Round steak"],
+    "Beef, steak, chuck, cooked": ["Chuck steak"],
+    "Beef, steak, cube, cooked": ["Cube steak"],
+    "Beef, shortribs, cooked": ["Short ribs", "Beef short ribs"],
+    "Beef, ground, patty": ["Hamburger patty", "Burger patty"],
+    "Pork, ribs, cooked": ["Pork ribs", "Spare ribs", "Spareribs", "Baby back ribs"],
+    "Barbecue pork": ["Pulled pork"],
+    "Pork sausage, cooked": ["Breakfast sausage", "Sausage patty", "Sausage link", "Sausage links"],
+    "Polish sausage, cooked": ["Kielbasa"],
+    "Turkey bacon, cooked": ["Turkey bacon"],
+    "Turkey, prepackaged or deli, luncheon meat": ["Deli turkey", "Sliced turkey", "Turkey lunch meat", "Turkey cold cuts"],
+    "Ham, prepackaged or deli, luncheon meat": ["Deli ham", "Sliced ham", "Ham lunch meat"],
+    "Chicken, prepackaged or deli, luncheon meat": ["Deli chicken", "Sliced chicken"],
+    "Beef, prepackaged or deli, luncheon meat": ["Deli roast beef", "Sliced roast beef"],
+    "Fish sticks": ["Fish fingers"],
+    "Chicken tenders or strips": ["Chicken fingers"],
+    "Cereal, shredded wheat, plain": ["Shredded wheat"],
+    "Berries": ["Mixed berries"],
+    "Berries, frozen": ["Frozen berries", "Frozen mixed berries"],
+    "Fruit mixture, frozen": ["Frozen fruit", "Frozen mixed fruit"],
+    "Fruit": ["Mixed fruit"],
     # Sweets and snacks, which the survey files by kind: milk chocolate is its "Chocolate
     # candy", gummy bears its "Candy, gummy" and a protein bar its nutrition bar.
     "Chocolate candy": ["Milk chocolate", "Chocolate bar", "Milk chocolate bar", "Candy bar"],
@@ -1054,12 +1150,18 @@ def fndds_foods(path, stats):
     for raw in records:
         stats["fnddsRecords"] += 1
         name = fndds_name(raw["description"])
+        category = (raw.get("wweiaFoodCategory") or {}).get("wweiaFoodCategoryDescription")
+        # Before "cooked" is added after it.
+        sourced = FNDDS_SOURCED.search(name)
+        if category in FNDDS_COOKED:
+            name = fndds_cooked(name)
         chains = fndds_also(raw)
         others = fndds_other_names(" ".join(raw["description"].split()), name)
         also = chains + [other for other in others if other not in chains]
-        category = (raw.get("wweiaFoodCategory") or {}).get("wweiaFoodCategoryDescription")
         plated = (category in FNDDS_DISHES or category in FNDDS_PREPARED) and not FNDDS_CODED.search(name) and not FNDDS_PLAIN.search(name)
-        eaten = category in FNDDS_DRINKS or plated
+        plain = (category in FNDDS_PLAIN_FOODS and not sourced and not FNDDS_RARE.search(name)
+                 and (FNDDS_PLAIN_FOODS[category] != "fruits and fruit juices" or FNDDS_FRUIT.search(name)))
+        eaten = category in FNDDS_DRINKS or plated or plain
         if not FNDDS_RESTAURANT.search(name) and not FNDDS_CHAIN.search(name) and not also and not eaten:
             continue
         # Two answers the coders tell apart can be one food once their notes are gone.
@@ -1081,6 +1183,7 @@ def fndds_foods(path, stats):
         stats["fnddsIncluded"] += 1
         stats["fnddsDrinks"] += category in FNDDS_DRINKS
         stats["fnddsDishes"] += category in FNDDS_DISHES or category in FNDDS_PREPARED
+        stats["fnddsPlain"] += bool(plain)
         stats["fnddsWithChainNames"] += bool(chains)
         stats["fnddsChainNames"] += len(chains)
         stats["fnddsOtherNames"] += len(also) - len(chains)
@@ -1092,7 +1195,8 @@ def fndds_foods(path, stats):
             # still whole foods.
             nova = 1
         else:
-            nova = usda_processing(FNDDS_GROUPS.get(category) or ("fast foods" if fast else "restaurant foods"), dish)
+            group = FNDDS_GROUPS.get(category) or (FNDDS_PLAIN_FOODS.get(category) if plain and not fast else None)
+            nova = usda_processing(group or ("fast foods" if fast else "restaurant foods"), dish)
         # Kombucha is the one of them with live cultures.
         fermented = TRAIT_FERMENTED if re.search(r"\bkombucha\b", name, re.I) else 0
         yield Food(id=f"usda:{raw['fdcId']}", name=name, brand="", barcode=None, basis="g", nutrients=nutrients,
