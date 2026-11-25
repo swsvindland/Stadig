@@ -17,6 +17,8 @@ How Stadig Lift and Stadig Macro are set up on the store. [ci-cd.md](ci-cd.md) c
 
 Stadig Lift 1.0 and Stadig Macro 1.0 were released on iOS on 2026-11-18. What was checked for each release, and what App Review asked, is in [agent-docs/verification.md](../agent-docs/verification.md) and `Store/listing.md`.
 
+`main` builds 1.1 of both apps since 2026-11-25. It stayed at 1.0 for a week after the release, and App Store Connect takes no new builds of a version once it's approved, so `main`'s archives from the iOS approval on 2026-11-18 to then didn't reach TestFlight. The macOS and visionOS 1.0 versions, still rejected, can't get a build from `main` now: change their version number to 1.1 in App Store Connect, or build them from a `release/<app>-1.0` branch.
+
 ## Both apps are free
 
 Since 2026-11-11. Purchases are off in the code (`enabled: false` in each app's `Purchase/Purchases.swift`): `SystemPurchases` then counts everything as owned and never shows an offer. On 2026-11-13 both apps' price was set to Free everywhere. Neither record had a purchase or subscription product, so there was nothing to remove from sale.

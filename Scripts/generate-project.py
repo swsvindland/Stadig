@@ -16,7 +16,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEAM = "9HAG9PT8LJ"
 # Each app's version (CFBundleShortVersionString), shared by its extensions and Watch app as the App
 # Store requires. Bump it here when cutting a release branch, then run this script.
-VERSIONS = {"LiftTrack": "1.0", "MacroTrack": "1.0"}
+VERSIONS = {"LiftTrack": "1.1", "MacroTrack": "1.1"}
 
 
 def q(v):
