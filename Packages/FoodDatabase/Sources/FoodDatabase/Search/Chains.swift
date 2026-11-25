@@ -23,19 +23,30 @@ enum Chains {
         "pf changs", "noodles and company", "portillos", "wawa", "sheetz", "costco food court",
         // As they're also typed.
         "chickfila", "innout", "steak and shake",
+        // And more that people log from.
+        "dutch bros", "crumbl", "crumbl cookies", "insomnia cookies", "jollibee", "tropical smoothie cafe", "jamba juice", "boston market",
+        "churchs chicken", "checkers", "rallys", "freddys", "smashburger", "habit burger", "cook out", "krystal", "hungry jacks", "blaze pizza",
+        "mod pizza", "marcos pizza", "papa murphys", "sbarro", "jets pizza", "hungry howies", "round table pizza", "godfathers pizza", "cicis",
+        "cicis pizza", "chuck e cheese", "potbelly", "quiznos", "blimpie", "penn station", "which wich", "schlotzskys", "mcalisters",
+        "jasons deli", "charleys", "einstein bros", "pret a manger", "nandos", "long john silvers", "captain ds", "slim chickens", "golden chick",
+        "huey magoos", "taco cabana", "taco johns", "baja fresh", "chuys", "torchys tacos", "guzman y gomez", "rubios", "pei wei", "wagamama",
+        "chopt", "honeygrow", "yogurtland", "menchies", "pinkberry", "wetzels pretzels", "longhorn steakhouse", "golden corral", "tgi fridays",
+        "ruby tuesday", "hooters", "benihana", "carrabbas", "maggianos", "macaroni grill", "buca di beppo", "bonefish grill", "first watch",
     ]
 
     /// The ones with tables and a kitchen, whose food the catalog files as "from restaurant".
     private static let seated: Set<String> = [
         "olive garden", "applebees", "chilis", "ihop", "dennys", "red lobster", "outback", "texas roadhouse", "cheesecake factory",
-        "buffalo wild wings", "cracker barrel", "waffle house", "red robin", "pf changs",
+        "buffalo wild wings", "cracker barrel", "waffle house", "red robin", "pf changs", "longhorn steakhouse", "golden corral", "tgi fridays",
+        "ruby tuesday", "hooters", "benihana", "carrabbas", "maggianos", "macaroni grill", "buca di beppo", "bonefish grill", "first watch",
+        "wagamama", "nandos", "pei wei",
     ]
 
     /// The chains named by a word foods have for themselves (a chipotle mayo, green chilis, a
     /// cava brut), with what each sells, stemmed. Such a word is the chain only when typed as a
     /// possessive ("chili's fajitas") or with one of those ("chipotle burrito bowl").
     private static let sells: [String: Set<String>] = [
-        "chipotle": Set(["burrito", "bowl", "taco", "quesadilla", "barbacoa", "carnitas", "sofritas"].map(stem)),
+        "chipotle": Set(["burrito", "bowl", "taco", "quesadilla", "barbacoa", "carnitas", "sofritas", "guac", "guacamole"].map(stem)),
         "chilis": [],
         "cava": Set(["bowl", "pita"].map(stem)),
     ]
@@ -159,6 +170,79 @@ enum Chains {
         "noodles and company": ["mac and cheese", "pasta with tomato sauce"],
         "portillos": ["hot dog", "french fries"],
         "costco food court": ["hot dog", "pizza"],
+        "dutch bros": ["latte", "iced coffee", "mocha"],
+        "crumbl": ["cookie", "chocolate chip cookie", "sugar cookie"],
+        "crumbl cookies": ["cookie", "chocolate chip cookie", "sugar cookie"],
+        "insomnia cookies": ["cookie", "chocolate chip cookie"],
+        "jollibee": ["fried chicken", "spaghetti with meat sauce", "cheeseburger", "french fries"],
+        "tropical smoothie cafe": ["smoothie", "chicken wrap"],
+        "jamba juice": ["smoothie"],
+        "boston market": ["rotisserie chicken", "mashed potatoes", "mac and cheese", "cornbread"],
+        "churchs chicken": ["fried chicken", "biscuit", "french fries", "mashed potatoes"],
+        "checkers": ["cheeseburger", "french fries", "chicken sandwich", "milkshake"],
+        "rallys": ["cheeseburger", "french fries", "chicken sandwich", "milkshake"],
+        "freddys": ["cheeseburger", "french fries", "ice cream", "hot dog"],
+        "smashburger": ["cheeseburger", "french fries", "milkshake"],
+        "habit burger": ["cheeseburger", "french fries", "milkshake"],
+        "cook out": ["cheeseburger", "french fries", "milkshake", "hot dog"],
+        "krystal": ["slider", "french fries"],
+        "hungry jacks": ["whopper", "cheeseburger", "french fries"],
+        "blaze pizza": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "mod pizza": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "marcos pizza": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "papa murphys": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "sbarro": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "jets pizza": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "hungry howies": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "round table pizza": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "godfathers pizza": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "cicis": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "cicis pizza": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "chuck e cheese": ["pepperoni pizza", "cheese pizza", "breadsticks", "wings"],
+        "potbelly": ["turkey sub", "italian sub", "ham sub"],
+        "quiznos": ["turkey sub", "italian sub", "ham sub"],
+        "blimpie": ["turkey sub", "italian sub", "ham sub"],
+        "penn station": ["turkey sub", "italian sub", "ham sub"],
+        "which wich": ["turkey sub", "italian sub", "ham sub"],
+        "schlotzskys": ["turkey sub", "italian sub", "ham sub"],
+        "mcalisters": ["sandwich", "salad", "baked potato"],
+        "jasons deli": ["sandwich", "salad", "baked potato"],
+        "charleys": ["cheesesteak", "french fries"],
+        "einstein bros": ["bagel", "cream cheese", "egg sandwich", "iced coffee"],
+        "pret a manger": ["sandwich", "salad", "iced coffee"],
+        "nandos": ["grilled chicken", "french fries", "rice"],
+        "long john silvers": ["fried fish", "french fries", "hush puppies", "fried shrimp"],
+        "captain ds": ["fried fish", "french fries", "hush puppies", "fried shrimp"],
+        "slim chickens": ["chicken tenders", "french fries", "texas toast"],
+        "golden chick": ["chicken tenders", "french fries", "texas toast"],
+        "huey magoos": ["chicken tenders", "french fries", "texas toast"],
+        "taco cabana": ["taco", "burrito", "quesadilla", "nachos"],
+        "taco johns": ["taco", "burrito", "quesadilla", "nachos"],
+        "baja fresh": ["taco", "burrito", "quesadilla", "nachos"],
+        "chuys": ["taco", "burrito", "quesadilla", "nachos"],
+        "torchys tacos": ["taco", "burrito", "quesadilla", "nachos"],
+        "guzman y gomez": ["burrito", "burrito bowl", "nachos", "taco"],
+        "rubios": ["fish taco", "burrito", "quesadilla"],
+        "pei wei": ["orange chicken", "fried rice", "lo mein"],
+        "wagamama": ["ramen", "fried rice", "dumplings"],
+        "chopt": ["salad", "chicken salad"],
+        "honeygrow": ["salad", "chicken salad"],
+        "yogurtland": ["frozen yogurt"],
+        "menchies": ["frozen yogurt"],
+        "pinkberry": ["frozen yogurt"],
+        "wetzels pretzels": ["soft pretzel"],
+        "longhorn steakhouse": ["steak", "baked potato", "salad"],
+        "golden corral": ["fried chicken", "mashed potatoes", "steak", "dinner roll"],
+        "tgi fridays": ["chicken wings", "mozzarella sticks", "ribs", "french fries"],
+        "ruby tuesday": ["salad", "cheeseburger", "ribs"],
+        "hooters": ["wings", "boneless wings", "french fries"],
+        "benihana": ["fried rice", "steak", "shrimp"],
+        "carrabbas": ["lasagna", "fettuccine alfredo", "chicken parmesan", "salad"],
+        "maggianos": ["lasagna", "fettuccine alfredo", "chicken parmesan", "salad"],
+        "macaroni grill": ["lasagna", "fettuccine alfredo", "chicken parmesan", "salad"],
+        "buca di beppo": ["lasagna", "fettuccine alfredo", "chicken parmesan", "salad"],
+        "bonefish grill": ["fish", "shrimp", "salad"],
+        "first watch": ["pancakes", "omelet", "bacon", "hash browns"],
     ]
 
     /// The chains by their names as written with nothing between the letters: "in n out",
@@ -197,12 +281,57 @@ enum Chains {
     /// The kind of place a brand is, as a model names one for a food, when it's a chain or
     /// starts with one's name: "Chick-fil-A", "Chili's", "Panera Bread", "Five Guys Burgers and
     /// Fries". The word its foods say in the catalog, as `Found.place`.
-    static func place(of brand: String) -> String? {
+    static func place(of brand: String) -> String? { named(by: brand)?.place }
+
+    /// The chain such a brand is, by its name here, and the kind of place.
+    static func named(by brand: String) -> (name: String, place: String)? {
         let said = words(brand)
         guard !said.isEmpty else { return nil }
         let owning = possessives(in: brand)
         return chains.first { chain in
             chain.words.count <= said.count && zip(said, chain.words).allSatisfy { isWord($0, of: chain, $1, owning: owning).named }
-        }.map(place(of:))
+        }.map { ($0.name, place(of: $0)) }
+    }
+
+    /// A search that starts or ends with a chain's name, apart: the chain, and the rest as it
+    /// was typed. "five guys burger and fries", "pancakes with syrup from mcdonald's".
+    static func apart(_ typed: String) -> (name: String, rest: String)? {
+        let said = typed.split(separator: " ").map(String.init)
+        guard said.count > 1 else { return nil }
+        for count in stride(from: min(4, said.count - 1), through: 1, by: -1) {
+            if let name = written[tokens(said.prefix(count).joined(separator: " ")).joined()] {
+                return (name, said.dropFirst(count).joined(separator: " "))
+            }
+            if let name = written[tokens(said.suffix(count).joined(separator: " ")).joined()] {
+                var rest = Array(said.dropLast(count))
+                if let last = rest.last, ["from", "at"].contains(last.lowercased()) { rest.removeLast() }
+                return rest.isEmpty ? nil : (name, rest.joined(separator: " "))
+            }
+        }
+        return nil
+    }
+
+    /// Whether a label's brand is a chain's name, word for word and however it's written:
+    /// "TGI-Fridays" and "Tgi Friday's" are TGI Fridays, and "Panera Bread" is Panera. A
+    /// search's brand is otherwise any brand its words start, since it may be half typed, and a
+    /// chain's name isn't: Crumbl isn't "Uncle Crumbles Granola", nor Jamba a jambalaya mix.
+    /// A food with no brand is the chain's by its name.
+    static func isBrand(_ brand: String?, of chain: String) -> Bool {
+        guard let brand else { return true }
+        // Without the possessive or the plural, which either may be written with, and the
+        // small words a search drops: the "a" of Pret A Manger.
+        let whole = { (text: String) in words(text).filter { $0 != "s" }.map { $0.hasSuffix("s") && $0.count > 2 ? String($0.dropLast()) : $0 } }
+        let wanted = whole(chain).joined()
+        let theirs = whole(brand)
+        guard !wanted.isEmpty else { return true }
+        return theirs.indices.contains { start in
+            var run = ""
+            for word in theirs[start...] {
+                run += word
+                if run == wanted { return true }
+                if run.count >= wanted.count { break }
+            }
+            return false
+        }
     }
 }

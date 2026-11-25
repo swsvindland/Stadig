@@ -74,6 +74,15 @@ private let neutral = stems(
 /// restaurant" have the butter.
 private let fromWords = stems("restaurant fast food")
 
+/// The ones that say it by themselves: "food" is also in "(Includes foods for USDA's Food
+/// Distribution Program)", which the whole-wheat pasta and brown rice end with.
+private let placeWords = stems("restaurant fast")
+
+/// A cuisine's restaurant isn't any restaurant: the wonton soup of a "Chinese restaurant"
+/// isn't the soup of a chain typed with "soup", nor its steamed rice Nando's. Its food named
+/// by just what was said is: "Restaurant, Chinese, orange chicken".
+private let cuisineWords = stems("chinese latino mexican italian")
+
 /// Words that mark a less common form or part; the model should name these if it means them.
 private let variationWords = stems(
     "powder dehydrated dried canned frozen unprepared imitation meatless substitute low reduced nonfat free fortified mix "
@@ -2457,7 +2466,7 @@ func scoreFoods(
         // comes with: mashed potatoes with gravy. Only the vegetables the catalog lists as
         // "cooked, from restaurant": tenders and fries from one are the usual ones.
         if hints.out == nil, !row.dish, !row.text.branded, match.sides == 0, row.text.said.contains("cooked"),
-            match.extra.contains(where: fromWords.contains)
+            match.extra.contains(where: placeWords.contains)
         {
             score -= 0.5
         }
@@ -2485,7 +2494,12 @@ func scoreFoods(
         // the words said: their fries have the fryer's oil. The words that say so don't count
         // against it, and of two the one from that kind of place is a little ahead.
         // The food itself, not a dish of theirs it's in: a bagel isn't their bagel with egg and sausage.
-        if let place = hints.out, !row.text.branded, match.missing == 0, match.mixed.isEmpty, row.text.titled.contains(where: fromWords.contains) {
+        // Not the espresso that is only "restaurant-prepared", which isn't a coffee from one.
+        if let place = hints.out, !row.text.branded, match.missing == 0, match.mixed.isEmpty, row.text.titled.contains(where: placeWords.contains),
+            !row.text.titled.contains(where: { cuisineWords.contains($0) && !saidStems.contains($0) })
+                || match.extra.allSatisfy({ fromWords.contains($0) || cuisineWords.contains($0) }),
+            !row.food.name.contains("restaurant-prepared")
+        {
             score += 1.5 + (row.dish ? 0 : 0.25 * Double(match.extra.filter(fromWords.contains).count)) + (row.text.titled.contains(place) ? 0.1 : 0)
         }
         // Another country's product, as much as four words the search didn't ask for: it still
