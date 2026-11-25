@@ -905,10 +905,20 @@ extension FoodCatalog {
     }
 
     /// One of the foods typed together, as it's searched for alone: with salt, pepper is the
-    /// black pepper in the other shaker.
+    /// black pepper in the other shaker; with chips, fish is fried and the chips are fries;
+    /// with waffles, chicken is fried.
     private static func alone(_ food: String, among foods: [String]) -> String {
-        food == "pepper" && foods.contains("salt") ? "black pepper" : food
+        // By its own words, and the others by their last: organic fish is fish, and battered
+        // fish is still fish to the chips.
+        let named = foodWords(food).map(stem)
+        let others = foods.compactMap { foodWords($0).last.map(stem) }
+        return beside.first { [stem($0.food)] == named && others.contains(stem($0.with)) }?.means ?? food
     }
+
+    private static let beside: [(food: String, with: String, means: String)] = [
+        ("pepper", "salt", "black pepper"), ("fish", "chips", "fried fish"), ("chips", "fish", "french fries"),
+        ("chicken", "waffles", "fried chicken"),
+    ]
 
     /// A flavour is the food of that flavour: the foods found whose names join the two as
     /// typed ("Cookies & Cream Ice Cream") before a plain food that only has both words
@@ -949,28 +959,49 @@ extension FoodCatalog {
         case apart
     }
 
+    /// Everyday pairs that are two foods on a plate as much as one dish, by their stems.
+    private static let platePairs: Set<String> = ["chicken rice", "rice bean"]
+
+    /// How the foods typed or named beside each other are said to be cooked: dry heat for the
+    /// "grilled chicken" of "grilled chicken and rice".
+    private static func waysSaid(_ foods: [String]) -> Set<Heat> {
+        Set(foods.flatMap { words($0).compactMap { heats[stem($0)] } })
+    }
+
     /// `parts` are each food's words as read (see `foodWords`), `found` what the words found
-    /// together.
-    private func together(_ parts: [[String]], _ found: [Ranked]) -> Together {
+    /// together. `cooked` is how any was said to be cooked: then a plain food named as the
+    /// foods together is them only if it's cooked that kind of way, and the catalog's name
+    /// for the two isn't enough. Grilled chicken and rice aren't the survey's mixed dish of
+    /// chicken and rice, nor its fried rice with chicken.
+    /// `names` is false for an everyday name no plain food answers, which is then its foods.
+    private func together(_ parts: [[String]], _ found: [Ranked], cooked: Set<Heat> = [], names: Bool = true) -> Together {
         let all = Array(parts.joined())
         let stems = all.map(stem)
         if let flavour = flavours.first(where: { stems.starts(with: $0.stems) }) {
             return Self.flavoured(found, flavour).map { .first($0) } ?? .one
         }
         let said = Array(parts.joined(separator: ["and"]))
-        if EverydayPhrases.isName(all) || EverydayPhrases.isName(said) || EverydayPhrases.isBegun(said) || isPlainName(all[...]) { return .one }
+        // Not, said with how one was cooked, a pair that is two foods on a plate as much as a
+        // dish: the grilled chicken and the rice.
+        let name = names && (EverydayPhrases.isName(all) || EverydayPhrases.isName(said) || EverydayPhrases.isBegun(said))
+        if name, cooked.isEmpty || !Self.platePairs.contains(stems.joined(separator: " ")) { return .one }
+        if cooked.isEmpty, isPlainName(all[...]) { return .one }
         guard let first = found.first else { return .apart }
         if first.called || first.calling { return .one }
         let named = found.prefix(3).firstIndex { found in
             let text = FoodText(found.food)
-            return !text.branded && isJoint(text, parts)
+            return !text.branded && isJoint(text, parts) && cooked.isSubset(of: text.cooking.kinds)
         }
         if let named { return named == 0 ? .one : .first(Self.joined([found[named]], found)) }
-        // The dish the last word names, where the first food found is one with each food.
+        // The dish the last word names, where the first food found is one with each food and
+        // every word of the last: a ham sandwich with cheese for a cheese sandwich, not fried
+        // rice for brown rice.
         if let last = parts.last, last.count > 1, let kind = last.last.map(stem) {
             let text = FoodText(first.food)
             let head = text.said.indices.last { text.runs[$0] == text.runs[0] }.map { text.said[$0] }
-            if !text.branded, hasEach(text, parts), head.map({ same($0, kind) || starts($0, kind) }) == true { return .one }
+            // Its last word may still be being typed: "ham and cheese sandw".
+            let named = head.map { same($0, kind) || starts($0, kind) } == true
+            if !text.branded, named, hasEach(text, parts.dropLast() + last.dropLast().map { [$0] }) { return .one }
         }
         return .apart
     }
@@ -990,7 +1021,25 @@ extension FoodCatalog {
         // By the words as typed, then by each food as it's read alone: a typo corrected, a
         // short name written out.
         let typedParts = foods.map { Self.foodWords($0) }
-        switch together(typedParts, search.ranked) {
+        let cooked = Self.waysSaid(foods)
+        // An everyday dish said with how it's cooked is the dish, found by its name: baked
+        // mac and cheese is mac and cheese. One no plain food answers is its foods: fish and
+        // chips are fried fish and fries, where the catalogs have only labels called so.
+        let dish = Array(typedParts.joined(separator: ["and"]))
+        var names = true
+        if EverydayPhrases.isName(dish), cooked.isEmpty || !Self.platePairs.contains(typedParts.joined().map(stem).joined(separator: " ")) {
+            let named = cooked.isEmpty ? search : searchCatalog(dish.joined(separator: " "), known: known, out: nil)
+            if let top = named.ranked.first, top.name >= 1, !FoodText(top.food).branded {
+                guard !cooked.isEmpty else { return nil }
+                var both = named
+                both.ranked = Self.joined(named.ranked, search.ranked)
+                both.elsewhere.formUnion(search.elsewhere)
+                both.typed = named.typed ?? typed
+                return both
+            }
+            names = false
+        }
+        switch together(typedParts, search.ranked, cooked: cooked, names: names) {
         case .one: return nil
         case .first(let ranked): return first(ranked)
         case .apart: break
@@ -1000,7 +1049,7 @@ extension FoodCatalog {
             Self.alone(foods[i], among: foods) == foods[i] ? Self.foodWords(each[i].text, fixes: each[i].fixes) : typedParts[i]
         }
         if parts != typedParts {
-            switch together(parts, search.ranked) {
+            switch together(parts, search.ranked, cooked: cooked, names: names) {
             case .one: return nil
             case .first(let ranked): return first(ranked)
             case .apart: break
@@ -1094,7 +1143,10 @@ extension FoodCatalog {
         guard let foods = Self.foodsTyped(name) else { return nil }
         if let first = ranked.first, known[first.food.id] != nil, first.name >= 1 { return nil }
         let parts = foods.map { Self.foodWords($0) }
-        switch together(parts, ranked) {
+        // An everyday name no plain food answers is its foods (see `searchApart`).
+        let dish = Array(parts.joined(separator: ["and"]))
+        let names = !EverydayPhrases.isName(dish) || ranked.first.map { $0.name >= 1 && !FoodText($0.food).branded } == true
+        switch together(parts, ranked, cooked: Self.waysSaid(foods), names: names) {
         case .one: return nil
         case .first(let ranked): return (ranked, false)
         case .apart: break

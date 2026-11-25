@@ -990,6 +990,8 @@ FNDDS_DISH_NAMES = {
     "Barbecue beef": ["Pulled beef"],
     "Fried summer squash, yellow or green": ["Fried zucchini", "Fried squash"],
     "Bao bun": ["Steamed bun", "Pork bun", "Steamed pork bun"],
+    # Rice and beans with nothing else said are the plain ones, not the ones with meat.
+    "Beans and white rice": ["Rice and beans", "Beans and rice"],
     # Neither source has an Arctic char: it's the trout, the fish it's closest to.
     "Fish, trout, cooked": ["Arctic char"],
     "Cereal, shredded wheat, plain": ["Shredded wheat"],

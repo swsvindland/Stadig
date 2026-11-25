@@ -779,7 +779,7 @@ let dishes: [(String, String)] = [
     ("jambalaya", "(?i)jambalaya"), ("gumbo", "(?i)gumbo"), ("paella", "(?i)paella"), ("risotto", "(?i)risotto"),
     ("stuffed peppers", "(?i)stuffed pepper|pepper.*stuffed"), ("beef stroganoff", "(?i)stroganoff"),
     ("chicken and rice", "(?i)chicken (and|with) rice|rice (and|with) chicken|^Chicken or turkey and rice$"),
-    ("rice and beans", "(?i)rice (and|with) beans|beans (and|with) rice"),
+    ("rice and beans", "(?i)rice (and|with) beans|beans (and|with) (white )?rice"),
     ("red beans and rice", "(?i)red beans and rice|beans (and|with) rice|(?i)rice and red beans"), ("falafel", "(?i)^falafel"),
     ("caesar salad", "(?i)caesar salad"), ("greek salad", "(?i)greek salad"), ("cobb salad", "(?i)cobb salad"),
     ("chef salad", "(?i)chef'?s? salad"), ("garden salad", "(?i)garden salad|lettuce.*salad|salad.*lettuce|tossed"),
@@ -1104,7 +1104,7 @@ let together: [(typed: String, first: String, second: String)] = [
     ("spaghetti and meatballs", "(?i)spaghetti.*meatballs", ""), ("chicken and dumplings", "^Chicken or turkey with dumplings", ""),
     ("rum and coke", "^Rum and cola", ""), ("gin and tonic", "^Gin and tonic", ""), ("sweet and sour chicken", "^Sweet and sour chicken", ""),
     ("beef and broccoli", "^Beef and broccoli", ""), ("half and half", "^Cream, (fluid, )?half and half", ""),
-    ("fish and chips", "(?i)fish (and|&) chips", ""), ("chicken and waffles", "(?i)chicken (and|&) waffles?", ""),
+    ("fish and chips", "^Fish, fried", "^Potato, french fries"), ("chicken and waffles", "^Chicken, fried, coated", "^Waffle"),
     ("oil and vinegar", "^Salad dressing, home recipe, vinegar and oil", ""), ("beef and rice", "^Beef and rice", ""),
     ("turkey and gravy", "^Turkey with gravy", ""), ("turkey and stuffing", "^Chicken or turkey with stuffing", ""),
     ("chicken and vegetables", "^Chicken or turkey and vegetables", ""), ("salt and vinegar chips", "(?i)salt (and|&) vinegar", ""),
@@ -1314,6 +1314,51 @@ let ways: [(String, String)] = [
     ("shrimp tempura", "^Shrimp, fried"), ("candied sweet potatoes", "^Sweet potato, cooked, candied, home\\-prepared"),
     ("fried squash", "^Fried summer squash, yellow or green"), ("bacon strips", "^Bacon, cooked"), ("blackened chicken", "^Chicken, grilled"),
     ("charred corn", "^Corn.*cooked"),
+]
+
+/// Foods typed together where one is said with how it was cooked: the grilled chicken and
+/// the rice, not a mixed dish of the two. With the second food where there is one, and the
+/// dishes that stay one however they're cooked.
+let cookedPairs: [(typed: String, first: String, second: String)] = [
+    ("grilled chicken and rice", "^Chicken, grilled", "^Rice, white.*cooked"),
+    ("baked chicken and rice", "^Chicken, baked, broiled, or roasted", "^Rice, white.*cooked"),
+    ("rice and grilled chicken", "^Rice, white.*cooked", "^Chicken, grilled"),
+    ("grilled chicken and brown rice", "^Chicken, grilled", "^Rice, brown.*cooked"),
+    ("grilled chicken breast and brown rice", "^Chicken breast, grilled", "^Rice, brown.*cooked"),
+    ("grilled chicken and vegetables", "^Chicken, grilled", "^Vegetables, mixed"),
+    ("roasted chicken and vegetables", "^Chicken, baked, broiled, or roasted", "^Vegetables, mixed"),
+    ("baked chicken and roasted potatoes", "^Chicken, baked, broiled, or roasted", "^Potatoes, (baked|roasted)"),
+    ("roasted chicken and potatoes", "^Chicken, baked, broiled, or roasted", "^Potatoes"),
+    ("grilled shrimp and rice", "^Shrimp, grilled", "^Rice, white.*cooked"),
+    ("grilled salmon and rice", "^Fish, salmon, grilled", "^Rice, white.*cooked"),
+    ("grilled salmon and asparagus", "^Fish, salmon, grilled", "^Asparagus"),
+    ("baked salmon and rice", "^Fish, salmon, baked", "^Rice, white.*cooked"), ("grilled steak and potatoes", "^Steak, cooked", "^Potatoes"),
+    ("steak and baked potato", "^Steak, cooked", "^Potatoes, baked"), ("fried rice and beans", "^Rice, fried", "^Beans"),
+    ("baked beans and rice", "^Beans, baked", "^Rice, white.*cooked"), ("fried eggs and toast", "^Egg, whole, cooked, fried", "^Bread.*toasted"),
+    ("fried eggs and bacon", "^Egg, whole, cooked, fried", "^Bacon, cooked"),
+    ("scrambled eggs and bacon", "^Egg, whole, cooked, scrambled", "^Bacon, cooked"),
+    ("boiled eggs and toast", "^Egg, whole, cooked, hard-boiled", "^Bread.*toasted"),
+    ("smoked salmon and cream cheese", "^Fish, salmon, smoked", "^Cheese, cream"),
+    ("roasted turkey and stuffing", "^Turkey.*roasted", "(?i)stuffing"), ("grilled chicken and broccoli", "^Chicken, grilled", "^Broccoli"),
+    ("baked potato and steamed broccoli", "^Potatoes, baked", "^Broccoli, cooked"),
+    ("grilled cheese and tomato soup", "^Grilled cheese sandwich", "^Soup, tomato"),
+    ("roasted vegetables and quinoa", "^Vegetables, mixed", "^Quinoa, cooked"),
+    ("smoked sausage and rice", "^Sausage.*smoked", "^Rice, white.*cooked"),
+    ("grilled chicken with rice", "^Chicken, grilled", "^Rice, white.*cooked"),
+    ("baked chicken with rice", "^Chicken, baked, broiled, or roasted", "^Rice, white.*cooked"),
+    ("grilled chicken with vegetables", "^Chicken, grilled", "^Vegetables, mixed"),
+    ("grilled chicken with steamed broccoli", "^Chicken, grilled", "^Broccoli, cooked"),
+    ("baked salmon with roasted vegetables", "^Fish, salmon, baked", "^Vegetables, mixed"),
+    ("fish and chips", "^Fish, fried", "^Potato, french fries"), ("fried fish and chips", "^Fish, fried", "^Potato, french fries"),
+    ("battered fish and chips", "^Fish, fried", "^Potato, french fries"), ("chicken and waffles", "^Chicken, fried, coated", "^Waffle"),
+    ("fried chicken and waffles", "^Chicken, fried, coated", "^Waffle"), ("chicken and rice", "^Chicken or turkey and rice", ""),
+    ("rice and beans", "^Beans and white rice", ""), ("beans and rice", "^Beans and white rice", ""),
+    ("fried rice and chicken", "^Rice, fried, with chicken", ""), ("baked mac and cheese", "^Macaroni or noodles with cheese", ""),
+    ("baked macaroni and cheese", "^Macaroni or noodles with cheese", ""), ("mac and cheese", "^Macaroni or noodles with cheese", ""),
+    ("grilled ham and cheese sandwich", "^Ham sandwich.*cheese", ""),
+    ("roast beef and cheddar sandwich", "(?i)^Roast beef & cheddar sandwich", ""), ("steamed beef and broccoli", "^Beef and broccoli", ""),
+    ("baked spaghetti and meatballs", "(?i)spaghetti and meatballs", ""), ("biscuits and gravy", "^Biscuit with gravy", ""),
+    ("chicken and brown rice", "^Chicken, cooked", "^Rice, brown.*cooked"),
 ]
 
 let snacks: [(String, String)] = [
@@ -2628,6 +2673,48 @@ struct StaplesTests {
         // Fries a model names are french fries, whatever else is cut like them.
         #expect(catalog.candidates(name: "Fries", brand: nil).first?.food.name == "Potato, french fries")
         #expect(catalog.candidates(name: "Sweet potato fries", brand: nil).first?.food.name == "Sweet potato fries")
+    }
+
+    @Test("a food said with how it was cooked beside another is that food and the other")
+    func cookedTogether() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern, _) in cookedPairs {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Cooked foods typed together \(seen ? "as a model names them" : "typed"): \(first) of \(cookedPairs.count) first")
+            #expect(
+                Double(first) >= 0.95 * Double(cookedPairs.count),
+                "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        let pairs = cookedPairs.filter { !$0.second.isEmpty }
+        let second = pairs.filter { pair in catalog.top(pair.typed, 2).dropFirst().first.map { matches(pair.second, $0) } == true }
+        print("Cooked foods typed together: the second food is second for \(second.count) of \(pairs.count)")
+        #expect(Double(second.count) >= 0.95 * Double(pairs.count))
+        // The way is the food's it's said of: the mixed dish of chicken and rice isn't grilled,
+        // and fried rice with chicken isn't a grilled chicken breast and brown rice.
+        #expect(catalog.top("grilled chicken and rice", 2).first == "Chicken, grilled")
+        #expect(catalog.top("chicken and rice", 1).first == "Chicken or turkey and rice")
+        #expect(catalog.top("grilled chicken breast and brown rice", 1).first?.hasPrefix("Chicken breast, grilled") == true)
+        // A dish cooked that kind of way, and one that is a dish however it's cooked.
+        #expect(catalog.top("fried rice and chicken", 1).first == "Rice, fried, with chicken")
+        #expect(catalog.top("baked mac and cheese", 1).first == "Macaroni or noodles with cheese")
+        #expect(catalog.top("grilled ham and cheese sandwich", 1).first?.hasPrefix("Ham sandwich") == true)
+        #expect(catalog.top("ham and cheese sandw", 1).first?.hasPrefix("Ham sandwich") == true)
+        // An everyday name no plain food answers is its foods, each as it comes in the dish;
+        // the labels called so follow.
+        #expect(catalog.top("fish and chips", 2) == ["Fish, fried", "Potato, french fries"])
+        #expect(catalog.top("fish and chips", 4).contains { matches("(?i)^fish (&|and) chips$", $0) })
+        #expect(catalog.top("homemade fish and chips", 1).first == "Fish, fried")
+        #expect(catalog.top("battered fish and chips", 2).last == "Potato, french fries")
+        #expect(catalog.top("chicken and waffles", 2) == ["Chicken, fried, coated", "Waffle"])
+        // A model's is offered the same way, and named by neither as the whole.
+        let named = catalog.candidates(name: "Fish and chips", brand: nil)
+        #expect(named.first?.food.name == "Fish, fried" && named.first?.named == false)
+        // Rice and beans with nothing else said are the plain ones.
+        #expect(catalog.top("rice and beans", 1).first == "Beans and white rice")
     }
 
     @Test("two foods typed or named together are each found, unless one food is both")

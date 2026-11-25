@@ -1,11 +1,11 @@
 {
   "schemaVersion": 3,
   "usda": {
-    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-1d5a8c2a",
+    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-24f74e19",
     "sourceUrl": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip",
-    "recipeSha256": "1d5a8c2ac0a8129f5ff51623046ded46732dd75258f6f2fd4f2063caf3fd2343",
+    "recipeSha256": "24f74e1947b6ea8a6ec764fdae50d761009a0b3be1598299902f4f8d44d9ae90",
     "sourceSha256": "0fe8ae486a2c8eb42cb96413f058deb51863a46c8fb8eeb4b1fb45006dd338ef",
-    "sha256": "10bf5c3e0aae5f961b7791ce077879c7d9a85aaa01b56be5637fcee17ca4a460",
+    "sha256": "ef998e5ccf5136baba8496307f058b81da4274e5cc68b0412ceffe8cb2d6cb11",
     "bytes": 4444160,
     "license": "CC0-1.0",
     "developmentSample": false,
@@ -30,7 +30,7 @@
     "fnddsPlain": 562,
     "fnddsWithChainNames": 56,
     "fnddsChainNames": 76,
-    "fnddsOtherNames": 390,
+    "fnddsOtherNames": 392,
     "fnddsSameName": 19,
     "energyRepaired": 3,
     "energyRepairedKjAsKcal": 3,
