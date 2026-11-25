@@ -3,9 +3,9 @@ import SwiftUI
 import SystemCore
 
 /// Today's second column where there's room (iPad, the Mac, Vision Pro): everything a phone folds
-/// under More today, open beside the thread. The targets' note, the plan's asks and the check-in,
-/// the weigh-in, the meal plan's meals, Same as yesterday and saved meals, whether the day's logging
-/// is done, then meal timing, supplements, drinks and the week's food, as cards on the ground.
+/// under More today, open beside the thread. The targets' note, the plan's asks, the weigh-in, the
+/// meal plan's meals, Same as yesterday and saved meals, whether the day's logging is done, then
+/// meal timing, supplements, drinks and the week's food, as cards on the ground.
 struct RestOfToday: View {
     @Environment(AppModel.self) private var model
 

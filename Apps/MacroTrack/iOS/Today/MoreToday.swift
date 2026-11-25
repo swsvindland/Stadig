@@ -2,12 +2,12 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Everything on a phone's Today that isn't the day's food: the targets' note, the plan's asks and
-/// the check-in, the weigh-in, the meal plan's meals, Same as yesterday and saved meals, whether the
-/// day's logging is done, then meal timing, supplements, drinks and the week's food. Folded under one
-/// quiet line after the thread, in the thread's own voice (an eyebrow, and what's waiting on the
-/// right), so Today reads as its design does: what's left, the day's food, the usual foods, the
-/// field. A tap opens it in place, where everything in it works as it always has.
+/// Everything on a phone's Today that isn't the day's food or the week's check-in: the targets'
+/// note, the plan's asks, the weigh-in, the meal plan's meals, Same as yesterday and saved meals,
+/// whether the day's logging is done, then meal timing, supplements, drinks and the week's food.
+/// Folded under one quiet line after the thread, in the thread's own voice (an eyebrow, and what's
+/// waiting on the right), so Today reads as its design does: what's left, the day's food, the usual
+/// foods, the field. A tap opens it in place, where everything in it works as it always has.
 struct MoreToday: View {
     @Environment(AppModel.self) private var model
     let open: Bool

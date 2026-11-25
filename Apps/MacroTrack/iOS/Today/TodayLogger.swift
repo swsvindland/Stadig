@@ -3,14 +3,14 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Today on a phone is the logger: what's left at the top, the day's food as a thread grouped by
-/// meal (the newest nearest the field), the usual foods for now one tap away, and one field at the
-/// bottom that takes "chick 200" or "2 eggs, toast, coffee" and logs it on Return. Nothing opens to
-/// confirm. The rest of the day (the weigh-in, the plan's asks, meal timing, supplements, drinks)
-/// is folded under More today, after the thread (`MoreToday`). With room (`wide`: iPad, the Mac,
-/// Vision Pro) the phone's Today is the first of two columns, under the day's eyebrow, and the rest
-/// of the day is open beside it rather than folded (`RestOfToday`); too narrow for both, it's the
-/// phone's.
+/// Today on a phone is the logger: what's left at the top (and under it, the week's check-in while
+/// it has something to say), the day's food as a thread grouped by meal (the newest nearest the
+/// field), the usual foods for now one tap away, and one field at the bottom that takes "chick 200"
+/// or "2 eggs, toast, coffee" and logs it on Return. Nothing opens to confirm. The rest of the day
+/// (the weigh-in, the plan's asks, meal timing, supplements, drinks) is folded under More today,
+/// after the thread (`MoreToday`). With room (`wide`: iPad, the Mac, Vision Pro) the phone's Today
+/// is the first of two columns, under the day's eyebrow, and the rest of the day is open beside it
+/// rather than folded (`RestOfToday`); too narrow for both, it's the phone's.
 struct TodayLogger: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
@@ -268,8 +268,11 @@ struct TodayLogger: View {
                 LeftHeader(
                     targets: targets, eaten: eaten, showAllMacros: model.settings.showAllMacros,
                     justLogged: fresh.isEmpty ? nil : entries.filter { fresh.contains($0.id) }.map(\.nutrients.kcal).reduce(0, +))
+                // The week's check-in under the numbers it moves, not folded under More today.
+                if let check = model.analysis?.weekCheckIn { WeekCheckInCard(check: check).padding(.top, 4) }
             }
         }
+        .animation(.snappy, value: model.analysis?.weekCheckIn?.id)
         // The width of the screen, typing or not: the one-line header is narrower than its ground.
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)

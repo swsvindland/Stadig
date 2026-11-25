@@ -52,12 +52,21 @@ struct PhasePaceTests {
         #expect(PhasePace.aim(trendKg: 81.4, phase: hold, today: start) == nil)
     }
 
-    @Test("The next check-in is a week after the last, or today when it's due")
+    @Test("The next check-in is the Monday nearest a week after the last, or today when it's due")
     func nextCheckIn() {
+        // `start` is a Monday.
         let last = CheckIn(
             day: start, expenditure: 2_700, kcal: 2_200, protein: 165, carbs: 240, fat: 65, status: .updated, reason: "Start")
         #expect(PhasePace.nextCheckIn(last: last, today: start.adding(days: 3)) == start.adding(days: 7))
         #expect(PhasePace.nextCheckIn(last: last, today: start.adding(days: 9)) == start.adding(days: 9))
         #expect(PhasePace.nextCheckIn(last: nil, today: start) == start)
+        // A plan started on a Thursday checks in on the Monday, and one made late, on a Wednesday,
+        // is followed by the next Monday's, five days on.
+        var thursday = last
+        thursday.day = start.adding(days: 3)
+        #expect(PhasePace.nextCheckIn(last: thursday, today: start.adding(days: 4)) == start.adding(days: 7))
+        var wednesday = last
+        wednesday.day = start.adding(days: 9)
+        #expect(PhasePace.nextCheckIn(last: wednesday, today: start.adding(days: 10)) == start.adding(days: 14))
     }
 }

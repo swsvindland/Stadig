@@ -3,8 +3,9 @@ import SwiftUI
 import SystemCore
 
 /// The assessment while it runs, then one recommendation with its reasons, then the plan in force:
-/// the phase and its weeks, today's targets and the trend against them, the year ahead, and the next
-/// weekly check-in (its history behind it). Meal prep, supplements and maintenance follow.
+/// any change the week's check-in found (or what's next, once it's over), the phase and its weeks,
+/// today's targets and the trend against them, the year ahead, and the next weekly check-in (its
+/// history behind it). Meal prep, supplements and maintenance follow.
 struct PlanView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -74,7 +75,7 @@ extension PlanView {
     @ViewBuilder
     func cards(_ analysis: MacroAnalysis) -> some View {
         if let plan = model.plan {
-            if let review = model.planReview { ReviewCard(plan: review) }
+            PlanChangeCard(analysis: analysis)
             if let phase = analysis.phase { PhaseCard(phase: phase, today: model.today) }
             TargetsCard(plan: plan, analysis: analysis)
             YearCard(plan: plan, today: model.today)
@@ -99,7 +100,7 @@ extension PlanView {
     @ViewBuilder
     func phase(_ analysis: MacroAnalysis) -> some View {
         if let plan = model.plan {
-            if let review = model.planReview { ReviewCard(plan: review) }
+            PlanChangeCard(analysis: analysis)
             if let phase = analysis.phase { PhaseCard(phase: phase, today: model.today) }
             TargetsCard(plan: plan, analysis: analysis)
             YearCard(plan: plan, today: model.today)
@@ -607,11 +608,13 @@ struct RecommendationCard: View {
     @Environment(AppModel.self) private var model
     let plan: PhasePlan
     let ready: Bool
+    /// Over a finished plan, "Plan finished" rather than "Recommended".
+    var eyebrow: String?
     @State private var choosing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(ready ? "Recommended" : "Early look").eyebrow(Color.accentColor)
+            Text(eyebrow ?? (ready ? "Recommended" : "Early look")).eyebrow(Color.accentColor)
             Text(plan.headline).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
             PhaseChips(phases: plan.phases)
             Text(plan.arc).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -754,7 +757,23 @@ struct PhaseChooser: View {
     }
 }
 
-/// A rule fired at a block boundary: the suggested change and why.
+/// What's to decide about the plan, at the top of Plan: the change the week's check-in found, or
+/// once the plan is over, what comes next.
+struct PlanChangeCard: View {
+    @Environment(AppModel.self) private var model
+    let analysis: MacroAnalysis
+
+    var body: some View {
+        if let change = analysis.planCheck {
+            ReviewCard(plan: change)
+        } else if let next = model.nextPlan {
+            RecommendationCard(plan: next, ready: true, eyebrow: "Plan finished")
+        }
+    }
+}
+
+/// A rule the week's check-in found holding: the suggested change and why, to use or to leave.
+/// It's asked once a week, so keeping the plan puts it away until the next check-in.
 struct ReviewCard: View {
     @Environment(AppModel.self) private var model
     let plan: PhasePlan
@@ -766,10 +785,31 @@ struct ReviewCard: View {
             PhaseChips(phases: plan.phases.filter { $0.end >= model.today })
             WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
             if model.analysis?.own != nil { OwnTargetsGiveWay() }
-            Button("Use the updated plan") { model.start(plan) }.primaryAction().accessibilityIdentifier("plan.useUpdated")
+            // Side by side, or where they don't fit (the larger text sizes), one over the other.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    use
+                    keep
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    use
+                    keep
+                }
+            }
         }
         .card()
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.accentColor.opacity(0.4), lineWidth: 1))
+    }
+
+    var use: some View {
+        Button("Use the updated plan") { model.start(plan) }.primaryAction().accessibilityIdentifier("plan.useUpdated")
+    }
+
+    var keep: some View {
+        Button("Keep my plan") { model.keepPlan() }
+            .secondaryAction()
+            .accessibilityHint("Asked again at next week's check-in")
+            .accessibilityIdentifier("plan.keepPlan")
     }
 }
 

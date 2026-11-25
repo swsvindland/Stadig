@@ -70,6 +70,9 @@ public struct PhasePlan: Hashable, Codable, Sendable, Identifiable {
     }
 
     public func next(after day: Day) -> PlannedPhase? { phases.first { $0.start > day } }
+
+    /// Whether a phase runs on `day`: not before the plan starts, nor once its last phase is over.
+    public func inForce(on day: Day) -> Bool { phase(on: day).map { $0.start <= day && day <= $0.end } ?? false }
 }
 
 /// What the planner knows. Every input beyond intake and weight is optional: with less, the plan
@@ -308,12 +311,20 @@ public enum PhasePlanner {
         return PhasePlan(phases: phases, headline: headline, reasons: reasons, confidence: confidence, arc: arc)
     }
 
-    /// Changes worth making at a block boundary, by rule. Nil keeps the plan.
+    /// Changes worth making, by rule, or a new recommendation before the plan or past its end. Nil
+    /// keeps the plan.
     public static func review(_ plan: PhasePlan, input: PlannerInput) -> PhasePlan? {
-        // Before the plan, or past its end: plan again.
+        guard plan.inForce(on: input.today) else { return recommend(input) }
+        return check(plan, input: input)
+    }
+
+    /// Changes worth making to the phase in force, by rule: what the weekly check-in looks for
+    /// (`CheckIn.planCheck`). Nil keeps the plan, and so does a plan with no phase in force today,
+    /// which `review` plans again.
+    public static func check(_ plan: PhasePlan, input: PlannerInput) -> PhasePlan? {
         guard let current = plan.phase(on: input.today), input.today <= current.end,
             let index = plan.phases.firstIndex(where: { $0.id == current.id })
-        else { return recommend(input) }
+        else { return nil }
         var plan = plan
         var reason: String?
         let rateNow = input.weeklyChange.map { $0 / input.weightKg }

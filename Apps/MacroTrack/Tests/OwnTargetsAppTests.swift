@@ -73,17 +73,18 @@ struct OwnTargetsAppTests {
 
     @Test func theWeeksCheckInKeepsThem() throws {
         let model = try planned()
-        // Set a week ago: today's check-in is due.
+        // Set ten days ago: the Monday nearest a week on has come, whatever day today is, so
+        // today's check-in is due.
         let analysis = try #require(model.analysis)
         for old in model.store.all(CheckIn.self) { model.store.delete(CheckIn.self, id: old.id) }
-        model.store.save(OwnTargets.record(coach, analysis, today: model.today.adding(days: -7)))
+        model.store.save(OwnTargets.record(coach, analysis, today: model.today.adding(days: -10)))
         model.reload()
         let kept = try #require(model.checkIns.last)
         #expect(model.checkIns.count == 2 && kept.day == model.today, "the weekly check-in applied itself")
         #expect(kept.isOwn && kept.own == coach && kept.plan != nil, "\(kept)")
         #expect(kept.reason.hasPrefix("Your own targets hold."))
         #expect(model.analysis?.targets.kcal == 2_100)
-        #expect(model.analysis?.own?.since == model.today.adding(days: -7))
+        #expect(model.analysis?.own?.since == model.today.adding(days: -10))
     }
 
     @Test func setAtOnboardingTheAssessmentRunsUnderThem() throws {

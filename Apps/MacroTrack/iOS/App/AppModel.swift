@@ -1643,7 +1643,9 @@ final class AppModel {
     private func saveOwn(_ checkIn: CheckIn) {
         for old in store.all(CheckIn.self) where old.day == checkIn.day && old.id != checkIn.id { store.delete(CheckIn.self, id: old.id) }
         store.save(checkIn)
-        reload()
+        // Setting their own targets, or going back, the person has seen to the week's check-in:
+        // on a Monday this one takes its place, and Today has nothing more to say about it.
+        updateSettings { $0.checkInPutAway = checkIn.day }
     }
 
     // MARK: Plan
@@ -1664,15 +1666,38 @@ final class AppModel {
         store.save(first)
         var s = storedSettings
         s.phaseOverride = nil
+        // Choosing the plan is seeing to the week's check-in: on a Monday its first targets take the
+        // check-in's place, and Today needn't show them as the week's.
+        s.checkInPutAway = today
         s.updatedAt = Date()
         store.save(s)
         reload()
     }
 
-    /// The suggested change to the plan, when a review rule fired.
-    var planReview: PhasePlan? {
-        guard let plan, let analysis else { return nil }
-        return PhasePlanner.review(plan, input: analysis.plannerInput)
+    /// What comes next once the plan's last phase is over: a new recommendation, offered every day
+    /// until one's chosen, since the targets only hold where the plan left them. A change to a plan
+    /// still running is the week's check-in's (`MacroAnalysis.planCheck`).
+    var nextPlan: PhasePlan? {
+        guard let plan, let analysis, let last = plan.phases.last, today > last.end else { return nil }
+        return PhasePlanner.recommend(analysis.plannerInput)
+    }
+
+    /// Keeps the plan as it is over the change the week's check-in found: it goes from Plan and
+    /// Today, on every device, until the next check-in looks again. The check-in has been seen to,
+    /// so Today puts it away too.
+    func keepPlan() {
+        guard var checkIn = checkIns.last(where: { $0.day <= today }), checkIn.planCheck != nil else { return }
+        checkIn.planCheck = nil
+        // Later than the copy it edits, as with settings: the newest save of a day's check-in wins.
+        checkIn.updatedAt = max(Date(), checkIn.updatedAt.addingTimeInterval(0.001))
+        store.save(checkIn)
+        updateSettings { $0.checkInPutAway = checkIn.day }
+    }
+
+    /// Puts the week's check-in away on Today; it's still on Plan, under the check-ins.
+    func putAwayCheckIn() {
+        guard let day = checkIns.last(where: { $0.day <= today })?.day else { return }
+        updateSettings { $0.checkInPutAway = day }
     }
 
     /// The recommendation, before a plan is started.

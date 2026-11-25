@@ -132,6 +132,24 @@ enum SampleData {
         }
     }
 
+    /// The plan as if it began ten days ago, its first check-in then, so this launch's weekly
+    /// check-in applies itself and Today shows it, whatever day it is (-seedCheckIn, after
+    /// -seedSampleData -seedPlan).
+    @MainActor
+    static func seedCheckIn(_ model: AppModel) {
+        guard var plan = model.plan, let analysis = model.analysis else { return }
+        let begun = model.today.adding(days: -10)
+        for index in plan.phases.indices { plan.phases[index].start = plan.phases[index].start.adding(days: -10) }
+        model.store.save(plan)
+        for old in model.store.all(CheckIn.self) { model.store.delete(CheckIn.self, id: old.id) }
+        model.store.save(
+            CheckIns.start(
+                plan, today: begun, maintenance: analysis.maintenance.kcal, weightKg: analysis.trend.latest?.trend ?? 84,
+                referenceKg: analysis.referenceKg))
+        // Starting the plan saw to today's check-in; this one hasn't been seen.
+        model.updateSettings { $0.checkInPutAway = nil }
+    }
+
     /// The scores each day from `start` to yesterday, as the person's store would have recorded them,
     /// arriving at today's: Discipline up as the targets settled, Vitality down a point with the odd
     /// day missed. The same path every launch.
