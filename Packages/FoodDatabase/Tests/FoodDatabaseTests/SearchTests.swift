@@ -499,9 +499,11 @@ struct SearchTests {
 
     @Test("typos are corrected only when the catalogs barely know the word")
     func fixes() {
-        let found = catalog.searchCatalog("chiken brest", known: [:])
-        #expect(found.fixes["chiken"] == ["chicken"])
-        #expect(found.fixes["brest"]?.first == "breast")
+        let found = catalog.searchCatalog("chickn braest", known: [:])
+        #expect(found.fixes["chickn"] == ["chicken"])
+        #expect(found.fixes["braest"]?.first == "breast")
+        // A common misspelling is read as the word meant before any of that.
+        #expect(catalog.searchCatalog("chiken brest", known: [:]).text == "chicken breast")
         // Real words stay as typed, including rare ones a typo from a common one.
         for query in ["beet", "kale", "chicken", "oreo", "hummus", "lasagne"] {
             #expect(catalog.searchCatalog(query, known: [:]).fixes.isEmpty, "\(query)")

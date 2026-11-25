@@ -342,7 +342,7 @@ struct CompoundTests {
         // typo still is, though a brand sold elsewhere starts the same.
         for name in ["skittles", "triscuit", "cholula", "halo", "skip"] { #expect(catalog.searchCatalog(name, known: [:]).fixes.isEmpty, "\(name)") }
         #expect(catalog.searchCatalog("bred", known: [:]).text == "bread", "read as the everyday food it's one letter from")
-        #expect(catalog.searchCatalog("protien bar", known: [:]).fixes["protien"] == ["protein"])
+        #expect(catalog.searchCatalog("protien bar", known: [:]).text == "protein bar")
         #expect(catalog.search("cholu").first?.food.brand == "Cholula")
         // The brands that go on from a word with the letter typed after it are found among the
         // word's own foods, and offered; a small word typed last is such a letter.

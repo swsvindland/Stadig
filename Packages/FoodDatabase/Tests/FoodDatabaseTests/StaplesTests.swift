@@ -954,6 +954,47 @@ let world: [(String, String)] = [
     ("sweet potato fry", "^Sweet potato fries"), ("tzatziki", "(?i)tzatziki"), ("shawarma", "(?i)shawarma"), ("bulgogi", "(?i)bulgogi"),
 ]
 
+/// Foods as they're commonly misspelt, each with the right spelling: the search for one should
+/// find what the search for the other does.
+let misspellings: [(wrong: String, right: String)] = [
+    ("quesedilla", "quesadilla"), ("burito", "burrito"), ("tikka massala", "tikka masala"), ("humus", "hummus"), ("hummas", "hummus"),
+    ("fettucini alfredo", "fettuccine alfredo"), ("ceasar salad", "caesar salad"), ("cesar salad", "caesar salad"), ("sandwhich", "sandwich"),
+    ("expresso", "espresso"), ("zuchini", "zucchini"), ("zuccini", "zucchini"), ("brocolli", "broccoli"), ("brocoli", "broccoli"),
+    ("avacado", "avocado"), ("avocato", "avocado"), ("tomatoe", "tomato"), ("potatoe", "potato"), ("sweet potatoe", "sweet potato"),
+    ("bannana", "banana"), ("bananna", "banana"), ("strawbery", "strawberry"), ("strawberrys", "strawberries"), ("rasberry", "raspberry"),
+    ("rasberries", "raspberries"), ("blueberrys", "blueberries"), ("yoghurt", "yogurt"), ("yogert", "yogurt"), ("omlet", "omelet"),
+    ("omlette", "omelette"), ("spagetti", "spaghetti"), ("spaghetti bolognaise", "spaghetti bolognese"), ("lasagne", "lasagna"),
+    ("lasanga", "lasagna"), ("parmesean", "parmesan"), ("parmasean", "parmesan"), ("mozarella", "mozzarella"), ("mozzerella", "mozzarella"),
+    ("guacamoli", "guacamole"), ("tortila", "tortilla"), ("jalepeno", "jalapeno"), ("chipolte", "chipotle"), ("siracha", "sriracha"),
+    ("worchestershire sauce", "worcestershire sauce"), ("cappucino", "cappuccino"), ("capuccino", "cappuccino"), ("machiato", "macchiato"),
+    ("frappachino", "frappuccino"), ("smoothy", "smoothie"), ("sherbert", "sherbet"), ("pistacio", "pistachio"), ("pistachos", "pistachios"),
+    ("almound", "almond"), ("cashu", "cashew"), ("margerine", "margarine"), ("mayonaise", "mayonnaise"), ("mayonnase", "mayonnaise"),
+    ("catsup", "ketchup"), ("ketsup", "ketchup"), ("vinagrette", "vinaigrette"), ("ceral", "cereal"), ("bagle", "bagel"),
+    ("crossiant", "croissant"), ("croisant", "croissant"), ("biscut", "biscuit"), ("doughnut", "donut"), ("wafle", "waffle"),
+    ("pankcake", "pancake"), ("pancaks", "pancakes"), ("sausauge", "sausage"), ("bolonga", "bologna"), ("baloney", "bologna"), ("salomi", "salami"),
+    ("proscuitto", "prosciutto"), ("tilapa", "tilapia"), ("salman", "salmon"), ("shrip", "shrimp"), ("califlower", "cauliflower"),
+    ("cauliflour", "cauliflower"), ("cucmber", "cucumber"), ("letuce", "lettuce"), ("lettus", "lettuce"), ("spinich", "spinach"),
+    ("asparagas", "asparagus"), ("egplant", "eggplant"), ("brussel sprouts", "brussels sprouts"), ("edemame", "edamame"), ("quinua", "quinoa"),
+    ("cous cous", "couscous"), ("barly", "barley"), ("lentles", "lentils"), ("chick peas", "chickpeas"), ("garbonzo beans", "garbanzo beans"),
+    ("rasins", "raisins"), ("cranberrys", "cranberries"), ("pinapple", "pineapple"), ("watermellon", "watermelon"), ("cantalope", "cantaloupe"),
+    ("cantelope", "cantaloupe"), ("grapefruite", "grapefruit"), ("tangarine", "tangerine"), ("blackberrys", "blackberries"),
+    ("chicken brest", "chicken breast"), ("chiken breast", "chicken breast"), ("chicken thighs", "chicken thigh"), ("grond beef", "ground beef"),
+    ("ground beaf", "ground beef"), ("turky", "turkey"), ("stake", "steak"), ("porkchop", "pork chop"), ("hamberger", "hamburger"),
+    ("cheesburger", "cheeseburger"), ("hot dogs", "hot dog"), ("french frys", "french fries"), ("mash potatoes", "mashed potatoes"),
+    ("mashed potatos", "mashed potatoes"), ("scrambeled eggs", "scrambled eggs"), ("hard boild egg", "hard boiled egg"),
+    ("peanutbutter", "peanut butter"), ("peanut buter", "peanut butter"), ("cream chese", "cream cheese"), ("cottage chese", "cottage cheese"),
+    ("chedder cheese", "cheddar cheese"), ("swis cheese", "swiss cheese"), ("greek yogert", "greek yogurt"), ("oatmeel", "oatmeal"),
+    ("granola barr", "granola bar"), ("protien shake", "protein shake"), ("protien bar", "protein bar"), ("whey protien", "whey protein"),
+    ("orange juce", "orange juice"), ("apple juce", "apple juice"), ("lemonaid", "lemonade"), ("ice tea", "iced tea"), ("coffe", "coffee"),
+    ("expresso shot", "espresso shot"), ("choclate", "chocolate"), ("chocolat chip cookie", "chocolate chip cookie"), ("brownie", "brownie"),
+    ("cheescake", "cheesecake"), ("tiramasu", "tiramisu"), ("macaroni and chese", "macaroni and cheese"), ("mac n chese", "mac n cheese"),
+    ("chicken noodel soup", "chicken noodle soup"), ("tomatoe soup", "tomato soup"), ("clam chowda", "clam chowder"),
+    ("ceasar dressing", "caesar dressing"), ("ranch dresing", "ranch dressing"), ("bbq sause", "bbq sauce"), ("soy sause", "soy sauce"),
+    ("terriyaki chicken", "teriyaki chicken"), ("general tsos chicken", "general tso chicken"), ("kung pow chicken", "kung pao chicken"),
+    ("pad tai", "pad thai"), ("sushi role", "sushi roll"), ("california role", "california roll"), ("gyro sandwhich", "gyro sandwich"),
+    ("fallafel", "falafel"), ("tabouli", "tabbouleh"), ("baclava", "baklava"), ("canoli", "cannoli"),
+]
+
 /// Breakfast, snacks, wraps and what's drunk from a can, as they're logged through a day: each
 /// with a pattern for the plain food that should come first ("oatmeal with milk" FNDDS's oatmeal
 /// made with milk, "pretzels" the hard ones, "shredded chicken" cooked chicken, "sparkling
@@ -2075,6 +2116,29 @@ struct StaplesTests {
         // As a model spells them, where USDA spells them its own way.
         #expect(catalog.candidates(name: "Egg foo young", brand: nil).first?.food.name.hasPrefix("Egg foo yung") == true)
         #expect(catalog.candidates(name: "Dolmas", brand: nil).first.map { matches("rape leaves", $0.food.name) } == true)
+    }
+
+    @Test("a common misspelling finds what the right spelling does")
+    func commonMisspellings() {
+        var same = 0
+        var missed: [String] = []
+        for (wrong, right) in misspellings {
+            let (found, meant) = (catalog.top(wrong, 1).first, catalog.top(right, 1).first)
+            if found == meant { same += 1 } else { missed.append("\(wrong): \(found ?? "nothing"), not \(meant ?? "nothing")") }
+        }
+        print("Common misspellings: \(same) of \(misspellings.count) find what the right spelling does")
+        #expect(Double(same) >= 0.95 * Double(misspellings.count), "\(missed.joined(separator: " | "))")
+        // No misspelling is the start of the word meant, which a word still being typed could be.
+        for (wrong, right) in Misspellings.meant { #expect(!right.hasPrefix(wrong), "\(wrong)") }
+        // Wherever it's typed, and with the catalogs' own words for the food still read.
+        #expect(catalog.searchCatalog("grilled porkchop", known: [:]).text == "grilled pork chop")
+        #expect(catalog.searchCatalog("whey protien", known: [:]).text == "whey protein")
+        #expect(catalog.top("mac n chese", 1) == catalog.top("mac n cheese", 1))
+        // A word USDA writes is no misspelling, though another spelling of it is searched too.
+        #expect(Misspellings.meant["lasagne"] == nil && searchForms("lasagne").contains("lasagna") && searchForms("catsup").contains("ketchup"))
+        // The person's own food is found by the word meant.
+        let own = Food(id: "custom:broccoli", name: "Roasted Broccoli", basis: .g, nutrients: .zero, source: .custom)
+        #expect(catalog.search("brocolli", personal: [PersonalFood(food: own, score: 1)]).first?.food.id == own.id)
     }
 
     @Test("a product is first before its name is typed out")

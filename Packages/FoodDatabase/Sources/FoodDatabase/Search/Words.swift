@@ -31,6 +31,8 @@ let alternatives: [String: [String]] = [
     "mint": ["mint", "spearmint", "peppermint"],
     // One french fry is its fries.
     "fry": ["fry", "fries"],
+    // Spellings USDA has both of: its ketchup is "catsup" in older names, its lasagna "lasagne" once.
+    "catsup": ["catsup", "ketchup"], "lasagne": ["lasagne", "lasagna"],
     // And in the plural, as they're asked for by the round.
     "sodas": ["soda", "carbonated"], "cokes": ["coke", "cola"], "lagers": ["lager", "beer"], "pilsners": ["pilsner", "beer"],
     "stouts": ["stout", "beer"], "portobellos": ["portobello", "portabella"], "chillis": ["chilli", "chili"], "beetroots": ["beetroot", "beet"],
@@ -214,6 +216,9 @@ let shortNames: [String: String] = [
     "dolmas": "stuffed grape leaves", "dolma": "stuffed grape leaves", "dolmades": "stuffed grape leaves",
     "egg foo young": "egg foo yung", "arroz con gandules": "arroz con grandules", "tres leches": "tres leche cake",
     "tres leches cake": "tres leche cake",
+    // As they're said and written by ear.
+    "kung pow chicken": "kung pao chicken", "pad tai": "pad thai", "french frys": "french fries", "ice tea": "iced tea",
+    "ice coffee": "iced coffee",
     // Mac and cheese is macaroni and cheese, not the one named "Easy Mac".
     "mac and cheese": "macaroni and cheese", "mac n cheese": "macaroni and cheese", "mac cheese": "macaroni and cheese",
 ]
@@ -232,7 +237,7 @@ let typedAlternatives: Set<String> = [
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
     "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",
-    "beetroots",
+    "beetroots", "catsup", "lasagne",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

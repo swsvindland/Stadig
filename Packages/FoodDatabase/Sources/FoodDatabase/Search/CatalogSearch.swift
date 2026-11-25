@@ -429,6 +429,13 @@ extension FoodCatalog {
             read.typed = read.typed ?? query
             return read
         }
+        // A common misspelling is the word meant, whatever labels are misspelt the same way:
+        // "brocolli", "protien", "smoothy".
+        if let at = tokens.indices.first(where: { named($0) && Misspellings.meant[tokens[$0].word] != nil }),
+            let word = Misspellings.meant[tokens[at].word]
+        {
+            return respell(makeString(scalars[..<tokens[at].start]) + word + makeString(scalars[tokens[at].end...]), typing: typing, meant: meant)
+        }
         // A search one typo from an everyday food is that food, where USDA has no such word
         // and no brand people scan is called it: "french fires" is french fries, whatever
         // labels have "fire" in their names, and "refried bens" refried beans.
