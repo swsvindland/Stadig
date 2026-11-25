@@ -621,6 +621,9 @@ struct FoodText {
     let chain: Bool
     /// A restaurant or packaged food.
     let branded: Bool
+    /// The food is the skin alone: "Chicken, skin only", KFC's "Skin and Breading", a baked
+    /// potato's "skin". Not one that includes its skin, or has had it removed.
+    let skinAlone: Bool
     /// USDA's "dry heat" or "moist heat", which the words read as "cooked".
     let heat: Heat?
 
@@ -713,6 +716,9 @@ struct FoodText {
             // "With skin", "without skin" and "baked in skin" say how a fruit or a potato comes,
             // not that the food is its skin, as "Chicken, skin only" is.
             if stems[i] == "skin", i > 0, ["with", "without", "in"].contains(found[i - 1].word) { continue }
+            // Nor is a potato's "flesh and skin" a part of it: it's the whole potato, which
+            // "raw potatoes" came after a scalloped one for.
+            if stems[i] == "skin", i > 1, found[i - 1].word == "and", found[i - 2].word == "flesh" { continue }
             // "Dry roasted" is how nuts are cooked, not a dried food.
             if stems[i] == "dry", i + 1 < found.count, found[i + 1].word == "roasted" { continue }
             // Nor is what a food is packed in what it is: sardines "canned in oil" aren't an oil,
@@ -782,6 +788,13 @@ struct FoodText {
         group = grouped ? parts[0] : []
         heads = Array(parts[(grouped ? 1 : 0)...].prefix(commas.count + (grouped ? 0 : 1)).prefix(2))
         branded = !brand.isEmpty || source == .off || (shoutingStart(original, word: true) && shouting(dropMc(firstWord(original))))
+        skinAlone =
+            source == .usda
+            && original.lowercased().split(separator: ",").contains { part in
+                let words = part.split(separator: " ")
+                guard words.first == "skin", words.last != "removed" else { return false }
+                return words.count == 1 || ["only", "and", "from", "with"].contains(words[1]) || words[1].hasPrefix("(")
+            }
     }
 }
 
@@ -2500,6 +2513,9 @@ func scoreFoods(
             }
             if said(after), !text.said.indices.contains(where: { text.runs[$0] < after && said(text.runs[$0]) }) { score -= 0.75 }
         }
+        // The skin alone isn't the food, where skin wasn't asked for: KFC's "Skin and
+        // Breading" for its original recipe chicken, a baked potato's "skin" for the potato.
+        if !row.called, match.missing == 0, row.text.skinAlone, !askedForms.contains("skin") { score -= 0.5 }
         // Of the sizes a plain food comes in, where none was asked for, the middle one: a
         // burger's medium patty, a pizza's medium crust.
         if !row.text.branded, match.missing == 0, row.text.titled.contains("medium"), !saidStems.contains("medium") { score += 0.03 }

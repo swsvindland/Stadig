@@ -874,7 +874,7 @@ let fresh: [(String, String)] = [
     ("fresh celery", "^Celery, raw"), ("fresh eggplant", "^Eggplant, raw"), ("fresh okra", "^Okra, raw"), ("fresh radishes", "^Radishes, raw"),
     ("fresh arugula", "^Arugula, raw"), ("fresh shallots", "^Shallots, raw"), ("fresh leeks", "^Leeks, \\(bulb and lower leaf-portion\\), raw"),
     ("fresh fennel", "^Fennel, bulb, raw"), ("fresh brussels sprouts", "^Brussels sprouts, raw"), ("fresh pumpkin", "^Pumpkin, raw"),
-    ("fresh potatoes", "^Potatoes, .*raw"), ("fresh lemon juice", "^Lemon juice, raw"), ("fresh lime juice", "^Lime juice, raw"),
+    ("fresh potatoes", "^Potatoes, .*flesh and skin, raw"), ("fresh lemon juice", "^Lemon juice, raw"), ("fresh lime juice", "^Lime juice, raw"),
     ("fresh orange juice", "^Orange juice, raw"), ("fresh squeezed orange juice", "(?i)orange juice"), ("fresh salmon", "^Fish, salmon, .*raw"),
     ("fresh salmon fillet", "^Fish, salmon, .*raw"), ("fresh tuna", "^Fish, tuna, fresh|^Fish, tuna, raw"),
     ("fresh cod", "^Fish, cod, Atlantic, raw"),
@@ -1655,6 +1655,43 @@ let withoutNamed: [(String, String)] = [
     ("Green beans, no salt", "^Beans, snap, green"), ("Unsalted almonds", "^Nuts, almonds"), ("Pizza without cheese", "^Pizza, no cheese"),
     ("Rice without butter", "^Rice, white"), ("Steak, no sauce", "^(Steak|Beef)"), ("Pasta without sauce", "^Pasta, cooked"),
     ("Whopper without cheese", "^(BURGER KING, WHOPPER, no cheese|Whopper)"), ("Yogurt, no sugar added", "^Yogurt"),
+]
+
+/// A chain's item typed by its own name, without the chain: the chain's own where USDA has it,
+/// else the nearest it has from there or the food as such a place serves it. Then a chain
+/// typed with a food that isn't another chain's, the skin alone not being the food, and the
+/// searches that stay as they were.
+let menuNames: [(String, String)] = [
+    ("frosty", "^WENDY'S, Frosty"), ("chocolate frosty", "^WENDY'S, Frosty"), ("baconator", "^WENDY'S, CLASSIC DOUBLE, with cheese"),
+    ("dave's single", "^WENDY'S, DAVE'S"), ("daves single", "^WENDY'S, DAVE'S"), ("daves double", "^WENDY'S, CLASSIC DOUBLE, with cheese"),
+    ("jr bacon cheeseburger", "^WENDY'S, Jr. Hamburger, with cheese"), ("junior bacon cheeseburger", "^WENDY'S, Jr. Hamburger, with cheese"),
+    ("original recipe chicken", "^KFC, Fried Chicken, ORIGINAL RECIPE, .*meat and skin"),
+    ("extra crispy chicken", "^KFC, Fried Chicken, EXTRA CRISPY, .*meat and skin"), ("nachos bellgrande", "^TACO BELL, Nachos Supreme"),
+    ("doritos locos taco", "^TACO BELL, Original Taco"), ("doritos locos tacos", "^TACO BELL, Original Taco"),
+    ("cheesy gordita crunch", "^Gordita, meat"), ("blizzard", "^Soft serve, blended with candy or cookies"),
+    ("oreo blizzard", "^Soft serve, blended with candy or cookies"), ("double quarter pounder", "^McDONALD'S, DOUBLE QUARTER POUNDER"),
+    ("hot and spicy mcchicken", "^McDONALD'S, McCHICKEN"), ("hot n spicy mcchicken", "^McDONALD'S, McCHICKEN"),
+    ("shamrock shake", "^Milk shake, fast food"), ("croissanwich", "^BURGER KING, CROISSAN'WICH"),
+    ("sausage croissanwich", "^BURGER KING, CROISSAN'WICH with Sausage"), ("beef n cheddar", "^Roast beef sandwich on white, with cheese"),
+    ("beef and cheddar", "^Roast beef sandwich on white, with cheese"), ("butterburger", "^Cheeseburger, from fast food"),
+    ("double double", "^Double cheeseburger, from fast food"), ("animal style fries", "^Potato, french fries, with cheese"),
+    ("hot n ready", "^LITTLE CAESARS 14\" Original Round Pepperoni"), ("hot and ready", "^LITTLE CAESARS 14\" Original Round Pepperoni"),
+    ("crazy bread", "^Breadsticks, soft, with parmesan"), ("footlong", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"),
+    ("footlong sub", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"),
+    ("footlong meatball marinara", "^Fast foods, submarine sandwich, meatball marinara"), ("steak and cheese", "^Cheese steak sandwich"),
+    ("steak and cheese sub", "^Cheese steak sandwich"), ("bloomin onion", "^Fried onion rings"), ("blooming onion", "^Fried onion rings"),
+    ("cake pop", "(?i:cake pop)"), ("slurpee", "^Slush frozen drink"), ("slushie", "^Slush frozen drink"), ("pot pie", "^Pot pie, chicken"),
+    ("cheese curds", "^Cheese, cheddar"), ("fried cheese curds", "(?i:fried mozzarella sticks)"),
+    ("potato skins", "^Potato skins, with cheese and bacon"), ("loaded potato skins", "^Potato skins, with cheese and bacon"),
+    ("wendys jr cheeseburger", "^WENDY'S, Jr. Hamburger, with cheese"), ("wendys cheeseburger", "^WENDY'S, .*Hamburger, with cheese"),
+    ("hungry jacks whopper", "^Whopper"), ("mcdonalds cheeseburger", "^McDONALD'S, Cheeseburger"),
+    ("five guys cheeseburger", "^Cheeseburger, from fast food"), ("kfc original recipe", "^KFC, Fried Chicken, ORIGINAL RECIPE, .*meat and skin"),
+    ("kfc extra crispy", "^KFC, Fried Chicken, EXTRA CRISPY, .*meat and skin"), ("baked potato with skin", "^Potatoes, .*flesh and skin"),
+    ("raw potatoes", "^Potatoes, flesh and skin, raw"), ("subway footlong", "^SUBWAY, turkey breast sub"), ("mcchicken", "^McDONALD'S, McCHICKEN"),
+    ("big mac", "^Big Mac|^McDONALD'S, BIG MAC"), ("egg mcmuffin", "^McDONALD'S, Egg McMUFFIN"), ("mcflurry", "^McDONALD'S, McFLURRY"),
+    ("whopper", "^Whopper|^BURGER KING, WHOPPER"), ("mcrib", "^Barbecue rib sandwich"), ("pork rinds", "^(Snacks, pork skins|Pork skin rinds)"),
+    ("zucchini", "^Squash, summer, zucchini"), ("frosting", "^Frosting"), ("frosted flakes", "(?i:frosted flakes)"), ("avocado toast", "^Avocados"),
+    ("mac and cheese", "^Macaroni or noodles with cheese"), ("ham and cheese", "^Ham"), ("steak and eggs", "^Steak"),
 ]
 
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
@@ -3302,6 +3339,43 @@ struct StaplesTests {
         #expect(catalog.top("diet coke", 1) == ["Soft drink, cola, diet"] && catalog.top("diet cola", 1) == ["Soft drink, cola, diet"])
         #expect(catalog.top("tonic", 1) == ["Water, tonic"] && catalog.top("rum and coke", 1) == ["Rum and cola"])
         #expect(catalog.top("gin and tonic", 1) == ["Gin and tonic"] && catalog.top("pb and j", 1) == ["Peanut butter and jelly sandwich"])
+    }
+
+    @Test("a chain's item typed by its own name is the chain's")
+    func menuItemsByName() {
+        var missed: [String] = []
+        for (query, pattern) in menuNames {
+            let first = catalog.search(query).first.map { found in found.food.brand.map { "\(found.food.name) [\($0)]" } ?? found.food.name }
+            if first.map({ matches(pattern, $0) }) != true { missed.append("\(query): \(first ?? "nothing")") }
+        }
+        print("Menu items by name: \(menuNames.count - missed.count) of \(menuNames.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(menuNames.count), "\(missed.joined(separator: " | "))")
+        // A Frosty is Wendy's, where "frosty" found frosting; frosting is still frosting.
+        #expect(catalog.top("frosty", 1) == ["WENDY'S, Frosty Dairy Dessert"])
+        #expect(catalog.top("frosting", 1).first?.hasPrefix("Frosting") == true)
+        // A double double is In-N-Out's burger, and at Tim Hortons a coffee.
+        #expect(
+            regionalName(["double", "double"], in: "ca") == "coffee with cream and sugar" && regionalName(["double", "double"], in: "us") == nil)
+        // A chain typed with a food isn't answered by another chain's: Burger King's Whopper
+        // Jr for Wendy's jr cheeseburger. Two names for one menu are one chain.
+        #expect(Chains.isAnothers("Whopper Jr with cheese (Burger King)", than: "wendys"))
+        #expect(Chains.isAnothers("BURGER KING, WHOPPER, no cheese", than: "five guys"))
+        #expect(
+            !Chains.isAnothers("Whopper (Burger King)", than: "hungry jacks") && !Chains.isAnothers("Cheeseburger, from fast food", than: "wendys"))
+        #expect(catalog.top("wendys jr cheeseburger", 1) == ["WENDY'S, Jr. Hamburger, with cheese"])
+        // The skin alone isn't the food, where skin wasn't asked for.
+        #expect(FoodText(name: "KFC, Fried Chicken, ORIGINAL RECIPE, Skin and Breading", brand: "", source: .usda).skinAlone)
+        #expect(FoodText(name: "Potatoes, baked, skin, without salt", brand: "", source: .usda).skinAlone)
+        #expect(!FoodText(name: "Squash, summer, zucchini, includes skin, raw", brand: "", source: .usda).skinAlone)
+        #expect(!FoodText(name: "Chicken breast, fried, coated, skin and coating removed", brand: "", source: .usda).skinAlone)
+        #expect(!FoodText(name: "Chicken thigh, cooked, with skin", brand: "", source: .usda).skinAlone)
+        #expect(catalog.top("baked potato with skin", 1).first.map { matches("flesh and skin", $0) } == true)
+        // A potato's "flesh and skin" is the whole potato, not a part of it: raw potatoes are
+        // that, where the skin alone had led and then a scalloped potato.
+        #expect(catalog.top("raw potatoes", 1) == ["Potatoes, flesh and skin, raw"])
+        // What's said for one food isn't then read as two: a steak and cheese is the sandwich.
+        #expect(catalog.top("steak and cheese", 1).first?.hasPrefix("Cheese steak sandwich") == true)
+        #expect(catalog.top("steak and eggs", 2).first?.hasPrefix("Steak") == true)
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

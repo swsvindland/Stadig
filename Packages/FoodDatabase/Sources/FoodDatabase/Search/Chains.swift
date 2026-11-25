@@ -293,6 +293,24 @@ enum Chains {
         }.map { ($0.name, place(of: $0)) }
     }
 
+    /// Chains that sell one menu under two names: a Whopper is Hungry Jack's too.
+    private static let kin: [String: String] = ["hungry jacks": "burger king", "rallys": "checkers", "carls jr": "hardees"]
+
+    /// The chain a plain food's name carries, as USDA writes it first ("BURGER KING, WHOPPER")
+    /// or the survey last ("Whopper Jr (Burger King)").
+    private static func named(in food: String) -> String? {
+        if let first = food.split(separator: ",").first, food.contains(","), let name = written[tokens(String(first)).joined()] { return name }
+        guard food.hasSuffix(")"), let open = food.lastIndex(of: "(") else { return nil }
+        return written[tokens(String(food[open...])).joined()]
+    }
+
+    /// Whether a plain food is another chain's than the one asked for: Burger King's Whopper
+    /// Jr isn't the food of "wendys jr cheeseburger".
+    static func isAnothers(_ food: String, than chain: String) -> Bool {
+        guard let its = named(in: food), let asked = written[tokens(chain).joined()] else { return false }
+        return (kin[its] ?? its) != (kin[asked] ?? asked)
+    }
+
     /// A search that starts or ends with a chain's name, apart: the chain, and the rest as it
     /// was typed. "five guys burger and fries", "pancakes with syrup from mcdonald's".
     static func apart(_ typed: String) -> (name: String, rest: String)? {

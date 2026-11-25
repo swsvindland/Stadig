@@ -908,7 +908,12 @@ extension FoodCatalog {
         // for word.
         if let first = search.ranked.first, tokens(typed).contains("with") {
             let sides = Self.besideTyped(typed).flatMap { Self.foodWords($0) }.map { [stem($0)] }
-            let lacks = { (found: Ranked) in sides.contains { Self.saysWithout(found.food, [$0]) } }
+            // Nor is the skin alone the food with its skin: "Potatoes, baked, skin" for a
+            // baked potato with skin.
+            let skin = sides.contains(["skin"])
+            let lacks = { (found: Ranked) in
+                sides.contains { Self.saysWithout(found.food, [$0]) } || (skin && FoodText(found.food).skinAlone)
+            }
             if !sides.isEmpty, lacks(first) { search.ranked = Self.joined(search.ranked.filter { !lacks($0) }, search.ranked.filter(lacks)) }
         }
         // A way of cooking said in two words is searched as the catalogs' one, where no brand
@@ -957,7 +962,25 @@ extension FoodCatalog {
             let begun = Chains.begun(food, of: theirs.foods)
             if !begun.isEmpty, let known = knownFoods(begun, of: name, place: theirs.place, known: known, search) { return known }
         }
-        let plain = searchCatalog(food, known: known, out: chain.place)
+        // A cheeseburger is the chain's hamburger "with cheese", where that's how USDA lists
+        // it: Wendy's Jr. Hamburger, with cheese, and not the one without.
+        if food.contains("cheeseburger") {
+            let again = searchCatalog("\(name) \(food.replacingOccurrences(of: "cheeseburger", with: "hamburger with cheese"))", known: known)
+            if let first = again.ranked.first, first.mine, first.name >= 1, first.food.source == .usda {
+                var both = search
+                both.ranked = Self.joined(again.ranked, search.ranked)
+                return both
+            }
+        }
+        // A size alone names no food: a Subway footlong is one of the subs it's known for.
+        if ["footlong", "foot long", "6 inch", "six inch"].contains(food), let theirs = Chains.alone(name),
+            let known = knownFoods(theirs.foods, of: name, place: theirs.place, known: known, search)
+        {
+            return known
+        }
+        var plain = searchCatalog(food, known: known, out: chain.place)
+        // Not another chain's: Burger King's Whopper Jr with cheese for "wendys jr cheeseburger".
+        plain.ranked.removeAll { Chains.isAnothers($0.food.name, than: name) }
         // A plain food with every word left, as typed: a Subway "footlong" isn't oolong tea
         // misspelt, nor a Wendy's Baconator the crisps flavoured like one.
         guard let first = plain.ranked.first, first.name >= 1, plain.fixes.isEmpty, !FoodText(first.food).branded else {
@@ -1288,8 +1311,9 @@ extension FoodCatalog {
         // As what was typed is read, where the whole of it is said for something else: avocado
         // toast is avocado and toast, and in Britain cheese and biscuits are cheese and
         // crackers. Else as typed.
-        let reworded = search.typed != nil && shortened(typed) ? Self.foodsTyped(search.text) : nil
-        guard search.brand.isEmpty, let foods = reworded ?? Self.foodsTyped(typed) else { return nil }
+        // Not as typed, then: "steak and cheese" is a cheese steak sandwich, not the two.
+        let reworded = search.typed != nil && shortened(typed)
+        guard search.brand.isEmpty, let foods = Self.foodsTyped(reworded ? search.text : typed) else { return nil }
         let first = { (ranked: [Ranked]) in
             var named = search
             named.ranked = ranked
@@ -1681,6 +1705,7 @@ extension FoodCatalog {
         // from fast food, before another brand's fries or the plain ones.
         if let chain = Chains.named(by: brand), !ranked.prefix(5).contains(where: { $0.mine && Chains.isBrand($0.food.brand, of: chain.name) }) {
             let plain = rankCandidates(name: said, brand: "", personal: personal, known: known, out: chain.place)
+                .filter { !Chains.isAnothers($0.food.name, than: chain.name) }
             if let first = plain.first, first.name >= 1, !FoodText(first.food).branded { ranked = Self.joined(plain, ranked) }
         }
         // A food named without something is the food, as when it's typed (see `without`):

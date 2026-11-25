@@ -357,6 +357,29 @@ let shortNames: [String: String] = [
     "ice coffee": "iced coffee",
     // Mac and cheese is macaroni and cheese, not the one named "Easy Mac".
     "mac and cheese": "macaroni and cheese", "mac n cheese": "macaroni and cheese", "mac cheese": "macaroni and cheese",
+    // A chain's item typed by its own name is the chain's: a Frosty is Wendy's, where
+    // "frosty" found frosting. Where USDA has no such item, the nearest it has from there
+    // (a Baconator is Wendy's double with cheese), or the food as such a place serves it.
+    "frosty": "wendys frosty", "chocolate frosty": "wendys frosty", "vanilla frosty": "wendys frosty",
+    "baconator": "wendys classic double with cheese", "dave s single": "wendys daves single", "daves single": "wendys daves single",
+    "dave s double": "wendys classic double with cheese", "daves double": "wendys classic double with cheese",
+    "jr bacon cheeseburger": "wendys jr hamburger with cheese", "junior bacon cheeseburger": "wendys jr hamburger with cheese",
+    "original recipe chicken": "kfc original recipe chicken", "extra crispy chicken": "kfc extra crispy chicken",
+    "nachos bellgrande": "taco bell nachos supreme", "nachos bell grande": "taco bell nachos supreme",
+    "doritos locos taco": "taco bell original taco", "doritos locos tacos": "taco bell original taco",
+    "cheesy gordita crunch": "gordita meat", "blizzard": "dairy queen blizzard", "oreo blizzard": "dairy queen blizzard",
+    "double quarter pounder": "mcdonalds double quarter pounder with cheese", "hot and spicy mcchicken": "mcchicken",
+    "hot n spicy mcchicken": "mcchicken", "shamrock shake": "mcdonalds milkshake",
+    "beef n cheddar": "roast beef sandwich with cheese", "beef and cheddar": "roast beef sandwich with cheese",
+    "butterburger": "culvers cheeseburger", "double double": "double cheeseburger", "animal style fries": "cheese fries",
+    "hot n ready": "little caesars pepperoni pizza", "hot and ready": "little caesars pepperoni pizza",
+    "crazy bread": "soft breadsticks with parmesan cheese", "footlong": "sub sandwich", "footlong sub": "sub sandwich",
+    "steak and cheese": "cheese steak sandwich", "steak and cheese sub": "cheese steak sandwich",
+    "steak and cheese sandwich": "cheese steak sandwich", "bloomin onion": "onion rings", "blooming onion": "onion rings",
+    "cake pop": "starbucks cake pop", "slurpee": "slush frozen drink", "slushie": "slush frozen drink", "slushy": "slush frozen drink",
+    "pot pie": "chicken pot pie", "cheese curds": "cheddar cheese", "fried cheese curds": "fried mozzarella sticks",
+    // The appetizer, not the skin a baked potato is weighed without.
+    "potato skins": "potato skins with cheese and bacon", "loaded potato skins": "potato skins with cheese and bacon",
 ]
 
 /// The short name the words begin, the last of them still being typed, where only one does:
@@ -415,6 +438,8 @@ private let regionalNames: [(regions: Set<String>, names: [String: String])] = [
     ),
     (["us"], ["cider": "apple cider", "ciders": "apple cider"]),
     (["us", "ca"], ["flapjack": "pancakes", "flapjacks": "pancakes"]),
+    // At Tim Hortons a double double is a coffee; elsewhere it's In-N-Out's burger.
+    (["ca"], ["double double": "coffee with cream and sugar"]),
 ]
 
 /// What the words mean in a region, if it's another food there than they name elsewhere.
