@@ -673,6 +673,10 @@ USDA_OTHER_NAMES = {
     "Fish, mahimahi, cooked, dry heat": ["Mahi mahi", "Mahi"],
     "Tofu, fried": ["Crispy tofu"],
     "Cheese, mozzarella, low moisture, part-skim": ["String cheese"],
+    # By the names they're bought by, here and in Britain.
+    "Cream, fluid, light (coffee cream or table cream)": ["Light cream", "Single cream", "Table cream"],
+    "Oil, olive, salad or cooking": ["Extra virgin olive oil"],
+    "Wheat flour, white, all-purpose, self-rising, enriched": ["Self rising flour"],
     "Onions, yellow, sauteed": ["Caramelized onions"],
     "Corn, sweet, yellow, canned, cream style, regular pack": ["Creamed corn", "Cream style corn"],
     "Sweet potato, cooked, candied, home-prepared": ["Candied yams", "Candied sweet potatoes"],

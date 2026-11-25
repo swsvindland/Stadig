@@ -258,6 +258,8 @@ private let everydayVarieties: [String: Usual] = [
         "fresh steak bluefin yellowfin skipjack ahi salad seared raw sushi sashimi roll melt casserole noodle helper"
             .split(separator: " ").map(String.init)),
     "sardine": Usual(["canned"], ["fresh", "raw"]),
+    // Raisins are the dark seedless ones, not USDA's seeded.
+    "raisin": Usual(["dark"], ["golden", "seeded"]),
     "anchov": Usual(["canned"], ["fresh", "raw", "paste"]),
     "soup": Usual(["canned"], "dry mix dehydrated homemade home stock broth bouillon cube powder ramen".split(separator: " ").map(String.init)),
     "stew": Usual(["canned"], ["chuck", "meat", "raw"]),

@@ -1390,6 +1390,36 @@ let describing: [(String, String)] = [
     ("pumpkin", "^Pumpkin"), ("vegetable", "^Vegetables"), ("ranch", "^Salad dressing, ranch"), ("protein", "(?i)protein powder"),
 ]
 
+/// Foods by what they're called in Britain and Australia ("mince", "rocket", "icing sugar",
+/// "tinned tomatoes") and by the short forms people type ("froyo", "veggies", "g&t"), with a
+/// few that must stay what they are ("apple crisp", "tater tots").
+let otherNames: [(String, String)] = [
+    ("mince", "^Beef, ground, cooked"), ("minced beef", "^Beef, ground, cooked"), ("beef mince", "^Beef, ground, cooked"),
+    ("turkey mince", "(?i)^Turkey, ground, cooked"), ("pork mince", "^Pork, ground, cooked"), ("lamb mince", "^Lamb, ground, cooked"),
+    ("rocket", "^Arugula"), ("icing sugar", "^Sugars, powdered"), ("caster sugar", "^Sugars, granulated"),
+    ("double cream", "^Cream, fluid, heavy"), ("single cream", "^Cream, fluid, light"), ("plain flour", "^Wheat flour, white, all-purpose"),
+    ("self raising flour", "self-rising"), ("wholemeal bread", "^Bread, whole-wheat"), ("wholemeal flour", "^Wheat flour, whole-grain"),
+    ("brown bread", "^Bread, (whole-)?wheat"), ("sultanas", "^Raisins, golden"), ("mangetout", "^Peas, edible-podded"),
+    ("spring onions", "^Onions, spring or scallions"), ("capsicum", "^Peppers, sweet"), ("rockmelon", "^Melons, cantaloupe"),
+    ("crisps", "^Potato chips|^Snacks, potato chips"), ("sweets", "^Candy"), ("fizzy drink", "^Soft drink"), ("porridge", "^Oatmeal"),
+    ("jacket potato", "^Potatoes, baked"), ("butter beans", "^Lima beans"), ("broad beans", "^Broadbeans"), ("swede", "^Rutabagas"),
+    ("gammon", "^Ham"), ("tinned tomatoes", "^Tomatoes.*canned"), ("tinned tuna", "^Fish, tuna, canned"), ("tinned peaches", "^Peaches, canned"),
+    ("semi skimmed milk", "^Milk, reduced fat"), ("skimmed milk", "^Milk, nonfat"), ("full fat milk", "^Milk, whole"),
+    ("full fat yogurt", "^Yogurt, plain, whole milk"), ("natural yoghurt", "^Yogurt, plain"), ("cornflour", "^Cornstarch"),
+    ("bicarbonate of soda", "^Leavening agents, baking soda"), ("candy floss", "^Candy, cotton"), ("ice lolly", "(?i)ice.*pop"),
+    ("bread roll", "^Rolls, dinner"), ("chicken goujons", "^Chicken tenders"), ("courgette", "zucchini"), ("aubergine", "^Eggplant"),
+    ("beetroot", "^Beets"), ("prawns", "^Shrimp"), ("coriander", "^Coriander"), ("fish fingers", "(?i)fish (fingers|sticks)"),
+    ("froyo", "^Frozen yogurt"), ("veggies", "^Vegetables, mixed"), ("roasted veggies", "^Vegetables, mixed"), ("spuds", "^Potatoes"),
+    ("g&t", "^Gin and tonic"), ("cuke", "^Cucumber"), ("half n half", "^Cream, fluid, half and half"), ("slaw", "^Coleslaw"),
+    ("tater salad", "^Potato salad"), ("mashed taters", "^Potato, mashed"), ("nugs", "^Chicken nuggets"),
+    ("diet pop", "(?i)diet (soda|cola)|^Soft drink.*diet|carbonated.*(low calorie|diet)"), ("evoo", "^Oil, olive"),
+    ("extra virgin olive oil", "^Oil, olive"), ("light cream", "^Cream, fluid, light"), ("raisins", "^Raisins, dark, seedless"),
+    ("avo", "^Avocados"), ("guac", "^Guacamole"), ("parm", "^Cheese, parmesan"), ("mozz", "^Cheese, mozzarella"), ("tots", "^Potato tots"),
+    ("marg", "^Margarita"), ("blt", "^Bacon, lettuce, tomato sandwich"), ("oj", "^Orange juice"), ("pb", "^Peanut butter"),
+    ("pbj", "^Peanut butter and jelly sandwich"), ("apple crisp", "^Crisp, apple"), ("sweet potato", "^Sweet potato"),
+    ("minced garlic", "(?i)garlic"), ("tater tots", "^Potato tots"), ("veggie burger", "^Veggie burgers"),
+]
+
 let snacks: [(String, String)] = [
     ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk$"), ("protein shake", "^Nutritional drink or shake, high protein"),
     ("yogurt parfait", "^Yogurt parfait"), ("egg and cheese sandwich", "^Egg sandwich on .*with cheese"),
@@ -2702,6 +2732,28 @@ struct StaplesTests {
         // Fries a model names are french fries, whatever else is cut like them.
         #expect(catalog.candidates(name: "Fries", brand: nil).first?.food.name == "Potato, french fries")
         #expect(catalog.candidates(name: "Sweet potato fries", brand: nil).first?.food.name == "Sweet potato fries")
+    }
+
+    @Test("a food is found by its British or Australian name and by its short form, typed and named as a model would")
+    func britishAndShort() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in otherNames {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("British names and short forms \(seen ? "as a model names them" : "typed"): \(first) of \(otherNames.count) first")
+            #expect(Double(first) >= 0.95 * Double(otherNames.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // A word for the same food finds the labels that say it too: Tayto's crisps.
+        #expect(catalog.top("cheese and onion crisps", 1).first.map { matches("(?i)crisps", $0) } == true)
+        // Typed alone, a short name isn't the word a letter away: a cuke isn't a Coke.
+        #expect(catalog.respell("cuke").text == "cucumber" && catalog.respell("nugs").text == "chicken nuggets")
+        #expect(catalog.respell("mince").text == "ground beef" && catalog.respell("minced garlic").text == "minced garlic")
+        // Two words that are one food there: the sugar, not a cookie with icing.
+        #expect(catalog.respell("icing sugar").also["icing"] == ["powdered"])
+        #expect(catalog.top("apple crisp", 1).first == "Crisp, apple")
     }
 
     @Test("a search just made is found again without searching, for the same foods of the person's own")

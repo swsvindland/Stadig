@@ -478,7 +478,9 @@ extension FoodCatalog {
         // and no brand people scan is called it: "french fires" is french fries, whatever
         // labels have "fire" in their names, and "refried bens" refried beans.
         let namedTokens = tokens.indices.filter(named)
-        if typing, let (at, word) = EverydayPhrases.misspelt(namedTokens.map { tokens[$0].word }) {
+        // Not a word with a meaning of its own, typed alone: a "cuke" is a cucumber, not a Coke.
+        let own = namedTokens.count == 1 && tokens.count == 1 && (describingName(tokens[0].word) != nil || shortNames[tokens[0].word] != nil)
+        if typing, !own, let (at, word) = EverydayPhrases.misspelt(namedTokens.map { tokens[$0].word }) {
             let token = tokens[namedTokens[at]]
             // After other words of the food it's a word, known only as written: the "saue" of
             // "hot saue" isn't sauerkraut begun, nor the "fires" of "french fires" a brand

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 3,
   "usda": {
-    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-2c3bff7e",
+    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-2ca5b78a",
     "sourceUrl": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip",
-    "recipeSha256": "2c3bff7e7c683b31767c4dd8058dd71c77848c4f765959408dd9a23800715fe7",
+    "recipeSha256": "2ca5b78aded7581ad9164228821c22721023ce1e25945a4cb4f7a3e37139ba84",
     "sourceSha256": "0fe8ae486a2c8eb42cb96413f058deb51863a46c8fb8eeb4b1fb45006dd338ef",
-    "sha256": "8fea7cda795284f820edda7f6341acd6db4780abe1ea946b15dadf9bd3313771",
+    "sha256": "9a1a3772e33f47fbe06b9f35e6ed1992355dda9a4f0b3cbab117f1c9100e4a4d",
     "bytes": 4444160,
     "license": "CC0-1.0",
     "developmentSample": false,
@@ -34,7 +34,7 @@
     "fnddsSameName": 19,
     "energyRepaired": 3,
     "energyRepairedKjAsKcal": 3,
-    "terms": 3108,
+    "terms": 3109,
     "fnddsUrl": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip",
     "fnddsSha256": "dfb06ae7ddc397ccd570b91c14b75438ab2ba39f64f22d321f61d4a52a77f3eb"
   },

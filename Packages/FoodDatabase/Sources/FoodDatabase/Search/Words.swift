@@ -55,6 +55,22 @@ let alternatives: [String: [String]] = [
     "venison": ["venison", "deer"], "calamari": ["calamari", "squid"], "crawfish": ["crawfish", "crayfish"],
     // A kebab is its "shish kabob".
     "kebab": ["kebab", "kabob"], "kebabs": ["kebab", "kabob"],
+    // More of what the same food is called in Britain and Australia: mince is ground meat,
+    // rocket arugula, sultanas raisins, crisps chips, a swede a rutabaga, tinned canned,
+    // wholemeal whole wheat, gammon ham, mangetout the podded pea, a capsicum a pepper, a
+    // rockmelon a cantaloupe, cornflour cornstarch, sweets candy and goujons tenders.
+    "mince": ["mince", "ground"], "minced": ["minced", "ground"], "rocket": ["rocket", "arugula"], "sultana": ["sultana", "raisin"],
+    "sultanas": ["sultana", "raisin"], "crisps": ["crisp", "chip"], "swede": ["swede", "rutabaga"], "swedes": ["swede", "rutabaga"],
+    "tinned": ["tinned", "canned"], "wholemeal": ["wholemeal", "whole"], "gammon": ["gammon", "ham"], "mangetout": ["mangetout", "podded"],
+    "capsicum": ["capsicum", "pepper"], "capsicums": ["capsicum", "pepper"], "rockmelon": ["rockmelon", "cantaloupe"],
+    "cornflour": ["cornflour", "cornstarch"], "sweets": ["candy"], "goujons": ["goujon", "tender"],
+    // And short for: veggies are vegetables, taters and spuds potatoes, a cuke a cucumber and
+    // slaw coleslaw.
+    "veggies": ["veggie", "vegetable"], "taters": ["tater", "potato"], "spuds": ["spud", "potato"], "spud": ["spud", "potato"],
+    "cuke": ["cuke", "cucumber"], "cukes": ["cuke", "cucumber"], "slaw": ["slaw", "coleslaw"],
+    // Short forms that are the start of the word when typed, as a model may write them too.
+    "avo": ["avo", "avocado"], "guac": ["guac", "guacamole"], "parm": ["parm", "parmesan"], "mozz": ["mozz", "mozzarella"],
+    "marg": ["marg", "margarita"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -129,6 +145,14 @@ let cookingWays: [(said: [String], means: [String])] = [
 let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
     ([
         (["hot", "dog"], [(0, "frankfurter"), (1, "frankfurter")]),
+        // British names of two words: icing sugar is powdered sugar, caster sugar granulated,
+        // double cream heavy cream, a jacket potato a baked one, a butter bean a lima bean, a
+        // stock cube bouillon, an ice lolly an ice pop, a fizzy drink a soft drink, full fat
+        // whole and semi skimmed reduced fat.
+        (["icing", "sugar"], [(0, "powdered")]), (["caster", "sugar"], [(0, "granulated")]), (["double", "cream"], [(0, "heavy")]),
+        (["jacket", "potato"], [(0, "baked")]), (["butter", "bean"], [(0, "lima")]), (["stock", "cube"], [(0, "bouillon")]),
+        (["ice", "lolly"], [(1, "pop")]), (["fizzy", "drink"], [(0, "soft")]), (["full", "fat"], [(0, "whole"), (1, "whole")]),
+        (["semi", "skimmed"], [(0, "reduced"), (1, "fat")]), (["brown", "bread"], [(0, "wheat")]), (["bread", "roll"], [(0, "dinner")]),
         (["bell", "pepper"], [(0, "sweet")]),
         // Black coffee is USDA's brewed coffee, black olives its ripe ones, pumpkin puree its canned
         // pumpkin, and a sports drink is Gatorade, the only kind it lists.
@@ -235,6 +259,10 @@ private let describingMeanings: [String: String] = Dictionary(
         ("tikka", "tikka masala"), ("saag", "saag paneer"), ("mapo", "mapo tofu"), ("filet", "filet mignon"),
         ("graham", "graham crackers"), ("animal", "animal crackers"), ("whey", "whey protein"), ("mac", "mac and cheese"),
         ("spring", "spring roll"), ("home", "home fries"),
+        // And the short or British name of a food that another word is a letter from: mince
+        // isn't groundcherries, a cuke a Coke, nugs nuts, sweets sweetbreads.
+        ("mince", "ground beef"), ("sultanas", "golden raisins"), ("sultana", "golden raisins"), ("sweets", "candy"),
+        ("spuds", "potatoes"), ("cuke", "cucumber"), ("cukes", "cucumber"), ("nugs", "chicken nuggets"),
     ])
 
 /// The everyday food such a word stands for, typed alone.
@@ -269,6 +297,15 @@ let shortNames: [String: String] = [
     // Tenders and legs with no animal named are a chicken's: USDA's "mock tender" is a cut of
     // beef chuck, and its legs a pig's, a frog's and a crab's.
     "tenders": "chicken tenders", "legs": "chicken legs",
+    // Short for, and British for: frozen yogurt, a gin and tonic, half and half, a diet soda,
+    // baking soda, cornstarch, cotton candy.
+    "froyo": "frozen yogurt", "g t": "gin and tonic", "half n half": "half and half", "diet pop": "diet soda",
+    "soda pop": "soda", "bicarbonate of soda": "baking soda", "bicarb": "baking soda", "bicarb soda": "baking soda",
+    "wholemeal flour": "whole wheat flour", "cornflour": "cornstarch", "candy floss": "cotton candy",
+    "fairy floss": "cotton candy", "tater salad": "potato salad",
+    // Self raising flour is USDA's self-rising. Read so here, not kept as a name of the food:
+    // "raising" would then be a word the catalog knows, and no longer raisins misspelt.
+    "self raising flour": "self rising flour",
     // Beef alone is ground beef; shredded, it's a pot roast.
     "shredded beef": "beef pot roast",
     // Red pepper flakes are its red or cayenne pepper.
@@ -313,7 +350,9 @@ let typedAlternatives: Set<String> = [
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
     "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",
-    "beetroots", "catsup", "lasagne", "decaf",
+    "beetroots", "catsup", "lasagne", "decaf", "mince", "minced", "rocket", "sultana", "sultanas", "crisps", "swede", "swedes", "tinned",
+    "wholemeal", "gammon", "mangetout", "capsicum", "capsicums", "rockmelon", "cornflour", "sweets", "goujons", "veggies", "taters", "spuds",
+    "spud", "cuke", "cukes", "slaw",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
