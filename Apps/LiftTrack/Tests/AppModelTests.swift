@@ -203,14 +203,21 @@ struct AppModelTests {
         #expect(moved, "a main lift's estimate rose")
 
         // What it taught: what next time does with the main lifts' loads, as the planner has it, and the
-        // rests the Watch's heart rate ended early (which day of the program it is, and so whether the
-        // sets after them held up, goes by the weekday).
+        // rests the Watch's heart rate ended early. Which day of the program it is goes by the weekday,
+        // as the sample is seeded back from today: a day with rests heart rate guides (accessories, and
+        // compounds over six reps, outside supersets) has its rests in the lessons, but a day of heavy
+        // compounds alone (bench, row and press) has none to end early, and its lessons can be one held
+        // lift, since a weight done for its reps holds and the summary says held of one lift.
         #expect(record.averageHeartRate != nil)
         let lessons = baseline.lessons
-        #expect((2...SessionLessons.limit).contains(lessons.count), "\(lessons.map(\.title))")
+        #expect((1...SessionLessons.limit).contains(lessons.count), "\(lessons.map(\.title))")
         #expect(lessons.contains { [.up, .held, .down].contains($0.kind) }, "\(lessons.map(\.title))")
-        let rest = try #require(lessons.first { $0.kind == .rest }, "\(lessons.map(\.title))")
-        #expect(rest.detail.hasPrefix("Heart rate recovered early on ") || rest.title == "Short rests cost reps", "\(rest.detail)")
+        let guidedRests = plan.items.filter { $0.isStrength && $0.rest.heartRateGuided && $0.supersetGroup == nil }
+            .reduce(0) { $0 + max(0, $1.workSets.count - 1) }
+        if guidedRests >= 2 {
+            let rest = try #require(lessons.first { $0.kind == .rest }, "\(lessons.map(\.title))")
+            #expect(rest.detail.hasPrefix("Heart rate recovered early on ") || rest.title == "Short rests cost reps", "\(rest.detail)")
+        }
         let state = try #require(model.state)
         let next = NextTime.items(after: record, state: state, analysis: after)
         for lesson in lessons where lesson.kind == .up || lesson.kind == .held {
