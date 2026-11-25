@@ -434,13 +434,14 @@ private let trimWords = ["skinless": "skin", "boneless": "bone"]
 /// "Nuts, almonds".
 private let rawWords = stems("raw fresh uncooked")
 
-/// How a model says a food on a plate is cut, which is no kind of the food. Typed, "diced
-/// tomatoes" and "sliced peaches" more often name what's sold in a can, so there they're
-/// words like any other.
+/// How a food on a plate is cut, which is no kind of the food, said by a model or typed:
+/// chopped onion is an onion, where the words found USDA's frozen chopped ones, "minced
+/// onion" ground beef with onion, "sliced apple" its canned sweetened slices and "chopped
+/// walnuts" a row of labels. A can's "diced tomatoes" come right after the tomato.
 private let plateCuts = stems("sliced diced chopped shredded crumbled grated minced cubed halved quartered torn")
 
-/// Whether a word says how a food is cooked or cut, not what it is. `seen` for a food a model
-/// named, where more ways of cutting say nothing of the food.
+/// Whether a word says how a food is cooked or cut, not what it is. `seen` with the ways a
+/// food on a plate is cut, which a search eases and the words that name a food keep.
 func isEasable(_ word: String, seen: Bool = false) -> Bool {
     let said = stem(word)
     return heats[said] != nil || cutWords.contains(said) || trimWords[said] != nil || rawWords.contains(said) || labelWords.contains(said)
@@ -1809,8 +1810,8 @@ func scoreFoods(
     // whose product is named as its label names it.
     var eases: [String: Ease] = [:]
     if !asked, seen.brand.isEmpty, target.count > 1 {
-        let easable = target.filter { isEasable($0, seen: !search) }
-        let rest = target.filter { !isEasable($0, seen: !search) }
+        let easable = target.filter { isEasable($0, seen: true) }
+        let rest = target.filter { !isEasable($0, seen: true) }
         if !easable.isEmpty, !rest.isEmpty {
             // The other words are whole unless the last of them is the last typed: the "pot" of
             // "pot roast" isn't a potato begun.
@@ -1840,9 +1841,15 @@ func scoreFoods(
             for word in easable {
                 let said = stem(word)
                 var ease = Ease(said)
-                // How a model saw the food cut says nothing of which food it is, nor does how a
-                // label says it was grown or made: organic chicken breast is chicken breast.
-                if labelWords.contains(said) || (!search && plateCuts.contains(said)) {
+                // How the food was cut says nothing of which food it is, nor does how a label
+                // says it was grown or made: organic chicken breast is chicken breast. Typed,
+                // a plain food that lists the cut and nothing else is still the one meant:
+                // sliced ham is "Ham, sliced", shredded cheese a cheese that says so.
+                let listed = plain.contains { food in
+                    food.leads && food.forms.allSatisfy { same($0, said) || same(said, $0) }
+                        && food.text.said.contains { same($0, said) || same(said, $0) }
+                }
+                if labelWords.contains(said) || (plateCuts.contains(said) && !(search && listed)) {
                     ease.plate = true
                     ease.label = labelWords.contains(said)
                     eases[word] = ease

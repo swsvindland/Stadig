@@ -1815,7 +1815,7 @@ extension FoodCatalog {
     /// show what the food is filed under, and with a way of cooking among the words left out,
     /// its cooked ones, however many others there are.
     private func easedJobs(_ words: [String], _ term: (String) -> String, _ lead: (String) -> String) -> [MatchJob] {
-        let rest = words.filter { !isEasable($0) }
+        let rest = words.filter { !isEasable($0, seen: true) }
         guard rest.count < words.count, let first = rest.first(where: { !isNumber($0) }) else { return [] }
         let generic = catalogs.filter { $0.kind == .generic }
         let food = rest.map(term).joined(separator: " AND ")

@@ -396,6 +396,10 @@ let shortNames: [String: String] = [
     "half rack ribs": "ribs", "full rack ribs": "ribs", "sub": "sub sandwich", "subs": "sub sandwich", "inch sub": "sub sandwich",
     "kids frosty": "wendys frosty",
     "jr frosty": "wendys frosty", "junior frosty": "wendys frosty", "cup of joe": "cup of coffee",
+    // Said with how they're cut, these are what's sold in a can, or a dish or a cut of
+    // their own: diced tomatoes aren't the fresh tomato the cut otherwise leaves.
+    "diced tomatoes": "canned tomatoes", "sliced water chestnuts": "canned water chestnuts", "sliced beets": "canned beets",
+    "chopped salad": "salad", "cubed steak": "cube steak",
     // Tuna in a packet or a pouch is the tuna, packed in water.
     "tuna packet": "tuna canned in water", "tuna pouch": "tuna canned in water",
 ]

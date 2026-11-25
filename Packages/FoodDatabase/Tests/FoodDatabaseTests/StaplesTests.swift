@@ -1848,6 +1848,41 @@ let sizesSaid: [(String, String)] = [
     ("frosted flakes", "(?i:frosted flakes)"),
 ]
 
+/// A food typed with how it was cut (chopped, diced, minced, sliced, cubed, crumbled,
+/// grated): the food. Then the ones where a plain food lists the cut or the words name
+/// what's sold in a can, and the ones that were right already.
+let cutFoods: [(String, String)] = [
+    ("chopped onion", "^Onions, raw"), ("chopped onions", "^Onions, raw"), ("diced onion", "^Onions, raw"), ("minced onion", "^Onions, raw"),
+    ("sliced onion", "^Onions, raw"), ("diced red onion", "^Onions, raw"), ("chopped garlic", "^Garlic, raw"), ("minced garlic", "^Garlic, raw"),
+    ("grated ginger", "^Ginger root"), ("chopped walnuts", "^Nuts, walnuts"), ("chopped pecans", "^Nuts, pecans"),
+    ("chopped almonds", "^Nuts, almonds"), ("sliced almonds", "^Nuts, almonds"), ("chopped dates", "^Dates"), ("chopped carrots", "^Carrots, raw"),
+    ("diced carrots", "^Carrots, raw"), ("sliced carrots", "^Carrots, raw"), ("chopped tomato", "^Tomatoes, red, ripe, raw"),
+    ("sliced tomato", "^Tomatoes, red, ripe, raw"), ("chopped cilantro", "^Coriander"), ("chopped basil", "^Basil"),
+    ("chopped spinach", "^Spinach, raw"), ("chopped kale", "^Kale, raw"), ("chopped cabbage", "^Cabbage, raw"),
+    ("chopped broccoli", "^Broccoli, raw"), ("chopped romaine", "^Lettuce, cos or romaine"), ("torn lettuce", "^Lettuce"),
+    ("chopped bell pepper", "^Peppers, sweet"), ("diced bell pepper", "^Peppers, sweet"), ("sliced bell pepper", "^Peppers, sweet"),
+    ("diced green pepper", "^Peppers, sweet"), ("diced celery", "^Celery, raw"), ("diced avocado", "^Avocados"), ("diced potatoes", "^Potatoes"),
+    ("cubed potatoes", "^Potatoes"), ("diced sweet potato", "^Sweet potato"), ("cubed sweet potato", "^Sweet potato"),
+    ("diced jalapeno", "^Peppers, jalapeno"), ("sliced mushrooms", "^Mushrooms"), ("sliced zucchini", "^Squash, summer, zucchini"),
+    ("grated zucchini", "^Squash, summer, zucchini"), ("sliced banana", "^Bananas, raw"), ("sliced strawberries", "^Strawberries, raw"),
+    ("sliced apple", "^Apples, raw"), ("diced apple", "^Apples, raw"), ("sliced peaches", "^Peaches, yellow, raw"), ("diced mango", "^Mangos, raw"),
+    ("diced pineapple", "^Pineapple, raw"), ("chopped chicken", "^Chicken, cooked"), ("diced chicken", "^Chicken, cooked"),
+    ("cubed chicken", "^Chicken, cooked"), ("diced chicken breast", "^Chicken breast"), ("diced ham", "^Ham"), ("cubed ham", "^Ham"),
+    ("sliced steak", "^Steak"), ("cubed pork", "^Pork"), ("cubed beef", "^Beef"), ("crumbled feta", "^Cheese, feta"),
+    ("crumbled blue cheese", "^Cheese, blue"), ("crumbled bacon", "^Bacon"), ("cubed cheese", "^Cheese, cheddar"),
+    ("grated cheddar", "^Cheese, cheddar"), ("grated mozzarella", "^Cheese, mozzarella"), ("grated coconut", "^Nuts, coconut meat"),
+    ("chopped chocolate", "^Chocolate"), ("sliced ham", "^Ham, sliced"), ("sliced turkey", "^Turkey, prepackaged or deli"),
+    ("sliced cheese", "^Cheese, cheddar, sharp, sliced"), ("shredded cheese", "^Cheese, .*shredded"),
+    ("grated cheese", "^Cheese, parmesan, grated"), ("grated parmesan", "^Cheese, parmesan, grated"),
+    ("crumbled beef", "^Beef, ground, .*crumbles"), ("shredded coconut", "^Nuts, coconut meat, dried .*shredded"),
+    ("crushed tomatoes", "^Tomatoes, crushed, canned"), ("diced tomatoes", "^Tomatoes, red, ripe, canned"),
+    ("sliced olives", "^Olives, ripe, canned"), ("sliced beets", "^Beets, canned"), ("sliced water chestnuts", "^Waterchestnuts, chinese, canned"),
+    ("shredded chicken", "^Chicken, cooked"), ("shredded lettuce", "^Lettuce"), ("shredded wheat", "^Cereal, shredded wheat"),
+    ("pulled pork", "^Barbecue pork"), ("cube steak", "^Beef, steak, cube"), ("cubed steak", "^Beef, steak, cube"),
+    ("minced beef", "^Beef, ground"), ("chopped liver", "^Livers, chicken, chopped"), ("chopped salad", "^(Lettuce, salad|Salad)"),
+    ("slice of pizza", "^Pizza"), ("cheese slice", "^Cheese"), ("ground beef", "^Beef, ground"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -3616,6 +3651,27 @@ struct StaplesTests {
         // The amount or the size stays as typed, in front of what the name means.
         #expect(catalog.respell("small frosty").text == "small wendys frosty" && catalog.respell("2 oj").text == "2 orange juice")
         #expect(catalog.respell("frosty").text == "wendys frosty" && catalog.respell("small frosting").text == "small frosting")
+    }
+
+    @Test("how a food was cut says nothing of which food it is, typed as it does named")
+    func foodsTypedWithHowTheyAreCut() {
+        var missed: [String] = []
+        for (query, pattern) in cutFoods where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Foods typed with how they're cut: \(cutFoods.count - missed.count) of \(cutFoods.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(cutFoods.count), "\(missed.joined(separator: " | "))")
+        // The words used to find whatever had them: ground beef with onion, chopped livers,
+        // canned sweetened apple slices, a broth cube.
+        #expect(catalog.top("minced onion", 1) == ["Onions, raw"] && catalog.top("chopped chicken", 1) == ["Chicken, cooked"])
+        #expect(catalog.top("sliced apple", 1).first?.hasPrefix("Apples, raw") == true)
+        // The labels named so come after the food and its kinds.
+        #expect(catalog.names("chopped walnuts", 8).contains { $0.hasPrefix("Chopped Walnuts [") })
+        // A plain food that lists the cut and nothing else is still the one meant.
+        #expect(catalog.top("sliced ham", 1).first?.hasPrefix("Ham, sliced") == true)
+        #expect(catalog.top("grated cheese", 1) == ["Cheese, parmesan, grated"])
+        // And what's sold in a can by that name is the canned food.
+        #expect(catalog.top("diced tomatoes", 1).first?.contains("canned") == true)
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")
