@@ -22,7 +22,7 @@ let alternatives: [String: [String]] = [
     "donut": ["donut", "doughnut"], "donuts": ["donut", "doughnut"],
     // USDA's skim milk is "Milk, nonfat", its Coke "cola". A model's "mayo" is mayonnaise; typed,
     // it is already the start of the word.
-    "skim": ["skim", "nonfat"], "bbq": ["bbq", "barbecue"], "coke": ["coke", "cola"], "mayo": ["mayo", "mayonnaise"],
+    "skim": ["skim", "nonfat"], "nonfat": ["nonfat", "skim"], "bbq": ["bbq", "barbecue"], "coke": ["coke", "cola"], "mayo": ["mayo", "mayonnaise"],
     "decaf": ["decaf", "decaffeinated"],
     // Fresh produce, fish and meat are USDA's "raw": fresh zucchini is "Squash, summer, zucchini,
     // includes skin, raw". A food that says fresh is still found by it: "Basil, fresh".
@@ -380,6 +380,19 @@ let shortNames: [String: String] = [
     "pot pie": "chicken pot pie", "cheese curds": "cheddar cheese", "fried cheese curds": "fried mozzarella sticks",
     // The appetizer, not the skin a baked potato is weighed without.
     "potato skins": "potato skins with cheese and bacon", "loaded potato skins": "potato skins with cheese and bacon",
+    // Foods said by what they're light in or free of, where the catalogs word it another way:
+    // light bread is "reduced-calorie", unsweetened coconut "dried, not sweetened", and Diet
+    // Sprite has been Sprite Zero for years.
+    "diet sprite": "sprite zero", "light bread": "reduced calorie bread", "low calorie bread": "reduced calorie bread",
+    "sugar free chocolate": "sugar free chocolate candy", "unsweetened coconut": "coconut meat dried not sweetened",
+    "unsweetened shredded coconut": "coconut meat dried not sweetened", "unsweetened coconut flakes": "coconut meat dried not sweetened",
+    "desiccated coconut": "coconut meat dried not sweetened", "dried coconut": "coconut meat dried not sweetened",
+    "shredded coconut": "coconut meat dried sweetened shredded", "light ice cream": "light vanilla ice cream",
+    "low fat ice cream": "light vanilla ice cream", "nonfat yogurt": "plain skim milk yogurt", "fat free yogurt": "plain skim milk yogurt",
+    "plain nonfat yogurt": "plain skim milk yogurt", "nonfat plain yogurt": "plain skim milk yogurt",
+    "plain fat free yogurt": "plain skim milk yogurt", "fat free plain yogurt": "plain skim milk yogurt",
+    // Tuna in a packet or a pouch is the tuna, packed in water.
+    "tuna packet": "tuna canned in water", "tuna pouch": "tuna canned in water",
 ]
 
 /// The short name the words begin, the last of them still being typed, where only one does:
@@ -462,7 +475,7 @@ let aloneFiled: [String: String] = Dictionary(
 /// A typed word is searched as typed, plus the catalog's own wording for the same food. Looser
 /// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
 let typedAlternatives: Set<String> = [
-    "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
+    "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "nonfat", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
     "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",

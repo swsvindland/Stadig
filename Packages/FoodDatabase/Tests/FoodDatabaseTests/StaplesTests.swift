@@ -391,7 +391,7 @@ let forms: [(String, String)] = [
     ("extra lean ground beef", "^Beef, ground, 9[5-7]% lean.*cooked"),
     ("lean ground turkey", "^Turkey, ground, 93% lean"),
     ("fat free milk", "^Milk, nonfat"),
-    ("fat free yogurt", "^Yogurt, .*(nonfat|fat free)"),
+    ("fat free yogurt", "^Yogurt, (.*(nonfat|fat free)|plain, skim milk)"),
     ("fat free greek yogurt", "^Yogurt, Greek, .*nonfat"),
     ("unsalted butter", "^Butter, without salt"),
     ("unsalted almonds", "^Nuts, almonds, .*without salt"),
@@ -1767,6 +1767,30 @@ let heldNamed: [(String, String)] = [
     ("Ham and cheese sandwich", "^Ham sandwich"), ("Turkey and cheese sandwich", "^Turkey sandwich .*with cheese"),
     ("Bean and cheese burrito", "^Burrito, with beans, cheese"), ("Eggs and bacon", "^Egg, whole"), ("Coffee and a blueberry muffin", "^Coffee"),
     ("Chicken and white rice", "^Chicken"), ("Burger and fries", "^Hamburger"),
+]
+
+/// Foods said by what they're light in or free of where the catalogs word it another way,
+/// tuna by its packet, and an omelet by its meat; then the ones that stay as they were.
+let wordedAnotherWay: [(String, String)] = [
+    ("diet sprite", "^Sprite Zero"), ("light bread", "^Bread, reduced-calorie"), ("low calorie bread", "^Bread, reduced-calorie"),
+    ("sugar free chocolate", "^Chocolate candy, sugar free"), ("unsweetened coconut", "^Nuts, coconut meat, dried \\(desiccated\\), not sweetened"),
+    ("unsweetened shredded coconut", "^Nuts, coconut meat, dried \\(desiccated\\), not sweetened"),
+    ("dried coconut", "^Nuts, coconut meat, dried \\(desiccated\\), not sweetened"),
+    ("desiccated coconut", "^Nuts, coconut meat, dried \\(desiccated\\), not sweetened"),
+    ("shredded coconut", "^Nuts, coconut meat, dried \\(desiccated\\), sweetened, shredded"),
+    ("light ice cream", "^(Light ice cream, vanilla|Ice creams, vanilla, light)"),
+    ("low fat ice cream", "^(Light ice cream, vanilla|Ice creams, vanilla, light)"), ("tuna packet", "^Fish, tuna, .*canned in water"),
+    ("tuna pouch", "^Fish, tuna, .*canned in water"), ("nonfat yogurt", "^Yogurt, plain, skim milk"),
+    ("fat free yogurt", "^Yogurt, plain, skim milk"), ("plain nonfat yogurt", "^Yogurt, plain, skim milk"),
+    ("ham and cheese omelet", "^Egg omelet or scrambled egg, with cheese and meat"),
+    ("bacon and cheese omelet", "^Egg omelet or scrambled egg, with cheese and meat"),
+    ("sausage and cheese omelet", "^Egg omelet or scrambled egg, with cheese and meat"),
+    ("ham and cheese omelette", "^Egg omelet or scrambled egg, with cheese and meat"), ("coconut", "(?i:coconut)"), ("ice cream", "^Ice cream"),
+    ("bread", "^Bread"), ("sprite", "(?i:sprite)"), ("yogurt", "^Yogurt"), ("tuna", "^Fish, tuna"), ("nonfat milk", "^Milk, nonfat"),
+    ("skim milk", "^Milk, nonfat"), ("nonfat greek yogurt", "^Yogurt, Greek, plain, nonfat"), ("nonfat latte", "^Coffee, Latte, nonfat"),
+    ("cheese omelet", "^Egg omelet or scrambled egg, with cheese"), ("coconut water", "^Coconut water"), ("coconut milk", "(?i:coconut milk)"),
+    ("light beer", "^Beer, light"), ("sugar free pudding", "^Pudding.*sugar free"), ("sprite zero", "^Sprite Zero"),
+    ("unsweetened applesauce", "^Applesauce, canned, unsweetened"),
 ]
 
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
@@ -3481,6 +3505,22 @@ struct StaplesTests {
         // The words that say a food's kind leave out what it comes with.
         let bagel = FoodText(name: "Egg sandwich on bagel, with bacon", brand: "", source: .usda)
         #expect(bagel.kindWords.contains("bagel") && bagel.kindWords.contains("sandwich") && !bagel.kindWords.contains("bacon"))
+    }
+
+    @Test("more small things: light bread, unsweetened coconut, a tuna packet, an omelet with ham")
+    func moreOddsAndEnds() {
+        var missed: [String] = []
+        for (query, pattern) in wordedAnotherWay {
+            let first = catalog.search(query).first.map { found in found.food.brand.map { "\(found.food.name) [\($0)]" } ?? found.food.name }
+            if first.map({ matches(pattern, $0) }) != true { missed.append("\(query): \(first ?? "nothing")") }
+        }
+        print("Worded another way: \(wordedAnotherWay.count - missed.count) of \(wordedAnotherWay.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(wordedAnotherWay.count), "\(missed.joined(separator: " | "))")
+        // "Nonfat" is skim as much as skim is nonfat, and plain before the fruit one.
+        #expect(catalog.top("nonfat yogurt", 1) == ["Yogurt, plain, skim milk"])
+        // The survey's omelets are "with meat", whichever meat it was.
+        #expect(catalog.top("ham and cheese omelet", 1) == ["Egg omelet or scrambled egg, with cheese and meat"])
+        #expect(catalog.top("cheese omelet", 1).first?.hasSuffix("with cheese") == true)
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

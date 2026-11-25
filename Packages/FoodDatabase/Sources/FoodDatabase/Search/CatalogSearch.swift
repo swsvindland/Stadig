@@ -1292,14 +1292,20 @@ extension FoodCatalog {
             guard let last = parts.last, last.count > 1, let kind = last.last.map(stem), Self.holders.contains(kind) else { return nil }
             let inside = Array(parts.dropLast().joined() + last.dropLast())
             let asked = Set(all.map(stem))
+            // The kind in the catalogs' spelling too: an omelette is an omelet.
+            let kinds = Set(forms(last[last.count - 1]).map(stem) + [kind])
             // What it has that wasn't asked for, by its words as written (a "fried" chicken
             // sandwich has no fries), or nil where it isn't that kind of food with these.
             let unasked = { (found: Ranked, wanted: [String]) -> Int? in
                 let text = FoodText(found.food)
-                guard found.food.source == .usda, !text.branded || text.chain, text.kindWords.contains(where: { same($0, kind) }) else { return nil }
+                guard found.food.source == .usda, !text.branded || text.chain,
+                    text.kindWords.contains(where: { word in kinds.contains { same(word, $0) } })
+                else { return nil }
                 let written = Set(tokens(found.food.name))
+                // The survey's omelets and egg sandwiches are "with meat", whichever it was.
                 let has = { (word: String) in
                     written.contains(word) || written.contains(word + "s") || (word.hasSuffix("s") && written.contains(String(word.dropLast())))
+                        || (Self.meats.contains(word) && written.contains("meat"))
                 }
                 guard wanted.allSatisfy(has) else { return nil }
                 return text.said.filter { word in !Self.holderWords.contains(word) && !asked.contains { same(word, $0) } }.count
@@ -1319,6 +1325,11 @@ extension FoodCatalog {
                 consider(found, plain, 0.5)
                 // The ones without the word aren't among the foods all the words found.
                 if (best?.cost ?? 1) >= 1, let more { consider(more((plain + [last[last.count - 1]]).joined(separator: " ")), plain, 0.5) }
+            }
+            // Nor is the one "with meat" among the foods "ham" found.
+            if (best?.cost ?? 1) >= 1, inside.contains(where: Self.meats.contains), let more {
+                let words = inside.map { Self.meats.contains($0) ? "meat" : $0 } + [last[last.count - 1]]
+                consider(more(words.joined(separator: " ")), inside, 0)
             }
             guard let best else { return nil }
             let first = found.first.map { $0.food.id == best.food.food.id } == true
@@ -1347,6 +1358,9 @@ extension FoodCatalog {
         }
         return held() ?? .apart
     }
+
+    /// The meats an omelet or a sandwich "with meat" may have.
+    private static let meats: Set<String> = ["ham", "bacon", "sausage", "turkey", "steak", "chorizo"]
 
     /// Words in such a food's name that add nothing to what's in it.
     private static let holderWords: Set<String> = holders.union(
