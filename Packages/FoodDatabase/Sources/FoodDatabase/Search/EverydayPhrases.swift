@@ -131,7 +131,8 @@ enum EverydayPhrases {
         "milk chocolate", "white chocolate", "chocolate bar", "candy bar", "peanut butter cup", "fudge", "truffles", "gummy bears", "jelly beans",
         "licorice", "lollipop", "marshmallows", "caramels", "toffee", "cotton candy", "hard candy", "mints", "gum", "kettle corn", "caramel corn",
         "corn chips", "cheese puffs", "pork rinds", "plantain chips", "pita chips", "veggie straws", "energy bar", "cereal bar", "fruit snacks",
-        "shredded wheat", "new york strip", "strip steak", "filet mignon", "graham crackers", "animal crackers", "saltines", "biscotti", "shortbread",
+        "shredded wheat", "new york strip", "strip steak", "filet mignon", "chicken strips", "graham crackers", "animal crackers", "saltines",
+        "biscotti", "shortbread",
         "macaron", "macarons", "macaroon", "smores", "donut holes",
         "scone", "danish", "eclair", "cream puff", "funnel cake", "cobbler", "creme brulee", "tapioca pudding", "popsicle", "sorbet", "jello",
         "cookie dough", "lemon bar", "peanut brittle", "soft pretzel", "snack mix",
@@ -338,10 +339,13 @@ enum EverydayPhrases {
     /// A word that is the start of a food's or a brand's name written without its spaces, with
     /// them put back: "hotd" is "hot d", "icecr" "ice cr" and "redb" "red b". Nil for a word that
     /// is or could be one of a food's own ("eggs" isn't "egg s", and "blackb" is on its way to
-    /// blackberries as much as to black beans) or that stops inside the name's first word.
+    /// blackberries as much as to black beans), that stops inside the name's first word, or
+    /// that is only that word's plural: "fruits" isn't fruit snacks begun, nor "strips" a
+    /// strip steak.
     static func apart(_ word: String) -> String? {
         guard word.utf8.count >= 4, !known.contains(stem(word)), likely([word]) == nil else { return nil }
-        for name in spaced where name.joined.hasPrefix(word) && name.joined != word && word.utf8.count > name.words[0].utf8.count {
+        for name in spaced
+        where name.joined.hasPrefix(word) && name.joined != word && word.utf8.count > name.words[0].utf8.count && word != name.words[0] + "s" {
             var parts: [String] = []
             var rest = Substring(word)
             for part in name.words {

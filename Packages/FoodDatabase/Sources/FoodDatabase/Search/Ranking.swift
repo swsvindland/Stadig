@@ -366,6 +366,12 @@ private let eatenCooked = stems(
         + "salmon fish tuna cod tilapia shrimp egg potato bean chickpea barley couscous bulgur farro millet grits polenta "
         + "duck goose veal bison venison ribeye sirloin brisket tenderloin crab lobster scallop trout halibut catfish haddock "
         + "rib sparerib backrib roast clam mussel calamari squid octopus crayfish")
+/// Cuts and kinds of fish that mean the cooked food too, once typed whole: half typed they're
+/// other foods ("brea" is bread, "flou" flour, "whit" white rice, "snap" snap peas).
+private let eatenCookedWhole = stems(
+    "wing thigh drumstick breast leg chop loin cutlet fillet tripe flounder sole snapper grouper mackerel perch pollock swordfish mahi "
+        + "mahimahi bass herring whiting pike walleye carp eel mullet croaker pompano shark monkfish sturgeon rockfish roughy yellowtail "
+        + "smelt turbot whitefish bluefish butterfish sablefish lingcod milkfish tilefish wolffish shad seatrout sheepshead abalone cuttlefish")
 private let cookedWords = stems("cooked roasted baked boiled broiled grilled steamed poached scrambled fried braised microwaved")
 private let plainlyCooked = stem("cooked")
 
@@ -377,7 +383,9 @@ enum Heat: Sendable { case dry, moist, fat }
 /// the nearest way it does (see `Ease`).
 let heats: [String: Heat] = {
     var kinds: [String: Heat] = [:]
-    for word in stems("roasted roast baked broiled grilled seared rotisserie barbecued chargrilled toasted browned") { kinds[word] = .dry }
+    for word in stems("roasted roast baked broiled grilled seared blackened charred rotisserie barbecued chargrilled toasted browned") {
+        kinds[word] = .dry
+    }
     for word in stems("boiled steamed poached braised stewed simmered microwaved blanched") { kinds[word] = .moist }
     for word in stems("fried sauteed") { kinds[word] = .fat }
     return kinds
@@ -514,7 +522,7 @@ func everydayQueries(_ seen: Named, pool: [Entry] = []) -> [String] {
     {
         variety = "(" + usual.marks.map { "\"\($0)\"*" }.joined(separator: " OR ") + ")"
     }
-    let cooked = said.contains(where: eatenCooked.contains) && !said.contains(where: cookedWords.contains)
+    let cooked = said.contains(where: { eatenCooked.contains($0) || eatenCookedWhole.contains($0) }) && !said.contains(where: cookedWords.contains)
     // Foods filed under what was said: "Fish, salmon, …" for salmon.
     let filed = pool.lazy.filter { entry in
         !entry.text.lead.isEmpty && entry.text.lead.allSatisfy { w in said.contains { same(w, $0) || starts(w, $0) } }
@@ -1727,7 +1735,9 @@ func scoreFoods(
         !target.contains { rawWords.contains(stem($0)) } && !hints.sides.contains("raw") && !namedAfter
         && (target + target.flatMap { alternatives[$0] ?? [] } + fixValues(fixes, order: target) + (likely.map { [$0] } ?? [])).contains { word in
             let s = stem(word)
-            return eatenCooked.contains(s) || (search && length(s) >= 4 && eatenCooked.contains { starts($0, s) })
+            // Not a cut at a chain, which cooks it its own way: Wingstop's wings aren't the baked ones.
+            return eatenCooked.contains(s) || (hints.out == nil && eatenCookedWhole.contains(s))
+                || (search && length(s) >= 4 && eatenCooked.contains { starts($0, s) })
         }
     // Catalogs repeat products; the person's own foods are each kept.
     var keys: [String] = []

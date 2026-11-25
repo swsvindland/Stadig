@@ -1172,6 +1172,63 @@ let proteins: [(String, String)] = [
     ("fruit salad", "^Fruit salad"), ("frozen fruit", "^Fruit mixture, frozen"), ("fruit cocktail", "^Fruit cocktail"),
 ]
 
+/// A cut or a kind of fish typed with nothing else, and the names fish and shellfish are sold
+/// by: the cooked piece or fish ("wings" are cooked chicken wings, "mackerel" cooked mackerel),
+/// where the first entry was the raw one.
+let cuts: [(String, String)] = [
+    ("wings", "^Chicken wing, cooked"), ("wing", "^Chicken wing, cooked"), ("chicken wings", "^Chicken wing, cooked"),
+    ("chicken wing", "^Chicken wing, cooked"), ("thighs", "^Chicken thigh, cooked"), ("thigh", "^Chicken thigh, cooked"),
+    ("chicken thighs", "^Chicken thigh, cooked"), ("chicken thigh", "^Chicken thigh, cooked"), ("drumsticks", "^Chicken drumstick, cooked"),
+    ("drumstick", "^Chicken drumstick, cooked"), ("chicken drumsticks", "^Chicken drumstick, cooked"), ("breast", "^Chicken breast, cooked"),
+    ("breasts", "^Chicken breast, cooked"), ("chicken breasts", "^Chicken breast, cooked"), ("legs", "^Chicken.*leg.*cooked"),
+    ("chicken legs", "^Chicken(, broilers or fryers,)? leg.*cooked"), ("chicken leg", "^Chicken(, broilers or fryers,)? leg.*cooked"),
+    ("leg quarters", "^Chicken leg, drumstick and thigh, cooked"), ("chops", "^Pork, chop, cooked"), ("pork chop", "^Pork, chop, cooked"),
+    ("lamb chops", "^Lamb, chop, cooked"), ("lamb chop", "^Lamb, chop, cooked"), ("veal chop", "^Veal, chop, cooked"),
+    ("tenders", "^Chicken tenders"), ("chicken tenders", "^Chicken tenders"), ("chicken strips", "^Chicken tenders"),
+    ("chicken fingers", "^Chicken tenders"), ("nuggets", "^Chicken nuggets"), ("loin", "^Pork.*loin.*cooked"),
+    ("pork loin", "^Pork.*loin.*cooked"), ("tenderloin", "tenderloin.*cooked|^Pork tenderloin"),
+    ("turkey leg", "^Turkey.*(leg|drumstick).*cooked"), ("turkey wing", "^Turkey.*wing.*cooked"), ("turkey thigh", "^Turkey.*thigh.*cooked"),
+    ("cutlet", "(cutlet|Chicken|Veal).*cooked"), ("chicken cutlet", "^Chicken(, cooked| breast, cooked| fillet)"),
+    ("fillet", "^Fish, cooked|^Chicken fillet"), ("fish fillet", "^Fish, cooked"), ("salmon fillet", "^Fish, salmon, cooked"),
+    ("cod fillet", "^Fish, cod, cooked"), ("tilapia fillets", "^Fish, tilapia, cooked"), ("sole", "flatfish.*cooked"),
+    ("flounder", "^Fish, flounder, cooked"), ("snapper", "^Fish, snapper, cooked"), ("red snapper", "^Fish, snapper, cooked"),
+    ("grouper", "^Fish, grouper.*cooked"), ("mackerel", "^Fish, mackerel,( Atlantic,)? cooked"), ("perch", "^Fish, perch, cooked"),
+    ("pollock", "^Fish, pollock.*cooked"), ("swordfish", "^Fish, swordfish, cooked"), ("mahi mahi", "mahimahi, cooked"),
+    ("mahi", "mahimahi, cooked"), ("sea bass", "^Fish, sea bass.*cooked"), ("bass", "^Fish, bass, cooked"), ("herring", "^Fish, herring, cooked"),
+    ("whiting", "^Fish, whiting, cooked"), ("pike", "^Fish, pike, cooked"), ("carp", "^Fish, carp, cooked"), ("eel", "^Fish, eel, cooked"),
+    ("mullet", "^Fish, mullet, cooked"), ("croaker", "^Fish, croaker, cooked"), ("catfish", "^Fish, catfish, cooked"),
+    ("haddock", "^Fish, haddock, cooked"), ("halibut", "^Fish, halibut, cooked"), ("trout", "^Fish, trout, cooked"),
+    ("rainbow trout", "^Fish, trout.*cooked"), ("shark", "^Fish, shark, cooked"), ("monkfish", "^Fish, monkfish, cooked"),
+    ("walleye", "walleye.*cooked"), ("pompano", "^Fish, pompano, cooked"), ("prawns", "^Shrimp, cooked"), ("crawfish", "^Crayfish, cooked"),
+    ("lobster tail", "^Lobster, cooked"), ("crab legs", "^Crab, cooked"), ("king crab", "alaska king, cooked"), ("snow crab", "queen, cooked"),
+    ("scallops", "^Scallops, (grilled|baked or broiled|steamed or boiled)|scallop.*cooked"),
+    ("calamari", "^(Calamari|Squid), cooked|squid.*cooked"), ("octopus", "^Octopus, cooked"), ("squid", "^(Calamari|Squid), cooked|squid.*cooked"),
+    ("mussels", "^Mussels, cooked"), ("clams", "^Clams, cooked"), ("oysters", "^Oysters, (raw|cooked)"), ("liver", "^Liver, beef, cooked"),
+    ("chicken liver", "^(Chicken liver|Liver, chicken).*cooked|liver.*cooked"), ("gizzards", "^Gizzard, cooked"), ("oxtail", "oxtail.*cooked"),
+    ("tongue", "^Tongue, cooked"), ("tripe", "^Tripe"), ("ground turkey", "(?i)^(Ground turkey|Turkey, ground).*cooked"),
+    ("ground chicken", "(?i)^(Ground chicken|Chicken, ground).*cooked"), ("ground pork", "(?i)^(Ground pork|Pork, ground).*cooked"),
+    ("ground lamb", "(?i)^(Ground lamb|Lamb, ground).*cooked"), ("black eyed peas", "^Cowpeas.*cooked"), ("black-eyed peas", "^Cowpeas.*cooked"),
+    ("blackeyed peas", "^Cowpeas.*cooked"), ("king crab legs", "alaska king, cooked"), ("snow crab legs", "queen, cooked"),
+    ("crab meat", "^Crab, cooked|crab.*cooked"), ("chicken leg quarter", "^Chicken leg, drumstick and thigh, cooked"),
+    ("mahi-mahi", "mahimahi, cooked"), ("ahi tuna", "yellowfin, fresh, cooked"),
+    ("tuna steak", "(?i)^Fish, tuna.*fresh.*cooked|^Fish, tuna, cooked"), ("branzino", "sea bass.*cooked"),
+    ("striped bass", "^Fish, bass, striped, cooked|^Fish, bass, cooked"), ("orange roughy", "roughy.*cooked"),
+    ("arctic char", "^Fish, trout, cooked"), ("barramundi", "(?i)barramundi"), ("yellowtail", "yellowtail.*cooked"),
+    ("swai", "(?i)swai|pangasius|^Fish, catfish.*cooked"), ("sockeye salmon", "sockeye.*cooked"),
+    ("atlantic salmon", "^Fish, salmon, Atlantic.*cooked"), ("king salmon", "chinook, cooked"), ("canned salmon", "^Fish, salmon.*canned"),
+    ("smoked salmon", "^Fish, salmon.*smoked"), ("lox", "lox|^Fish, salmon.*smoked"), ("albacore", "^Fish, tuna, white, canned in water"),
+    ("anchovies", "^Fish, anchovy.*canned"), ("sardines", "^Fish, sardine.*canned|^Sardines"), ("smelt", "^Fish, smelt.*cooked"),
+    ("turbot", "turbot.*cooked"), ("sturgeon", "sturgeon.*cooked"), ("rockfish", "rockfish.*cooked"), ("whitefish", "^Fish, white ?fish.*cooked"),
+    ("white fish", "^Fish, white fish, cooked"), ("tilapia", "^Fish, tilapia, cooked"), ("cod", "^Fish, cod, cooked"),
+    ("salmon", "^Fish, salmon, cooked"), ("tuna", "^Fish, tuna.*canned"), ("shrimp", "^Shrimp, cooked"), ("crab", "^Crab, cooked"),
+    ("lobster", "^Lobster, cooked"), ("imitation crab", "^Imitation crab|imitation"), ("crab cakes", "(?i)crab,? cake"),
+    ("shrimp cocktail", "(?i)shrimp cocktail"), ("fried shrimp", "^Fried shrimp|^Shrimp.*fried"), ("grilled shrimp", "^Shrimp, grilled"),
+    ("baked salmon", "^Fish, salmon, baked"), ("grilled salmon", "^Fish, salmon, grilled"), ("fried catfish", "^Fish, catfish, fried"),
+    ("blackened salmon", "^Fish, salmon"), ("black cod", "sablefish, cooked"), ("albacore tuna", "^Fish, tuna, white, canned in water"),
+    ("ahi", "yellowfin, fresh, cooked"), ("blackened chicken", "^Chicken(, cooked| breast, cooked|, grilled)"),
+    ("blackened fish", "^Fish, (cooked|grilled|baked or broiled)"), ("charred corn", "^Corn.*(cooked|grilled|roasted)"),
+]
+
 let snacks: [(String, String)] = [
     ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk$"), ("protein shake", "^Nutritional drink or shake, high protein"),
     ("yogurt parfait", "^Yogurt parfait"), ("egg and cheese sandwich", "^Egg sandwich on .*with cheese"),
@@ -2579,6 +2636,39 @@ struct StaplesTests {
         // The survey's plain meats are read as plain foods, its cold cuts as processed.
         #expect(catalog.search("steak").first?.food.processing == .whole)
         #expect(catalog.search("salami").first?.food.processing == .ultraProcessed)
+    }
+
+    @Test("a cut or a kind of fish typed alone is the cooked one, typed and named as a model would")
+    func cutsAndFish() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in cuts {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Cuts and fish \(seen ? "as a model names them" : "typed"): \(first) of \(cuts.count) first")
+            #expect(Double(first) >= 0.95 * Double(cuts.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // A cut means the cooked piece once it's typed whole: half typed it's still other foods.
+        #expect(catalog.top("wings", 1).first == "Chicken wing, cooked")
+        #expect(catalog.top("chops", 1).first == "Pork, chop, cooked")
+        #expect(catalog.top("brea", 1).first?.hasPrefix("Bread") == true)
+        // Said raw, it's the raw one.
+        #expect(catalog.top("raw mackerel", 1).first?.hasSuffix(", raw") == true)
+        // Tenders and legs with no animal named are a chicken's.
+        #expect(catalog.top("tenders", 1).first == "Chicken tenders or strips")
+        #expect(catalog.top("legs", 1).first?.hasPrefix("Chicken") == true)
+        // By the names they're sold by, which SR Legacy files under its own.
+        #expect(catalog.top("black eyed peas", 1).first?.hasPrefix("Cowpeas, common") == true)
+        #expect(catalog.top("snow crab", 1).first == "Crustaceans, crab, queen, cooked, moist heat")
+        #expect(catalog.candidates(name: "Mahi mahi", brand: nil).first?.food.name == "Fish, mahimahi, cooked, dry heat")
+        #expect(catalog.candidates(name: "Chicken strips", brand: nil).first?.food.name == "Chicken tenders or strips")
+        // Blackened says how it was cooked, like seared.
+        #expect(catalog.top("blackened salmon", 1).first?.hasPrefix("Fish, salmon") == true)
+        // A plural isn't a longer name begun: tortilla strips aren't a strip steak.
+        #expect(catalog.top("tortilla strips", 1).first.map { matches("(?i)tortilla strips", $0) } == true)
+        #expect(catalog.top("fruits", 1).first == "Fruit")
     }
 
     @Test("a product is first before its name is typed out")

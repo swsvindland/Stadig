@@ -210,6 +210,9 @@ let shortNames: [String: String] = [
     // A hamburger with cheese is its cheeseburger, and a bun the roll a burger or a hot dog
     // comes in.
     "hamburger with cheese": "cheeseburger", "burger with cheese": "cheeseburger", "bun": "hamburger bun", "buns": "hamburger bun",
+    // Tenders and legs with no animal named are a chicken's: USDA's "mock tender" is a cut of
+    // beef chuck, and its legs a pig's, a frog's and a crab's.
+    "tenders": "chicken tenders", "legs": "chicken legs",
     // Red pepper flakes are its red or cayenne pepper.
     "red pepper flakes": "spices pepper red cayenne", "crushed red pepper": "spices pepper red cayenne",
     "cayenne pepper": "spices pepper red cayenne", "cayenne": "spices pepper red cayenne",

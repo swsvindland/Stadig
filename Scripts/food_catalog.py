@@ -662,11 +662,22 @@ def fdc_nutrients(raw):
     return nutrients, micros
 
 
-# What an SR Legacy dish is called where its own name says where it's from first.
+# What an SR Legacy dish is called where its own name says where it's from first, and a plain
+# food where SR Legacy has a name of its own for it: black-eyed peas are its cowpeas, a snow
+# crab its queen crab.
 USDA_OTHER_NAMES = {
     "Restaurant, family style, spaghetti and meatballs": ["Spaghetti and meatballs", "Spaghetti with meatballs"],
     "Candies, truffles, prepared-from-recipe": ["Chocolate truffles", "Truffles"],
     "Snacks, pork skins, plain": ["Pork rinds", "Chicharrones"],
+    "Cowpeas, common (blackeyes, crowder, southern), mature seeds, cooked, boiled, without salt": ["Black-eyed peas", "Blackeyed peas"],
+    "Fish, mahimahi, cooked, dry heat": ["Mahi mahi", "Mahi"],
+    "Fish, tuna, yellowfin, fresh, cooked, dry heat": ["Ahi tuna", "Ahi"],
+    "Fish, tuna, white, canned in water, drained solids": ["Albacore tuna", "Albacore"],
+    "Fish, sea bass, mixed species, cooked, dry heat": ["Branzino"],
+    "Fish, salmon, chinook, cooked, dry heat": ["King salmon"],
+    "Fish, sablefish, cooked, dry heat": ["Black cod"],
+    "Crustaceans, crab, alaska king, cooked, moist heat": ["King crab", "King crab legs"],
+    "Crustaceans, crab, queen, cooked, moist heat": ["Snow crab", "Snow crab legs"],
 }
 # SR Legacy's groups of dishes: a burger, a restaurant's lo mein, a frozen lasagna.
 USDA_DISHES = {"fast foods", "restaurant foods", "meals, entrees, and side dishes"}
@@ -956,7 +967,13 @@ FNDDS_DISH_NAMES = {
     "Chicken, prepackaged or deli, luncheon meat": ["Deli chicken", "Sliced chicken"],
     "Beef, prepackaged or deli, luncheon meat": ["Deli roast beef", "Sliced roast beef"],
     "Fish sticks": ["Fish fingers"],
-    "Chicken tenders or strips": ["Chicken fingers"],
+    "Chicken tenders or strips": ["Chicken fingers", "Chicken tenders", "Chicken strips"],
+    "Chicken leg, drumstick and thigh, cooked, without skin": ["Chicken leg quarter", "Leg quarter"],
+    "Crab, cooked": ["Crab legs", "Crab meat"],
+    "Lobster, cooked": ["Lobster tail"],
+    "Fish, snapper, cooked": ["Red snapper"],
+    # Neither source has an Arctic char: it's the trout, the fish it's closest to.
+    "Fish, trout, cooked": ["Arctic char"],
     "Cereal, shredded wheat, plain": ["Shredded wheat"],
     "Berries": ["Mixed berries"],
     "Berries, frozen": ["Frozen berries", "Frozen mixed berries"],

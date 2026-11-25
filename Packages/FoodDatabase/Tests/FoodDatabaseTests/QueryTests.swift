@@ -132,6 +132,10 @@ struct QueryTests {
         #expect(EverydayPhrases.apart("eggs") == nil)
         #expect(EverydayPhrases.apart("blackb") == nil)
         #expect(EverydayPhrases.apart("hot") == nil)
+        // Nor one that is only the plural of a name's first word: "fruits" isn't fruit snacks
+        // begun, though a letter more is.
+        #expect(EverydayPhrases.apart("fruits") == nil)
+        #expect(EverydayPhrases.apart("fruitsn") == "fruit sn")
     }
 
     @Test("typos count a swapped pair as one and read the start of a word")
