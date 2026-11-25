@@ -391,6 +391,11 @@ let shortNames: [String: String] = [
     "low fat ice cream": "light vanilla ice cream", "nonfat yogurt": "plain skim milk yogurt", "fat free yogurt": "plain skim milk yogurt",
     "plain nonfat yogurt": "plain skim milk yogurt", "nonfat plain yogurt": "plain skim milk yogurt",
     "plain fat free yogurt": "plain skim milk yogurt", "fat free plain yogurt": "plain skim milk yogurt",
+    // A size said in a food's name: a tallboy is a beer, a footlong hot dog a hot dog.
+    "tallboy": "beer", "tall boy": "beer", "tall boy beer": "beer", "foot long hot dog": "hot dog", "footlong hot dog": "hot dog",
+    "half rack ribs": "ribs", "full rack ribs": "ribs", "sub": "sub sandwich", "subs": "sub sandwich", "inch sub": "sub sandwich",
+    "kids frosty": "wendys frosty",
+    "jr frosty": "wendys frosty", "junior frosty": "wendys frosty", "cup of joe": "cup of coffee",
     // Tuna in a packet or a pouch is the tuna, packed in water.
     "tuna packet": "tuna canned in water", "tuna pouch": "tuna canned in water",
 ]

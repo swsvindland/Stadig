@@ -1822,6 +1822,32 @@ let typedPlates: [(typed: String, first: String, second: String)] = [
     ("burger and fries", "^Hamburger", "^Potato, french fries"), ("fish and chips", "^Fish, fried", "^Potato, french fries"),
 ]
 
+/// A food said by another name after an amount or a size ("small frosty", "2 pbj"), a size
+/// said in a food's name ("tallboy", "footlong hot dog"), and the sizes and servings that
+/// already read right.
+let sizesSaid: [(String, String)] = [
+    ("small frosty", "^WENDY'S, Frosty"), ("large frosty", "^WENDY'S, Frosty"), ("2 frosty", "^WENDY'S, Frosty"), ("a frosty", "^WENDY'S, Frosty"),
+    ("kids frosty", "^WENDY'S, Frosty"), ("jr frosty", "^WENDY'S, Frosty"), ("medium blizzard", "^Soft serve, blended with candy or cookies"),
+    ("large blizzard", "^Soft serve, blended with candy or cookies"), ("small baconator", "^WENDY'S, CLASSIC DOUBLE, with cheese"),
+    ("large oj", "^Orange juice"), ("glass of oj", "^Orange juice"), ("2 pbj", "^Peanut butter and jelly sandwich"),
+    ("large double double", "^Double cheeseburger, from fast food"), ("small pot pie", "^Pot pie, chicken"),
+    ("2 footlong", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"), ("tallboy", "^Alcoholic beverage, beer"),
+    ("tall boy beer", "^Alcoholic beverage, beer"), ("foot long hot dog", "^Hot dog"), ("footlong hot dog", "^Hot dog"),
+    ("half rack ribs", "^Ribs, cooked"), ("full rack ribs", "^Ribs, cooked"), ("sub", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"),
+    ("6 inch sub", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"),
+    ("six inch sub", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"), ("cup of joe", "^Coffee"), ("grande latte", "^Coffee, Latte"),
+    ("venti iced coffee", "^Iced Coffee"), ("tall cappuccino", "^Coffee, Cappuccino"), ("large fries", "^Potato, french fries"),
+    ("small fries", "^Potato, french fries"), ("medium coke", "^Beverages, carbonated, cola"), ("large coffee", "^Coffee"),
+    ("fun size snickers", "(?i:snickers fun size)"), ("large pizza", "^Pizza, cheese"), ("medium banana", "^Bananas, raw"),
+    ("large apple", "^Apples, raw"), ("half avocado", "^Avocados, raw"), ("8 oz chicken breast", "^Chicken breast"), ("12 oz steak", "^Steak"),
+    ("16 oz latte", "^Coffee, Latte"), ("10 piece nuggets", "^Chicken nuggets"), ("20 piece mcnuggets", "^McDONALD'S, Chicken McNUGGETS"),
+    ("2 slices pizza", "^Pizza"), ("3 tacos", "^Taco"), ("dozen eggs", "^Egg"), ("glass of wine", "^Alcoholic beverage, wine"),
+    ("pint of ice cream", "^Ice cream"), ("shot of espresso", "^Coffee, espresso"), ("handful of nuts", "^Nuts, mixed nuts"),
+    ("pat of butter", "^Butter"), ("scoop of ice cream", "^Ice cream"), ("two scoops ice cream", "^Ice cream"), ("splash of milk", "^Milk"),
+    ("movie popcorn", "^Popcorn, movie theater"), ("large milkshake", "^Milk shake"), ("frosting", "^Frosting"),
+    ("frosted flakes", "(?i:frosted flakes)"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -3576,6 +3602,20 @@ struct StaplesTests {
         // A name the catalog has stays one food: lentil soup, and a banana sandwich.
         #expect(catalog.top("lentil soup and bread", 2).last?.hasPrefix("Bread") == true)
         #expect(catalog.top("peanut butter and banana sandwich", 1) == ["Peanut butter sandwich"])
+    }
+
+    @Test("a food said by another name is read the same after an amount or a size")
+    func sizesBeforeOtherNames() {
+        var missed: [String] = []
+        for (query, pattern) in sizesSaid {
+            let first = catalog.search(query).first.map { found in found.food.brand.map { "\(found.food.name) [\($0)]" } ?? found.food.name }
+            if first.map({ matches(pattern, $0) }) != true { missed.append("\(query): \(first ?? "nothing")") }
+        }
+        print("Sizes and other names: \(sizesSaid.count - missed.count) of \(sizesSaid.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(sizesSaid.count), "\(missed.joined(separator: " | "))")
+        // The amount or the size stays as typed, in front of what the name means.
+        #expect(catalog.respell("small frosty").text == "small wendys frosty" && catalog.respell("2 oj").text == "2 orange juice")
+        #expect(catalog.respell("frosty").text == "wendys frosty" && catalog.respell("small frosting").text == "small frosting")
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

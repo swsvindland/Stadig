@@ -524,6 +524,16 @@ extension FoodCatalog {
             read.typed = read.typed ?? query
             return read
         }
+        // The same after an amount or a size, which stays as typed: a "small frosty" is a
+        // small Wendy's Frosty, and "2 pb&j" two of the sandwich.
+        if let from = tokens.indices.first(where: named), from > 0, tokens.indices[from...].allSatisfy(named) {
+            let rest = tokens[from...].map(\.word)
+            if let name = regionalName(rest, in: region) ?? shortNames[rest.joined(separator: " ")] {
+                var read = respell(makeString(scalars[..<tokens[from].start]) + name, typing: false)
+                read.typed = read.typed ?? query
+                return read
+            }
+        }
         // A name being typed as one word is read as its words: "hotd" is on its way to a hot dog.
         if typing, let last = tokens.last, last.end == scalars.count, named(tokens.count - 1), let apart = EverydayPhrases.apart(last.word) {
             return respell(makeString(scalars[..<last.start]) + apart, typing: typing, meant: meant)
