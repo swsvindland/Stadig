@@ -206,7 +206,7 @@ let shortNames: [String: String] = [
     "pb j sandwich": "peanut butter and jelly sandwich", "pbj sandwich": "peanut butter and jelly sandwich", "pb": "peanut butter",
     "oj": "orange juice", "evoo": "extra virgin olive oil",
     "sunny side up egg": "fried egg", "sunny side up eggs": "fried egg", "over easy egg": "fried egg", "over easy eggs": "fried egg",
-    "corn on the cob": "sweet corn cooked",
+    "corn on the cob": "sweet corn cooked", "ground pepper": "black pepper", "cracked pepper": "black pepper",
     // Red pepper flakes are its red or cayenne pepper.
     "red pepper flakes": "spices pepper red cayenne", "crushed red pepper": "spices pepper red cayenne",
     "cayenne pepper": "spices pepper red cayenne", "cayenne": "spices pepper red cayenne",

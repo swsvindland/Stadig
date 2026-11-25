@@ -819,6 +819,8 @@ extension FoodCatalog {
 
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
         let search = searchCatalog(typed, known: known, out: nil)
+        if let apart = searchApart(typed, search, known: known) { return apart }
+        if let with = searchWith(search, known: known) { return with }
         // A restaurant chain typed with a food: where no food found is the chain's and has the
         // other words, it's that food as a restaurant serves it. "Five guys fries" are fries
         // from fast food and "kfc mashed potatoes" mashed potatoes from one, with what the
@@ -842,6 +844,195 @@ extension FoodCatalog {
         return both
     }
 
+    /// The foods typed together with "and", "&" or "+", apart: the burger and the fries of
+    /// "burger and fries", and the three of "eggs, bacon and toast". Nil for one food or more
+    /// than three.
+    private static func foodsTyped(_ typed: String) -> [String]? {
+        var foods: [[Substring]] = [[]]
+        var joined = false
+        for word in typed.lowercased().split(separator: " ") {
+            if word == "and" || word == "&" || word == "+" {
+                foods.append([])
+                joined = true
+            } else if word.hasSuffix(",") {
+                foods[foods.count - 1].append(word.dropLast())
+                foods.append([])
+            } else {
+                foods[foods.count - 1].append(word)
+            }
+        }
+        // "Eggs, bacon, and toast" has nothing between its last comma and its "and".
+        let names = foods.map { $0.joined(separator: " ") }.filter { !$0.isEmpty }
+        // What follows a "with" is what one food comes with: "coffee with cream and sugar".
+        guard joined, names.count == 2 || names.count == 3, !foods.joined().contains("with") else { return nil }
+        return names.allSatisfy { !searchedWords(words($0)).isEmpty } ? names : nil
+    }
+
+    /// One of the foods typed together, as it's searched for alone: with salt, pepper is the
+    /// black pepper in the other shaker.
+    private static func alone(_ food: String, among foods: [String]) -> String {
+        food == "pepper" && foods.contains("salt") ? "black pepper" : food
+    }
+
+    /// A flavour is the food of that flavour: the foods found whose names join the two as
+    /// typed ("Cookies & Cream Ice Cream") before a plain food that only has both words
+    /// ("Cookies, chocolate cream covered biscuit sticks"). Nil where none does.
+    private static func flavoured(_ ranked: [Ranked], _ flavour: Flavour) -> [Ranked]? {
+        let joins = { (found: Ranked) in
+            let text = FoodText(found.food)
+            return text.said.indices.dropLast().contains { i in
+                same(text.said[i], flavour.before) && same(text.said[i + 1], flavour.after) && text.runs[i] != text.runs[i + 1]
+                    && text.joint.contains(text.runs[i + 1])
+            }
+        }
+        // The first food found may be one already, whatever else was said of it.
+        if let first = ranked.first, joins(first) { return ranked }
+        let named = ranked.filter { $0.name >= 1 && joins($0) }
+        return named.isEmpty ? nil : joined(named, ranked)
+    }
+
+    /// A food's words as they're read: each as corrected, without the ones that only say how
+    /// it comes or how many ("organic", "homemade", "2").
+    private static func foodWords(_ text: String, fixes: Fixes = [:]) -> [String] {
+        let read = searchedWords(words(text)).map { word in fixes[word].flatMap { $0.count == 1 && !$0[0].contains(" ") ? $0[0] : nil } ?? word }
+        let named = read.filter { !saysHow($0) && !isNumber($0) }
+        return named.isEmpty ? read : named
+    }
+
+    /// What the foods typed or named together are, by their words and the foods found.
+    private enum Together {
+        /// One food, as found: an everyday name ("mac and cheese", whole or with its last word
+        /// still being typed), one the catalog names by all the words ("Sweet and sour pork")
+        /// or calls so, or a dish of the last word with all of them (a "Ham sandwich on
+        /// white, with cheese" for a ham and cheese sandwich).
+        case one
+        /// One food, these first: a flavour's foods ("cookies and cream"), or the plain food
+        /// named as the foods together ("Beans and rice"), where it's among the first three.
+        case first([Ranked])
+        /// Foods of their own.
+        case apart
+    }
+
+    /// `parts` are each food's words as read (see `foodWords`), `found` what the words found
+    /// together.
+    private func together(_ parts: [[String]], _ found: [Ranked]) -> Together {
+        let all = Array(parts.joined())
+        let stems = all.map(stem)
+        if let flavour = flavours.first(where: { stems.starts(with: $0.stems) }) {
+            return Self.flavoured(found, flavour).map { .first($0) } ?? .one
+        }
+        let said = Array(parts.joined(separator: ["and"]))
+        if EverydayPhrases.isName(all) || EverydayPhrases.isName(said) || EverydayPhrases.isBegun(said) || isPlainName(all[...]) { return .one }
+        guard let first = found.first else { return .apart }
+        if first.called || first.calling { return .one }
+        let named = found.prefix(3).firstIndex { found in
+            let text = FoodText(found.food)
+            return !text.branded && isJoint(text, parts)
+        }
+        if let named { return named == 0 ? .one : .first(Self.joined([found[named]], found)) }
+        // The dish the last word names, where the first food found is one with each food.
+        if let last = parts.last, last.count > 1, let kind = last.last.map(stem) {
+            let text = FoodText(first.food)
+            let head = text.said.indices.last { text.runs[$0] == text.runs[0] }.map { text.said[$0] }
+            if !text.branded, hasEach(text, parts), head.map({ same($0, kind) || starts($0, kind) }) == true { return .one }
+        }
+        return .apart
+    }
+
+    /// Two or three foods typed together that no one food found is ("burger and fries",
+    /// "eggs, bacon & toast"): each searched for alone, the first of each, then a label
+    /// called exactly the two together, then the rest of each in turn, before what the words
+    /// found together. Nil where the words are one food (see `Together`) or a brand's, and
+    /// where a part alone is no plain food: "salt and vinegar chips", "surf and turf".
+    private func searchApart(_ typed: String, _ search: CatalogSearch, known: [String: Double]) -> CatalogSearch? {
+        guard search.brand.isEmpty, let foods = Self.foodsTyped(typed) else { return nil }
+        let first = { (ranked: [Ranked]) in
+            var named = search
+            named.ranked = ranked
+            return named
+        }
+        // By the words as typed, then by each food as it's read alone: a typo corrected, a
+        // short name written out.
+        let typedParts = foods.map { Self.foodWords($0) }
+        switch together(typedParts, search.ranked) {
+        case .one: return nil
+        case .first(let ranked): return first(ranked)
+        case .apart: break
+        }
+        let each = foods.map { searchCatalog(Self.alone($0, among: foods), known: known, out: nil) }
+        let parts = foods.indices.map { i in
+            Self.alone(foods[i], among: foods) == foods[i] ? Self.foodWords(each[i].text, fixes: each[i].fixes) : typedParts[i]
+        }
+        if parts != typedParts {
+            switch together(parts, search.ranked) {
+            case .one: return nil
+            case .first(let ranked): return first(ranked)
+            case .apart: break
+            }
+        }
+        // Each a food of its own, as typed: its first is a plain food or a chain's item with
+        // every word of it.
+        guard each.allSatisfy({ $0.fixes.isEmpty && $0.ranked.first.map { $0.name >= 1 && $0.food.source == .usda } == true }) else { return nil }
+        let sorted = parts.joined().map(stem).sorted()
+        let labels = search.ranked.prefix(10).filter { words($0.food.name).map(stem).sorted() == sorted && isJoint(FoodText($0.food), parts) }
+        var both = search
+        both.ranked = Self.joined(Self.inTurn(each.map(\.ranked), then: Array(labels.prefix(2))), search.ranked)
+        for found in each { both.elsewhere.formUnion(found.elsewhere) }
+        return both
+    }
+
+    /// A food typed with what it comes with is found by its own words: "toast with butter"
+    /// is toast, not a label called Toast Butter, and "salad with dressing" a salad, not the
+    /// dressing. The food that has what it comes with is first among the ones it is: mashed
+    /// potatoes with gravy, a sandwich with turkey. Nil where nothing is typed after "with",
+    /// or the first food found is the whole: one the catalog names by all of it or calls so,
+    /// as typed or as read (its "Pasta with meat sauce", its "Biscuit with gravy"), however
+    /// it's said to be cooked.
+    private func searchWith(_ search: CatalogSearch, known: [String: Double]) -> CatalogSearch? {
+        guard tokens(search.text).contains("with") else { return nil }
+        let read = seenName(search.text)
+        guard !read.sides.isEmpty, !isPlainName(Self.foodWords(search.text, fixes: search.fixes)[...]) else { return nil }
+        if let first = search.ranked.first, first.called || first.calling { return nil }
+        return searchCatalog(read.main, known: known, out: nil, sides: read.sides, beside: read.beside)
+    }
+
+    /// Lists in turn: the first of each, then `then`, then the second of each and so on, no
+    /// food twice.
+    private static func inTurn(_ lists: [[Ranked]], then: [Ranked] = []) -> [Ranked] {
+        var all = lists.compactMap(\.first) + then
+        var seen = Set(all.map(\.food.id))
+        for i in 1..<max(2, lists.map(\.count).max() ?? 0) {
+            for list in lists where i < list.count && seen.insert(list[i].food.id).inserted { all.append(list[i]) }
+        }
+        return all
+    }
+
+    /// The same for two or three foods a model names as one ("Eggs and bacon"). Where no food
+    /// found is both, each food's own candidates in turn, then what the words found
+    /// together, and `apart` says none of them is the whole. Not the plain foods only named
+    /// after both ("Crackers, cheese", a cracker too), which read as the two to whoever
+    /// compares the words. Nil for one food as found, or where the person's own food is
+    /// named so.
+    private func candidatesTogether(
+        _ name: String, _ ranked: [Ranked], personal: [PersonalFood], known: [String: Double]
+    ) -> (ranked: [Ranked], apart: Bool)? {
+        guard let foods = Self.foodsTyped(name) else { return nil }
+        if let first = ranked.first, known[first.food.id] != nil, first.name >= 1 { return nil }
+        let parts = foods.map { Self.foodWords($0) }
+        switch together(parts, ranked) {
+        case .one: return nil
+        case .first(let ranked): return (ranked, false)
+        case .apart: break
+        }
+        let each = foods.map { rankCandidates(name: Self.alone($0, among: foods), brand: "", personal: personal, known: known, out: nil) }
+        guard each.allSatisfy({ $0.first.map { $0.name >= 1 && ($0.food.source == .usda || known[$0.food.id] != nil) } == true }) else { return nil }
+        let apart = { (found: Ranked) in
+            let text = FoodText(found.food)
+            return text.branded || known[found.food.id] != nil || !hasEach(text, parts) || isJoint(text, parts)
+        }
+        return (Self.joined(Self.inTurn(each).filter(apart), ranked.filter(apart)), true)
+    }
+
     /// One list's foods, then the other's that aren't among them, with no score above the one
     /// before it: a caller that orders by score keeps this order.
     private static func joined(_ first: [Ranked], _ rest: [Ranked]) -> [Ranked] {
@@ -852,7 +1043,11 @@ extension FoodCatalog {
     }
 
     /// With `out`, the food as such a place serves it comes first (see `RankHints.out`).
-    private func searchCatalog(_ typed: String, known: [String: Double], out: String?) -> CatalogSearch {
+    /// `sides` is what the food was typed with, which only tells two foods that are the food
+    /// apart (see `RankHints.sides`).
+    private func searchCatalog(
+        _ typed: String, known: [String: Double], out: String?, sides: [String] = [], beside: [String] = []
+    ) -> CatalogSearch {
         guard !catalogs.isEmpty else { return CatalogSearch(text: typed) }
         // A name labels write as one word or as two is searched the usual way, and the other too;
         // a word that can only have been a typo is read by the names of the word it meant.
@@ -950,9 +1145,14 @@ extension FoodCatalog {
                         catalog: $0, expression: "{brand}: \"\(reading.letter[0])\"", limit: MatchLimits.few.branded, lead: "",
                         begun: "\(reading.letter[0]) \(reading.letter[1])")
                 } : [],
+            // And the foods that have what the food was typed with, however many are the food:
+            // "Potato, mashed, from restaurant, with gravy" among every mashed potato.
+            sides.isEmpty
+                ? [] : jobs(catalogs, ([expression] + sides.map { searchTerm($0) }).joined(separator: " AND "), .typed, lead: lead(foods[0])),
         ])
         let anyBrand = found[0]
-        var pool = found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7] + found[8] + found[9] + found[10]
+        var pool =
+            found[1] + found[2] + found[4] + found[3] + anyBrand + found[5] + found[6] + found[7] + found[8] + found[9] + found[10] + found[11]
         if pool.count < 10 && searched.count > 1 {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").
@@ -979,7 +1179,7 @@ extension FoodCatalog {
             query, Array(unique), known: known,
             hints: RankHints(
                 fixes: search.readings, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
-                brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms, out: out))
+                brand: brand, profile: kind, doubted: doubted, respelt: respelt.forms, sides: sides, beside: beside, out: out))
         return search
     }
 
@@ -1029,8 +1229,16 @@ extension FoodCatalog {
             let plain = rankCandidates(name: said, brand: "", personal: personal, known: known, out: place)
             if let first = plain.first, first.name >= 1, !FoodText(first.food).branded { ranked = Self.joined(plain, ranked) }
         }
+        // Two foods named as one: the food named as both first, or, where no food found is,
+        // each one's candidates, none of them named by the whole, so nothing is logged for
+        // the two without a look.
+        var whole = true
+        if brand.isEmpty, let both = candidatesTogether(seenName(said).main, ranked, personal: personal, known: known) {
+            ranked = both.ranked
+            whole = !both.apart
+        }
         return ranked.prefix(limit).map {
-            FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil, named: $0.name >= 1, called: $0.called)
+            FoodMatch(food: $0.food, score: $0.score, personal: known[$0.food.id] != nil, named: whole && $0.name >= 1, called: whole && $0.called)
         }
     }
 
@@ -1146,3 +1354,29 @@ extension FoodCatalog {
         return Array(head) + Array(generic) + ranked.filter { !first.contains($0.index) }
     }
 }
+
+/// A flavour named as two foods: a search for one is for the ice cream, the crisps or the
+/// sauce of that flavour, not for the two foods.
+private struct Flavour {
+    /// Its words without the "and", stemmed, as a search's are compared.
+    let stems: [String]
+    /// The words either side of the "and", stemmed.
+    let before: String
+    let after: String
+
+    init(_ name: String) {
+        let said = name.split(separator: " ").map(String.init)
+        let and = said.firstIndex(of: "and") ?? 1
+        stems = said.filter { $0 != "and" }.map(stem)
+        before = stem(said[and - 1])
+        after = stem(said[and + 1])
+    }
+}
+
+private let flavours: [Flavour] = [
+    "cookies and cream", "salt and vinegar", "sour cream and onion", "sweet and salty", "sweet and sour", "hot and sour", "peaches and cream",
+    "strawberries and cream", "berries and cream", "fruit and nut", "honey and oats", "milk and honey", "black and white",
+    "sea salt and vinegar", "cheddar and sour cream", "cinnamon and sugar", "brown sugar and cinnamon", "maple and brown sugar",
+    "apples and cinnamon", "apple and cinnamon", "lemon and lime", "garlic and herb", "cheese and onion", "chocolate and peanut butter",
+    "peanut butter and chocolate", "chocolate and vanilla",
+].map(Flavour.init)

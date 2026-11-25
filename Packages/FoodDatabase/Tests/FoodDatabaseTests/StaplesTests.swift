@@ -1041,6 +1041,84 @@ let sweets: [(String, String)] = [
 /// with a pattern for the plain food that should come first ("oatmeal with milk" FNDDS's oatmeal
 /// made with milk, "pretzels" the hard ones, "shredded chicken" cooked chicken, "sparkling
 /// water" its plain carbonated water).
+/// Foods typed with what they come with: the food, and the entry that has it where one does.
+let withSides: [(String, String)] = [
+    ("coffee with cream", "^(Coffee$|Beverages, coffee, brewed|Coffee, .*cream)"),
+    ("coffee with milk", "^(Coffee$|Beverages, coffee, brewed|Coffee, (Cafe con leche|.*with milk$))"),
+    ("coffee with cream and sugar", "^(Coffee$|Beverages, coffee, brewed|Coffee, pre-lightened and pre-sweetened)"),
+    ("coffee with sugar", "^(Coffee$|Beverages, coffee, brewed|Coffee, pre-sweetened with sugar)"), ("tea with milk", "^Tea, hot, with milk"),
+    ("tea with honey", "^(Beverages, tea, black, brewed|Tea, hot)"), ("tea with lemon", "^(Beverages, tea, black, brewed|Tea, hot)"),
+    ("cereal with milk", "^Cereal"), ("oatmeal with banana", "^(Cereals, oats|Oatmeal)"), ("oatmeal with berries", "^(Cereals, oats|Oatmeal)"),
+    ("oatmeal with peanut butter", "^(Cereals, oats|Oatmeal)"), ("toast with butter", "^Bread, .*toasted"), ("toast with jam", "^Bread, .*toasted"),
+    ("toast with peanut butter", "^Bread, .*toasted"), ("toast with avocado", "(?i)toast"), ("bagel with cream cheese", "^Bagel"),
+    ("bagel with butter", "^Bagel"), ("eggs with cheese", "^(Egg omelet or scrambled egg, with cheese|Egg, whole)"),
+    ("scrambled eggs with cheese", "^(Egg omelet or scrambled egg, with cheese|Egg, whole, cooked, scrambled)"),
+    ("rice with chicken", "^(Chicken or turkey and rice|Rice, white)"), ("chicken with rice", "^Chicken or turkey(,| and) rice"),
+    ("chicken with vegetables", "^Chicken or turkey.*vegetables"), ("salad with chicken", "^(Chicken or turkey (garden )?salad|Lettuce, salad)"),
+    ("salad with dressing", "^Lettuce, salad"), ("salad with ranch", "^Lettuce, salad"), ("pasta with sauce", "^Pasta with sauce"),
+    ("pasta with tomato sauce", "^Pasta with tomato"), ("pasta with meat sauce", "^Pasta with tomato-based sauce and meat"),
+    ("pasta with chicken", "^Pasta"), ("pasta with cheese", "^Pasta"), ("spaghetti with sauce", "^Pasta with (sauce|tomato)"),
+    ("noodles with vegetables", "(?i)noodles"), ("yogurt with granola", "^Yogurt"), ("yogurt with fruit", "^Yogurt, fruit"),
+    ("yogurt with honey", "^Yogurt"), ("yogurt with berries", "^Yogurt"), ("apple with peanut butter", "^Apples, raw"),
+    ("banana with peanut butter", "^Bananas, raw"), ("celery with peanut butter", "^Celery, raw"),
+    ("tomato soup with grilled cheese", "^Soup, tomato"), ("mashed potatoes with gravy", "^Potato, mashed, .*with gravy"),
+    ("rice with vegetables", "^Rice, white"), ("rice with butter", "^Rice, white"), ("rice with egg", "^Rice, white"),
+    ("rice with soy sauce", "^Rice, white, with soy"), ("potato with butter", "^Potatoes, (baked|boiled)"),
+    ("baked potato with sour cream", "^Potato(es)?, baked"), ("baked potato with cheese", "^Potato(es)?, baked"),
+    ("broccoli with cheese", "^Broccoli"), ("vegetables with butter", "^Vegetables, mixed"), ("corn with butter", "^Corn"),
+    ("pancakes with syrup", "^Pancakes"), ("pancakes with butter", "^Pancakes"), ("waffles with syrup", "^Waffle"),
+    ("french toast with syrup", "^French toast"), ("ice cream with chocolate syrup", "^Ice cream"), ("bread with butter", "^Bread, (white|wheat)"),
+    ("pita with hummus", "^Bread, pita"), ("tortilla with cheese", "^(Tortillas|Quesadilla)"), ("quesadilla with chicken", "^Quesadilla, chicken"),
+    ("nachos with cheese", "^(Nachos, cheese only|Fast foods, nachos, with cheese)"), ("fries with ketchup", "^Potato(es)?, french fri"),
+    ("fries with cheese", "^Potato, french fries, with cheese"), ("hot dog with bun", "^(Hot dog sandwich|Frankfurter)"),
+    ("hot dog with ketchup", "^(Hot dog|Frankfurter)"), ("hamburger with cheese", "^(Cheeseburger|Hamburger)"),
+    ("burger with cheese", "^(Cheeseburger|Hamburger)"), ("sandwich with turkey", "^Turkey sandwich"), ("wrap with chicken", "(?i)chicken.*wrap"),
+    ("steak with potatoes", "^Beef"), ("chicken breast with rice", "^Chicken"), ("salmon with rice", "^Fish, salmon"),
+    ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk"), ("cereal with almond milk", "^Cereal"),
+    ("toast with eggs", "^Bread, .*toasted"),
+]
+
+/// Two or three foods typed together: the dish where the catalog has one, else the first
+/// food, with the second right after it where a pattern for it is given.
+let together: [(typed: String, first: String, second: String)] = [
+    ("rice and beans", "^(Beans and|Rice and beans|Black beans and)", ""), ("beans and rice", "^(Beans and|Rice and beans|Black beans and)", ""),
+    ("chicken and rice", "^Chicken or turkey and rice", ""), ("rice and chicken", "^Chicken or turkey and rice", ""),
+    ("mac and cheese", "^Macaroni or noodles with cheese", ""), ("macaroni and cheese", "^Macaroni or noodles with cheese", ""),
+    ("peanut butter and jelly", "^Peanut butter and jelly sandwich", ""), ("biscuits and gravy", "^Biscuit with gravy", ""),
+    ("pork and beans", "^Beans, baked, canned, with pork", ""), ("franks and beans", "^Beans, baked, canned, with franks", ""),
+    ("beans and franks", "^Beans, baked, canned, with franks", ""), ("peas and carrots", "^Peas and carrots", ""),
+    ("sausage and peppers", "^Sausage and peppers", ""), ("liver and onions", "^Liver, beef or calves, and onions", ""),
+    ("spaghetti and meatballs", "(?i)spaghetti.*meatballs", ""), ("chicken and dumplings", "^Chicken or turkey with dumplings", ""),
+    ("rum and coke", "^Rum and cola", ""), ("gin and tonic", "^Gin and tonic", ""), ("sweet and sour chicken", "^Sweet and sour chicken", ""),
+    ("beef and broccoli", "^Beef and broccoli", ""), ("half and half", "^Cream, (fluid, )?half and half", ""),
+    ("fish and chips", "(?i)fish (and|&) chips", ""), ("chicken and waffles", "(?i)chicken (and|&) waffles?", ""),
+    ("oil and vinegar", "^Salad dressing, home recipe, vinegar and oil", ""), ("beef and rice", "^Beef and rice", ""),
+    ("turkey and gravy", "^Turkey with gravy", ""), ("turkey and stuffing", "^Chicken or turkey with stuffing", ""),
+    ("chicken and vegetables", "^Chicken or turkey and vegetables", ""), ("salt and vinegar chips", "(?i)salt (and|&) vinegar", ""),
+    ("mike and ike", "(?i)mike and ike", ""), ("cookies and cream", "(?i)cookies? (and|&|'?n'?) cre(a|me)", ""),
+    ("burger and fries", "^Hamburger", "^Potato, french fries"), ("burger & fries", "^Hamburger", "^Potato, french fries"),
+    ("eggs and bacon", "^Egg, whole", "^Pork, cured, bacon"), ("bacon and eggs", "^Pork, cured, bacon", "^Egg, whole"),
+    ("steak and potatoes", "^Beef, .*steak", "^Potato"), ("steak and eggs", "^Beef, .*steak", "^Egg, whole"),
+    ("chips and salsa", "(?i)^(potato chips|tortilla chips|snacks, tortilla chips)", "^Salsa"),
+    ("chips and guacamole", "(?i)^(potato chips|tortilla chips|snacks, tortilla chips)", "^Guacamole"),
+    ("bread and butter", "^Bread, (wheat|white)", "^Butter, salted"), ("cheese and crackers", "^Cheese, cheddar", "^Crackers"),
+    ("cereal and milk", "^Cereal", "^Milk, whole"), ("ham and cheese", "^Ham", "^Cheese, cheddar"), ("soup and salad", "^Soup", "(?i)salad"),
+    ("coffee and donut", "^(Coffee|Beverages, coffee)", "^Doughnut"), ("hummus and pita", "^Hummus", "^Bread, pita"),
+    ("yogurt and granola", "^Yogurt", "(?i)granola"), ("toast and eggs", "^Bread, .*toasted", "^Egg, whole"),
+    ("eggs and toast", "^Egg, whole", "^Bread, .*toasted"), ("toast and jam", "^Bread, .*toasted", "^Jams"),
+    ("pancakes and syrup", "^Pancakes", "^Syrup"), ("salt and pepper", "^Salt, table", "^Spices, pepper, black"),
+    ("big mac and fries", "(?i)big mac", "^Potato, french fries"), ("peanut butter and banana", "^Peanut butter", "^Bananas, raw"),
+    ("apple and peanut butter", "^Apples, raw", "^Peanut butter"), ("milk and cookies", "^Milk, whole", "^Cookie"),
+    ("chicken and broccoli", "^Chicken", "^Broccoli"), ("salmon and rice", "(?i)salmon", "^Rice"), ("steak and salad", "^Beef, .*steak", "(?i)salad"),
+    ("bagel and cream cheese", "^Bagel", "^Cheese, cream"), ("tuna and crackers", "(?i)tuna", "^Crackers"), ("pizza and wings", "^Pizza", "(?i)wing"),
+    ("burger and shake", "^Hamburger", "(?i)shake"), ("coffee and bagel", "^(Coffee|Beverages, coffee)", "^Bagel"),
+    ("oatmeal and banana", "(?i)oat", "^Bananas, raw"), ("wine and cheese", "(?i)wine", "^Cheese, cheddar"), ("beer and pizza", "(?i)beer", "^Pizza"),
+    ("lettuce and tomato", "^Lettuce", "^Tomato"), ("turkey and cheese", "^Turkey", "^Cheese, cheddar"), ("rice and broccoli", "^Rice", "^Broccoli"),
+    ("chicken and potatoes", "^Chicken or turkey and potatoes", ""), ("eggs and sausage", "^Egg, whole", "(?i)sausage"),
+    ("sausage and eggs", "(?i)sausage", "^Egg, whole"), ("waffles and syrup", "^Waffle", "^Syrup"), ("banana and yogurt", "^Bananas, raw", "^Yogurt"),
+    ("eggs, bacon and toast", "^Egg, whole", "^Pork, cured, bacon"), ("burger, fries and a coke", "^Hamburger", "^Potato, french fries"),
+]
+
 let snacks: [(String, String)] = [
     ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk$"), ("protein shake", "^Nutritional drink or shake, high protein"),
     ("yogurt parfait", "^Yogurt parfait"), ("egg and cheese sandwich", "^Egg sandwich on .*with cheese"),
@@ -1437,6 +1515,20 @@ struct EverydayFormTests {
         // Not the thing beside it: pasta with marinara sauce is pasta.
         let pasta = ["Sauce, pasta, spaghetti/marinara, ready-to-serve", "Pasta, cooked, enriched, without added salt"]
         #expect(seen("Pasta", pasta, ["marinara", "sauce"], ["marinara", "sauce"]) == "Pasta, cooked, enriched, without added salt")
+        // Nor a food that says it comes without it.
+        let sauced = ["Pasta with vegetables, no sauce or dressing", "Pasta with sauce"]
+        #expect(seen("Pasta", sauced, ["sauce"], ["sauce"]) == "Pasta with sauce")
+        // The food named with it before the food is that food with it, and so is one that
+        // joins the two: a turkey sandwich, rice and beans. What it's with named last is
+        // still the other food.
+        #expect(seen("Sandwich", ["Sandwich spread, meatless", "Turkey sandwich on white"], ["turkey"], ["turkey"]) == "Turkey sandwich on white")
+        #expect(seen("Rice", ["Beans, black, mature seeds, cooked", "Rice and beans"], ["beans"], ["beans"]) == "Rice and beans")
+        #expect(seen("Salad", ["Salad dressing, ranch", "Salad, garden"], ["dressing"], ["dressing"]) == "Salad, garden")
+        // The entry that says it comes with all of it, and little else, before the usual one.
+        let teas = ["Beverages, tea, black, brewed, prepared with tap water", "Tea, hot, with milk"]
+        #expect(seen("Tea", teas, ["milk"], ["milk"]) == "Tea, hot, with milk")
+        let rice = ["Rice, white, long-grain, regular, enriched, cooked", "Rice, fried, with chicken"]
+        #expect(seen("Rice", rice, ["chicken"], ["chicken"]) == "Rice, white, long-grain, regular, enriched, cooked")
         // How a model saw the food cut is no kind of it; a food that says it is a little ahead.
         #expect(first(seen: "Strawberries, sliced", ["Strawberries, frozen, sweetened, sliced", "Strawberries, raw"]) == "Strawberries, raw")
         #expect(first(seen: "Grated parmesan cheese", ["Cheese, parmesan, shredded", "Cheese, parmesan, grated"]) == "Cheese, parmesan, grated")
@@ -1449,6 +1541,39 @@ struct EverydayFormTests {
         #expect(scoreFoods(Named(name: "Mixed greens", brand: ""), greens).first?.food.brand == "Simply Nature")
         let chickpeas = [OwnWordsTests.food("Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt")]
         #expect(scoreFoods(Named(name: "Garbanzo beans", brand: ""), chickpeas).first?.name == 1)
+    }
+
+    @Test("a food is named as two foods together by how its name joins them")
+    func namedTogether() {
+        let joint = { (name: String, foods: [[String]]) in isJoint(FoodText(OwnWordsTests.food(name)), foods) }
+        // One opens the name and the other ends a run after "and" or "with".
+        #expect(joint("Beans and white rice", [["rice"], ["beans"]]))
+        #expect(joint("Biscuit with gravy", [["biscuits"], ["gravy"]]))
+        #expect(joint("Beans, baked, canned, with pork", [["pork"], ["beans"]]))
+        #expect(joint("Chicken or turkey with stuffing", [["turkey"], ["stuffing"]]))
+        #expect(joint("Peas and carrots, canned, regular pack, solids and liquids", [["peas"], ["carrots"]]))
+        #expect(joint("Rum and cola", [["rum"], ["coke"]]))
+        // Or its last two runs are just the two.
+        #expect(joint("Salad dressing, home recipe, vinegar and oil", [["oil"], ["vinegar"]]))
+        // A food only named after them isn't the two, nor one of more foods than those.
+        #expect(!joint("Crackers, cheese, regular", [["cheese"], ["crackers"]]))
+        #expect(!joint("Milk and cereal bar", [["cereal"], ["milk"]]))
+        #expect(!joint("Egg burrito, with bacon", [["eggs"], ["bacon"]]))
+        #expect(!joint("Fast foods, biscuit, with egg and bacon", [["eggs"], ["bacon"]]))
+        #expect(!joint("Chicken or turkey, rice, corn, and cheese, with gravy", [["turkey"], ["cheese"]]))
+        #expect(!joint("Fast foods, submarine sandwich, bacon, lettuce, and tomato on white bread", [["lettuce"], ["tomato"]]))
+        // Salt isn't joined to a food USDA lists "with salt".
+        #expect(!joint("Peppers, sweet, green, cooked, boiled, drained, with salt", [["salt"], ["pepper"]]))
+        // The last word may still be on its way.
+        #expect(joint("Chicken or turkey and rice", [["chicken"], ["ri"]]))
+        // A note that is just the foods names them together.
+        #expect(joint("Restaurant, Latino, Arroz con habichuelas colorados (Rice And Red Beans)", [["red", "beans"], ["rice"]]))
+        // An everyday name with its last word still being typed is on its way to that name.
+        #expect(EverydayPhrases.isBegun(["mac", "and", "che"]) && EverydayPhrases.isBegun(["fish", "and", "chips"]))
+        #expect(!EverydayPhrases.isBegun(["burger", "and", "che"]) && !EverydayPhrases.isBegun(["che"]))
+        // A name has a word of each, however it joins them.
+        #expect(hasEach(FoodText(OwnWordsTests.food("Crackers, cheese, regular")), [["cheese"], ["crackers"]]))
+        #expect(!hasEach(FoodText(OwnWordsTests.food("Crackers, saltines")), [["cheese"], ["crackers"]]))
     }
 
     @Test("a kind of food typed alone is the one of its kind most logged")
@@ -2236,6 +2361,90 @@ struct StaplesTests {
         for name in ["chocolate candy", "potato chips", "air popped popcorn", "gummy bears"] {
             #expect(catalog.search(name).first?.food.processing == .ultraProcessed, "\(name)")
         }
+    }
+
+    @Test("a food typed or named with what it comes with is the food, the one that has it first")
+    func foodsWithSides() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in withSides {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Foods with what they come with \(seen ? "as a model names them" : "typed"): \(first) of \(withSides.count) first")
+            #expect(
+                Double(first) >= 0.95 * Double(withSides.count),
+                "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // The food, not a label with both words nor what it comes with.
+        #expect(catalog.top("toast with butter", 1).first?.hasPrefix("Bread") == true)
+        #expect(catalog.top("salad with dressing", 1).first?.hasPrefix("Lettuce, salad") == true)
+        // The entry that says it comes with it, where it says little else.
+        #expect(catalog.top("tea with milk", 1).first == "Tea, hot, with milk")
+        #expect(catalog.top("rice with chicken", 1).first != "Rice, fried, with chicken")
+        // The food named with it before the food: a turkey sandwich is a sandwich with turkey.
+        #expect(catalog.top("sandwich with turkey", 1).first?.hasPrefix("Turkey sandwich") == true)
+        // Not the one that says it comes without it.
+        #expect(catalog.top("spaghetti with sauce", 1).first != "Pasta with vegetables, no sauce or dressing")
+        // A food the catalog names by all of it is found as before.
+        #expect(catalog.top("biscuit with gravy", 1).first == "Biscuit with gravy")
+        // Fries a model names are french fries, whatever else is cut like them.
+        #expect(catalog.candidates(name: "Fries", brand: nil).first?.food.name == "Potato, french fries")
+        #expect(catalog.candidates(name: "Sweet potato fries", brand: nil).first?.food.name == "Sweet potato fries")
+    }
+
+    @Test("two foods typed or named together are each found, unless one food is both")
+    func foodsTogether() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern, _) in together {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Foods typed together \(seen ? "as a model names them" : "typed"): \(first) of \(together.count) first")
+            #expect(
+                Double(first) >= 0.95 * Double(together.count),
+                "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // The second food is right after the first.
+        let pairs = together.filter { !$0.second.isEmpty }
+        let second = pairs.filter { pair in catalog.top(pair.typed, 2).dropFirst().first.map { matches(pair.second, $0) } == true }
+        print("Foods typed together: the second food is second for \(second.count) of \(pairs.count)")
+        #expect(Double(second.count) >= 0.95 * Double(pairs.count))
+        #expect(catalog.top("burger and fries", 2) == ["Hamburger", "Potato, french fries"])
+        #expect(catalog.top("burger & fries", 2) == catalog.top("burger and fries", 2))
+        #expect(catalog.top("eggs, bacon and toast", 3).last?.hasPrefix("Bread") == true)
+        // With salt, pepper is the black pepper; alone, a pepper is a bell pepper.
+        #expect(catalog.top("salt and pepper", 2) == ["Salt, table", "Spices, pepper, black"])
+        #expect(catalog.top("pepper", 1).first?.hasPrefix("Peppers, sweet") == true)
+        #expect(catalog.top("ground pepper", 1).first == "Spices, pepper, black")
+        // One food that is both stays: a dish, a brand, an everyday name, a flavour.
+        #expect(catalog.top("rice and beans", 1).first?.contains("eans and") == true)
+        #expect(catalog.top("mac and cheese", 1).first == "Macaroni or noodles with cheese")
+        #expect(catalog.search("ben and jerrys").first?.food.brand?.hasPrefix("Ben") == true)
+        #expect(catalog.top("cookies and cream", 1).first?.lowercased().hasPrefix("cookies & cream") == true)
+        // Nor are words split that aren't each a plain food.
+        #expect(catalog.top("salt and vinegar chips", 1).first?.lowercased().contains("vinegar") == true)
+        // The dish is still the dish with a typo, said to be homemade, or half typed, and
+        // by a name the catalog keeps for it; what the last word names is one dish.
+        #expect(catalog.top("chiken and rice", 1).first == "Chicken or turkey and rice")
+        #expect(catalog.top("homemade biscuits and gravy", 1).first == "Biscuit with gravy")
+        #expect(catalog.top("mac and che", 1).first?.hasPrefix("Macaroni") == true)
+        #expect(catalog.top("jack and cok", 1).first == "Whiskey and cola")
+        #expect(catalog.top("ham and cheese sandwich", 1).first?.hasPrefix("Ham sandwich") == true)
+        #expect(catalog.top("red beans and rice", 1).first?.contains("Rice And Red Beans") == true)
+        // What follows "with" is what one food comes with.
+        #expect(catalog.top("coffee with cream and sugar", 1).first?.lowercased().contains("coffee") == true)
+        // A model's name for two foods: the first food leads, and none is named by the
+        // whole, so the pipeline logs neither for both without a look.
+        let eggs = catalog.candidates(name: "Eggs and bacon", brand: nil)
+        #expect(eggs.first?.food.name.hasPrefix("Egg, whole") == true)
+        #expect(eggs.prefix(6).allSatisfy { !$0.named && !$0.called })
+        #expect(!eggs.contains { $0.food.name == "Egg burrito, with bacon" })
+        // A dish it names is named.
+        #expect(catalog.candidates(name: "Biscuits and gravy", brand: nil).first?.named == true)
     }
 
     @Test("a product is first before its name is typed out")

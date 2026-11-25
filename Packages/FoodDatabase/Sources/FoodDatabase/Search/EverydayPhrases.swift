@@ -115,7 +115,8 @@ enum EverydayPhrases {
         "chocolate chip cookie", "oatmeal cookie", "sugar cookie", "glazed donut", "cinnamon roll", "tiramisu", "ice cream sandwich",
         "banana split", "bread pudding", "rice pudding", "chocolate pudding", "peach cobbler", "pound cake", "angel food cake", "coffee cake",
         "vegetable soup", "lentil soup", "split pea soup", "potato soup", "tortilla soup", "egg drop soup", "hot and sour soup",
-        "teriyaki chicken", "chicken stir fry", "beef stir fry", "fish and chips", "fish sticks", "crab cake", "shrimp scampi", "fried shrimp",
+        "teriyaki chicken", "chicken stir fry", "beef stir fry", "fish and chips", "chicken and waffles", "fish sticks", "crab cake", "shrimp scampi",
+        "fried shrimp",
         "stuffed cabbage", "pierogi", "samosa", "empanada", "spinach dip", "deviled eggs", "creamed spinach", "green bean casserole",
         "baked ziti", "stuffed shells", "manicotti", "tuna casserole", "huevos rancheros", "philly cheesesteak", "pulled pork sandwich",
         "meatball sub", "reuben", "gumbo", "stromboli", "churro", "baklava",
@@ -311,6 +312,15 @@ enum EverydayPhrases {
     /// foods the catalogs have by them.
     static func isName(_ typed: [String]) -> Bool { names.contains(typed.map(stem).joined(separator: " ")) }
     private static let names: Set<String> = Set(all.map { $0.words.map(stem).joined(separator: " ") })
+
+    /// Whether the words are such a name with its last word still being typed: "mac and che".
+    static func isBegun(_ typed: [String]) -> Bool {
+        guard let last = typed.last, typed.count > 1 else { return false }
+        let before = typed.dropLast().map(stem)
+        return stemmed.contains { phrase in
+            phrase.words.count == typed.count && phrase.words[typed.count - 1].hasPrefix(last) && Array(phrase.stems.dropLast()) == before
+        }
+    }
 
     /// Whether a word is one of an everyday food's as it's written, whole: "curry", where "curr"
     /// is searched the same and may still be on its way to currants.
