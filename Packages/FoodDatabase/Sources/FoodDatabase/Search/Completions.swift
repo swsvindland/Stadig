@@ -66,6 +66,14 @@ public enum FoodCompletions {
     /// after it: "2 eg" goes on to "2 eggs", "slice of pi" to "slice of pizza" and "eggs on
     /// to" to "eggs on toast", where the search's foods alone offered "egg" and "cheese pizza".
     public static func suggest(_ query: String, from matches: [FoodMatch], limit: Int = options, label: (Food) -> String = \.name) -> [String] {
+        // A list typed with commas goes on by its last food, after what's before it:
+        // "eggs, bacon, to" is on its way to "eggs, bacon, toast".
+        if let comma = query.lastIndex(of: ",") {
+            let before = query[...comma].trimmingCharacters(in: .whitespaces).lowercased()
+            let food = query[query.index(after: comma)...].trimmingCharacters(in: .whitespaces)
+            guard !food.isEmpty, before.count > 1 else { return [] }
+            return suggest(food, from: matches, limit: limit, label: label).prefix(afterLead).map { "\(before) \($0)" }
+        }
         let whole = phrases(query, from: matches, limit: limit, label: label)
         let typed = phraseWords(query)
         // A chain with a food begun after it goes on to the ones it's known for that start
@@ -138,7 +146,12 @@ public enum FoodCompletions {
             // Left off is one of the things a food has, or nothing is offered.
             onward = sides.isEmpty && !lacking.contains(join) ? onward : sides
         }
-        guard !onward.isEmpty else { return whole }
+        // Each starts as the food typed after the lead does: after "chicken and", "rice and"
+        // goes on to rice and beans, not to chicken and rice again.
+        if joiners.contains(join), let start = typed[kept...].first.map(plain) { onward.removeAll { !plain($0).hasPrefix(start) } }
+        // With nothing to go on to, only what reads on from the whole: no "french fries" for
+        // "burger fries and a s".
+        guard !onward.isEmpty else { return whole.filter { goesOn($0, from: typed) } }
         let before = typed[..<kept].joined(separator: " ")
         // A few, each another food: past the likeliest, a food by its first letters says
         // little after "cup of", and "bag of chi" is chicken or chips, not three of chicken.
@@ -230,7 +243,12 @@ public enum FoodCompletions {
     /// Where the food still being typed starts, after an amount or after a food and what joins
     /// the next to it; nil where what's typed is one food from its first word.
     private static func lead(of typed: [String], in query: String) -> Int? {
-        if let join = typed.indices.dropFirst().dropLast().last(where: { joiners.contains(typed[$0]) }) { return join + 1 }
+        if let join = typed.indices.dropFirst().dropLast().last(where: { joiners.contains(typed[$0]) }) {
+            // Past "a" or "the": after "burger and a s" the food begun is "s", not "a s".
+            var at = join + 1
+            while at < typed.count - 1, ["a", "an", "the", "some"].contains(typed[at]) { at += 1 }
+            return at
+        }
         // The amount, as the search reads it: everything before its first word for the food.
         if let first = readQuery(query).words.first, let at = typed.firstIndex(of: first), at > 0, at < typed.count { return at }
         // A number as a word counts what follows once nothing typed so far is a name: "two eg".
@@ -298,7 +316,10 @@ public enum FoodCompletions {
         if phrases.isEmpty, tally.isEmpty {
             var names = Tally()
             for (rank, match) in matches.prefix(shown).enumerated() {
-                let words = Array(phraseWords(label(match.food)).prefix(3))
+                // Not the group a food is filed under, nor a name cut at "on" or "with".
+                var words = Array(phraseWords(label(match.food)).prefix(3))
+                while let last = words.last, connectors.contains(last) { words.removeLast() }
+                guard !words.isEmpty, words.map(plain) != ["fast", "foods"] else { continue }
                 names.add(Cut(words: words, whole: true, fit: 1), weight: 1 / (1 + Double(rank)), from: match)
             }
             phrases = names.ranked(without: wanted, limit: limit, anything: true)

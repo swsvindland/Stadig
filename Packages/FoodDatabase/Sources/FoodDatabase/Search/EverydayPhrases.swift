@@ -324,6 +324,12 @@ enum EverydayPhrases {
     static func isName(_ typed: [String]) -> Bool { names.contains(typed.map(stem).joined(separator: " ")) }
     private static let names: Set<String> = Set(all.map { $0.words.map(stem).joined(separator: " ") })
 
+    /// Whether a word, as searched, is what an everyday food's name ends on, which is the
+    /// food it is: the fries of french fries, the wings of chicken wings. Never what one
+    /// starts with: brown, green, grilled.
+    static func isHead(_ stem: String) -> Bool { heads.contains(stem) }
+    private static let heads: Set<String> = Set(all.compactMap { $0.words.last.map(stem) })
+
     /// Whether the words are such a name with its last word still being typed: "mac and che".
     static func isBegun(_ typed: [String]) -> Bool {
         guard let last = typed.last, typed.count > 1 else { return false }

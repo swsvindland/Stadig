@@ -1793,6 +1793,35 @@ let wordedAnotherWay: [(String, String)] = [
     ("unsweetened applesauce", "^Applesauce, canned, unsweetened"),
 ]
 
+/// A plate typed as a list, some of it with nothing between the foods or with commas only:
+/// the first food, and the second where the search is more than one. The last are one food
+/// all the same, or two as they were.
+let typedPlates: [(typed: String, first: String, second: String)] = [
+    ("eggs bacon and toast", "^Egg, whole, cooked", "^Bacon, cooked"), ("eggs, bacon, toast", "^Egg, whole, cooked", "^Bacon, cooked"),
+    ("eggs, bacon and toast", "^Egg, whole, cooked", "^Bacon, cooked"), ("burger fries and a shake", "^Hamburger", "^Potato, french fries"),
+    ("burger, fries, coke", "^Hamburger", "^Potato, french fries"), ("chicken rice and broccoli", "^Chicken, cooked", "^Rice, white"),
+    ("chicken, rice, broccoli", "^Chicken, cooked", "^Rice, white"), ("steak potatoes and green beans", "^Steak", "^Potatoes"),
+    ("salmon rice and asparagus", "^Fish, salmon", "^Rice, white"), ("oatmeal banana and peanut butter", "^(Cereals, oats|Oatmeal)", "^Bananas"),
+    ("turkey sandwich chips and an apple", "^Turkey sandwich", "^Potato chips"), ("pancakes eggs and sausage", "^Pancakes", "^Egg, whole, cooked"),
+    ("coffee toast and eggs", "^Coffee", "^Bread"), ("yogurt granola and berries", "^Yogurt", "^Cereal, granola"),
+    ("pork chop applesauce and green beans", "^Pork, chop", "^Applesauce"), ("pizza wings and soda", "^Pizza", "^Chicken wing"),
+    ("chicken broccoli and rice", "^Chicken, cooked", "^Broccoli"), ("steak eggs and toast", "^Steak", "^Egg, whole, cooked"),
+    ("bacon eggs and hash browns", "^Bacon, cooked", "^Egg, whole, cooked"),
+    ("rice beans and chicken", "^Beans and white rice", "^Chicken, cooked"), ("toast eggs and coffee", "^Bread", "^Egg, whole, cooked"),
+    ("banana yogurt and granola", "^Bananas", "^Yogurt"), ("tacos rice and beans", "^Taco", "^(Rice|Beans and)"),
+    ("salad chicken and bread", "^(Lettuce, salad|Salad)", "^Chicken, cooked"), ("lentil soup and bread", "^(Lentil soup|Soup, lentil)", "^Bread"),
+    ("chicken salad and crackers", "^Chicken or turkey salad", "^Crackers"), ("peanut butter and jelly", "^Peanut butter and jelly", ""),
+    ("mac and cheese", "^Macaroni or noodles with cheese", ""), ("grilled chicken and rice", "^Chicken, grilled", "^Rice, white"),
+    ("brown rice and chicken", "^Rice, brown", "^Chicken, cooked"), ("green beans and mashed potatoes", "^Beans, snap, green", "^Potato"),
+    ("sweet potato fries and a burger", "^Sweet potato", "^Hamburger"),
+    ("tomato soup and grilled cheese", "^(Tomato soup|Soup, tomato)", "^(Grilled cheese|Cheese)"),
+    ("ice cream and apple pie", "^Ice cream", "^Pie, apple"), ("peanut butter and banana sandwich", "^Peanut butter sandwich", ""),
+    ("bacon egg and cheese biscuit", "^(Fast foods, biscuit|Egg sandwich on biscuit)", ""),
+    ("turkey sandwich and chips", "^Turkey sandwich", "^Potato chips"), ("chicken breast and rice", "^Chicken breast", "^Rice, white"),
+    ("rice, brown", "^Rice, brown", ""), ("chicken breast, grilled, skinless", "^Chicken, broiler or fryers, breast", ""),
+    ("burger and fries", "^Hamburger", "^Potato, french fries"), ("fish and chips", "^Fish, fried", "^Potato, french fries"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -3521,6 +3550,32 @@ struct StaplesTests {
         // The survey's omelets are "with meat", whichever meat it was.
         #expect(catalog.top("ham and cheese omelet", 1) == ["Egg omelet or scrambled egg, with cheese and meat"])
         #expect(catalog.top("cheese omelet", 1).first?.hasSuffix("with cheese") == true)
+    }
+
+    @Test("a plate typed as a list is its foods")
+    func platesTypedAsLists() {
+        var missed: [String] = []
+        for (query, pattern, _) in typedPlates where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Plates typed as lists: \(typedPlates.count - missed.count) of \(typedPlates.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(typedPlates.count), "\(missed.joined(separator: " | "))")
+        let pairs = typedPlates.filter { !$0.second.isEmpty }
+        let second = pairs.filter { pair in catalog.top(pair.typed, 2).dropFirst().first.map { matches(pair.second, $0) } == true }
+        print("Plates typed as lists: the second food is second for \(second.count) of \(pairs.count)")
+        #expect(Double(second.count) >= 0.95 * Double(pairs.count))
+        // Three foods, in the order typed.
+        let plate = catalog.top("eggs bacon and toast", 3)
+        #expect(plate.count == 3 && plate[0].hasPrefix("Egg, whole") && plate[1].hasPrefix("Bacon") && plate[2].hasPrefix("Bread"))
+        #expect(catalog.top("eggs, bacon, toast", 3) == plate)
+        // One comma isn't a list, nor are the parts of a catalog's name.
+        #expect(catalog.top("rice, brown", 1).first?.hasPrefix("Rice, brown") == true)
+        #expect(catalog.top("chicken breast, grilled, skinless", 1).first?.contains("breast") == true)
+        // What an everyday name ends on is a food by itself; what one starts with isn't.
+        #expect(EverydayPhrases.isHead(stem("fries")) && EverydayPhrases.isHead(stem("wings")) && !EverydayPhrases.isHead(stem("grilled")))
+        // A name the catalog has stays one food: lentil soup, and a banana sandwich.
+        #expect(catalog.top("lentil soup and bread", 2).last?.hasPrefix("Bread") == true)
+        #expect(catalog.top("peanut butter and banana sandwich", 1) == ["Peanut butter sandwich"])
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

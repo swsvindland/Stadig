@@ -1190,6 +1190,57 @@ extension FoodCatalog {
         return names.allSatisfy { !searchedWords(words($0)).isEmpty } ? names : nil
     }
 
+    /// Foods typed with only commas between them, three or four: "eggs, bacon, toast". Each
+    /// an everyday food by its name, which the parts of a catalog's name aren't ("Chicken
+    /// breast, grilled, skinless"), nor is one comma a list ("rice, brown").
+    private static func foodsListed(_ typed: String) -> [String]? {
+        let said = typed.lowercased()
+        guard said.contains(","), !said.split(separator: " ").contains(where: { ["and", "&", "+", "with"].contains($0) }) else { return nil }
+        let names = said.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard names.count == 3 || names.count == 4, names.allSatisfy({ isFood(foodWords($0)) }) else { return nil }
+        return names
+    }
+
+    /// Whether the words are an everyday food's name, or one word that is a food by
+    /// itself: what such a name ends on (the fries of french fries, the wings of chicken
+    /// wings) or a word said for one ("burger" is a hamburger, "coke" a cola).
+    private static func isFood(_ words: [String]) -> Bool {
+        if EverydayPhrases.isName(words) { return true }
+        guard words.count == 1 else { return false }
+        return EverydayPhrases.isHead(stem(words[0])) || typedAlternatives.contains(words[0]) || shortNames[words[0]] != nil
+            || describingName(words[0]) != nil
+    }
+
+    /// The foods in one part of what was typed, where they were typed with nothing between
+    /// them: the eggs and the bacon of "eggs bacon and toast", the burger and the fries of
+    /// "burger fries and a shake". Each an everyday food by its name, the longest names
+    /// first ("turkey sandwich chips" is a turkey sandwich and chips), and only where the
+    /// words together name no food: not an everyday name, not a plain food's whole name,
+    /// and not what the first plain food found opens with ("Lentil soup", "Soup, lentil").
+    /// Without that, the words found whatever has them all: an egg burrito with bacon,
+    /// Burger King's fries, steak fries.
+    private func foodsApart(_ part: String, known: [String: Double]) -> [String] {
+        let said = Self.foodWords(part)
+        guard said.count > 1, said.count <= 5, !EverydayPhrases.isName(said), !isPlainName(said[...]) else { return [part] }
+        // What ends on a food that holds others is one of those: a banana sandwich.
+        if let last = said.last, Self.holders.contains(stem(last)) { return [part] }
+        var names: [String] = []
+        var at = 0
+        while at < said.count {
+            guard let end = ((at + 1)...said.count).reversed().first(where: { Self.isFood(Array(said[at..<$0])) }) else { return [part] }
+            names.append(said[at..<end].joined(separator: " "))
+            at = end
+        }
+        guard names.count > 1 else { return [part] }
+        // The words a plain food's name starts with, in any order, are its name.
+        let stems = Set(said.map(stem))
+        if let first = searchCatalog(part, known: known, out: nil).ranked.first(where: { !FoodText($0.food).branded }) {
+            let opening = FoodText(first.food).said.prefix { word in stems.contains { same(word, $0) } }
+            if stems.allSatisfy({ stem in opening.contains { same($0, stem) } }) { return [part] }
+        }
+        return names
+    }
+
     /// One of the foods typed together, as it's searched for alone: with salt, pepper is the
     /// black pepper in the other shaker; with chips, fish is fried and the chips are fries;
     /// with waffles, chicken is fried.
@@ -1386,7 +1437,8 @@ extension FoodCatalog {
         // crackers. Else as typed.
         // Not as typed, then: "steak and cheese" is a cheese steak sandwich, not the two.
         let reworded = search.typed != nil && shortened(typed)
-        guard search.brand.isEmpty, let foods = Self.foodsTyped(reworded ? search.text : typed) else { return nil }
+        let said = reworded ? search.text : typed
+        guard search.brand.isEmpty, var foods = Self.foodsTyped(said) ?? Self.foodsListed(said) else { return nil }
         let first = { (ranked: [Ranked]) in
             var named = search
             named.ranked = ranked
@@ -1394,7 +1446,7 @@ extension FoodCatalog {
         }
         // By the words as typed, then by each food as it's read alone: a typo corrected, a
         // short name written out.
-        let typedParts = foods.map { Self.foodWords($0) }
+        var typedParts = foods.map { Self.foodWords($0) }
         let cooked = Self.waysSaid(foods)
         // An everyday dish said with how it's cooked is the dish, found by its name: baked
         // mac and cheese is mac and cheese. One no plain food answers is its foods: fish and
@@ -1413,12 +1465,24 @@ extension FoodCatalog {
             }
             names = false
         }
-        let ways = foods.indices.filter { !Self.waysSaid([foods[$0]]).isEmpty }
+        var ways = foods.indices.filter { !Self.waysSaid([foods[$0]]).isEmpty }
         let more = { (words: String) in self.searchCatalog(words, known: known, out: chain?.place).ranked }
         switch together(typedParts, search.ranked, cooked: cooked, names: names, ways: ways, more: more) {
         case .one: return nil
         case .first(let ranked): return first(ranked)
         case .apart: break
+        }
+        // A plate typed as a list, some of it with nothing between the foods: "eggs bacon
+        // and toast" is the three. Once the whole is no one food: a bacon egg and cheese
+        // biscuit is.
+        if !reworded {
+            let apart = foods.flatMap { foodsApart($0, known: known) }
+            guard apart.count <= 4 else { return nil }
+            if apart.count > foods.count {
+                foods = apart
+                typedParts = foods.map { Self.foodWords($0) }
+                ways = foods.indices.filter { !Self.waysSaid([foods[$0]]).isEmpty }
+            }
         }
         var each = foods.map { searchCatalog(Self.alone($0, among: foods), known: known, out: chain?.place) }
         let parts = foods.indices.map { i in

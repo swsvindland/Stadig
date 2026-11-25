@@ -279,6 +279,18 @@ struct CompletionTests {
         #expect(diet.contains("diet dr pepper") && !diet.contains("diet dr"))
     }
 
+    @Test func aPlateBeingTypedGoesOnByItsLastFood() {
+        let first = { (typed: String) in FoodCompletions.suggest(typed, from: []).first }
+        // After foods with nothing between them, and after a list's commas.
+        #expect(first("eggs bacon and to") == "eggs bacon and toast")
+        #expect(first("eggs, bacon, to") == "eggs, bacon, toast")
+        // Past "a" or "the": the food begun is what follows it.
+        #expect(first("coffee and a ba") == "coffee and a banana")
+        #expect(FoodCompletions.suggest("burger and a s", from: []).isEmpty)
+        // What goes on starts as the food typed after the lead does, and nothing else is offered.
+        #expect(FoodCompletions.suggest("chicken and rice and", from: []).allSatisfy { $0.hasPrefix("chicken and rice and") })
+    }
+
     @Test func theCatalogsResultsComplete() {
         let found = Catalogs.usda.search("chick", limit: 60)
         #expect(FoodCompletions.suggest("chick", from: found).contains("chicken"))
