@@ -68,6 +68,13 @@ let alternatives: [String: [String]] = [
     // slaw coleslaw.
     "veggies": ["veggie", "vegetable"], "taters": ["tater", "potato"], "spuds": ["spud", "potato"], "spud": ["spud", "potato"],
     "cuke": ["cuke", "cucumber"], "cukes": ["cuke", "cucumber"], "slaw": ["slaw", "coleslaw"],
+    // And more of both: silverbeet is chard, rapeseed oil canola, groundnut oil peanut; a
+    // butty, a sarnie, a sanga and a sando are sandwiches, snags and bangers sausages, rashers
+    // bacon, bikkies cookies and a chook a chicken.
+    "silverbeet": ["silverbeet", "chard"], "rapeseed": ["rapeseed", "canola"], "groundnut": ["groundnut", "peanut"],
+    "butty": ["butty", "sandwich"], "sarnie": ["sarnie", "sandwich"], "sanga": ["sanga", "sandwich"], "sando": ["sando", "sandwich"],
+    "snags": ["snag", "sausage"], "bangers": ["banger", "sausage"], "rashers": ["rasher", "bacon"], "rasher": ["rasher", "bacon"],
+    "bikkies": ["bikkie", "cookie"], "bikkie": ["bikkie", "cookie"], "chook": ["chook", "chicken"],
     // Short forms that are the start of the word when typed, as a model may write them too.
     "avo": ["avo", "avocado"], "guac": ["guac", "guacamole"], "parm": ["parm", "parmesan"], "mozz": ["mozz", "mozzarella"],
     "marg": ["marg", "margarita"],
@@ -233,6 +240,8 @@ private let aloneMeanings: [String: (name: String, means: String)] = Dictionary(
         // And a few foods filed where the word alone doesn't reach: agave is the syrup, yeast
         // the baker's, a habanero a hot chili pepper.
         ("agave", "agave syrup"), ("yeast", "leavening yeast active dry"), ("habanero", "hot chili pepper red raw"),
+        // Cider is the drink, not the vinegar made from it (and see `regionalNames`).
+        ("cider", "hard cider"),
     ].map { (stem($0.0), ($0.0, $0.1)) })
 
 /// A word that only describes, typed with nothing after it, as the everyday food it most often
@@ -263,6 +272,10 @@ private let describingMeanings: [String: String] = Dictionary(
         // isn't groundcherries, a cuke a Coke, nugs nuts, sweets sweetbreads.
         ("mince", "ground beef"), ("sultanas", "golden raisins"), ("sultana", "golden raisins"), ("sweets", "candy"),
         ("spuds", "potatoes"), ("cuke", "cucumber"), ("cukes", "cucumber"), ("nugs", "chicken nuggets"),
+        // Snags aren't snap beans, bangers bagels, a butty butterfish or a cuppa a cupcake.
+        ("snags", "sausages"), ("bangers", "sausages"), ("butty", "sandwich"), ("sarnie", "sandwich"), ("sanga", "sandwich"),
+        ("cuppa", "tea"), ("rashers", "bacon"), ("toastie", "grilled cheese sandwich"), ("kumara", "sweet potato"),
+        ("granary", "multigrain bread"), ("bikkies", "cookies"), ("chook", "chicken"), ("roasties", "roast potatoes"),
     ])
 
 /// The everyday food such a word stands for, typed alone.
@@ -303,6 +316,16 @@ let shortNames: [String: String] = [
     "soda pop": "soda", "bicarbonate of soda": "baking soda", "bicarb": "baking soda", "bicarb soda": "baking soda",
     "wholemeal flour": "whole wheat flour", "cornflour": "cornstarch", "candy floss": "cotton candy",
     "fairy floss": "cotton candy", "tater salad": "potato salad",
+    // A toastie is a grilled cheese sandwich, granary bread multigrain, fizzy pop a soft
+    // drink and a cuppa tea. What's "on toast" in Britain with no more said: baked beans.
+    "cheese toastie": "grilled cheese sandwich", "toasted sandwich": "grilled cheese sandwich", "granary bread": "multigrain bread",
+    "granary toast": "multigrain toast", "fizzy pop": "soft drink", "cuppa tea": "tea", "bacon rashers": "bacon",
+    "beans on toast": "baked beans on toast", "chip butty": "french fries with bread",
+    // Avocado toast is the avocado and the toast, which is all the catalogs' plain foods have
+    // of it.
+    "avocado toast": "avocado and toast", "avo toast": "avocado and toast", "avocado on toast": "avocado and toast",
+    "avo on toast": "avocado and toast",
+    "kumara chips": "sweet potato chips", "kumara fries": "sweet potato fries",
     // Self raising flour is USDA's self-rising. Read so here, not kept as a name of the food:
     // "raising" would then be a word the catalog knows, and no longer raisins misspelt.
     "self raising flour": "self rising flour",
@@ -336,6 +359,54 @@ func shortNameBegun(_ typed: [String]) -> String? {
     return begun.count == 1 ? begun.first : nil
 }
 
+/// Where food goes by its British names.
+private let britishRegions: Set<String> = ["gb", "ie", "au", "nz", "za"]
+
+/// What a search or a model's name means where the phone is, by its words, where the same
+/// words mean another food elsewhere. The catalogs' plain foods are named in American English:
+/// their chips are crisps, their biscuits are eaten with gravy, their jelly is spread on toast
+/// and their cider is pressed apples. In Britain and Ireland chips are fries; there and in
+/// Australia, New Zealand and South Africa a biscuit is a cookie, jelly the gelatin dessert
+/// and currants the dried ones; in Australia and New Zealand lollies are candy and tomato
+/// sauce is ketchup. Only in the United States is cider the unfermented juice, and only there
+/// and in Canada is a flapjack a pancake, where a British one is an oat bar labels have.
+/// Chips in Australia are crisps and fries both, so only the "hot" ones are read as fries.
+private let regionalNames: [(regions: Set<String>, names: [String: String])] = [
+    (
+        ["gb", "ie"],
+        [
+            "chips": "french fries", "oven chips": "oven fries", "chunky chips": "french fries", "chip shop chips": "french fries",
+            "chippy chips": "french fries", "frozen chips": "french fries from frozen", "homemade chips": "french fries from fresh",
+            "cheesy chips": "french fries with cheese", "chips and cheese": "french fries with cheese",
+            "chips with cheese": "french fries with cheese", "portion of chips": "french fries", "bag of chips": "french fries",
+        ]
+    ),
+    (
+        britishRegions,
+        [
+            "hot chips": "french fries", "biscuit": "cookie", "biscuits": "cookies", "chocolate biscuit": "chocolate cookie",
+            "chocolate biscuits": "chocolate cookies", "jelly": "gelatin dessert", "sugar free jelly": "sugar free gelatin dessert",
+            "currants": "zante currants", "dried currants": "zante currants",
+            // With cheese, biscuits are crackers.
+            "cheese and biscuits": "cheese and crackers", "biscuits and cheese": "cheese and crackers",
+            "cheese biscuits": "cheese crackers",
+        ]
+    ),
+    (["au", "nz"], ["lollies": "candy", "lolly": "candy", "tomato sauce": "ketchup"]),
+    (["us"], ["cider": "apple cider", "ciders": "apple cider"]),
+    (["us", "ca"], ["flapjack": "pancakes", "flapjacks": "pancakes"]),
+]
+
+/// What the words mean in a region, if it's another food there than they name elsewhere.
+func regionalName(_ words: [String], in region: String?) -> String? {
+    guard let region, words.count <= 4 else { return nil }
+    let said = words.joined(separator: " ")
+    return regionalNames.lazy.filter { $0.regions.contains(region) }.compactMap { $0.names[said] }.first
+}
+
+/// Whether a word typed alone has a meaning of its own in a region.
+func isRegionalName(_ word: String, in region: String?) -> Bool { regionalName([word], in: region) != nil }
+
 /// Names that, typed alone, are also the word USDA files them under: "spaghetti" is its "Pasta,
 /// cooked", a "wrap" its tortilla and "meat" its beef. With another word they mean themselves:
 /// spaghetti squash, macaroni and cheese, a chicken wrap.
@@ -352,7 +423,8 @@ let typedAlternatives: Set<String> = [
     "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",
     "beetroots", "catsup", "lasagne", "decaf", "mince", "minced", "rocket", "sultana", "sultanas", "crisps", "swede", "swedes", "tinned",
     "wholemeal", "gammon", "mangetout", "capsicum", "capsicums", "rockmelon", "cornflour", "sweets", "goujons", "veggies", "taters", "spuds",
-    "spud", "cuke", "cukes", "slaw",
+    "spud", "cuke", "cukes", "slaw", "silverbeet", "rapeseed", "groundnut", "butty", "sarnie", "sanga", "sando", "snags", "bangers", "rashers",
+    "rasher", "bikkies", "bikkie", "chook",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
@@ -527,6 +599,37 @@ private let servedWords: Set<String> = [
     "topped", "served", "drizzled", "sprinkled", "garnished", "mixed", "tossed", "dressed", "paired", "covered", "smothered", "loaded", "filled",
 ]
 
+/// What a food is put on or over to be eaten, which is a food of its own beside it: the toast
+/// of "eggs on toast", the rice of "chili over rice", the bagel of "cream cheese on a bagel".
+private let basesServedOn: Set<String> = [
+    "toast", "bread", "bagel", "rice", "cracker", "crackers", "bun", "roll", "tortilla", "noodles", "pasta", "baguette", "pita", "naan",
+    "crumpet", "crumpets", "muffin", "waffle", "waffles", "pancake", "pancakes", "grits", "polenta", "quinoa", "couscous", "potatoes",
+    "lettuce", "greens", "salad",
+]
+
+/// Whether the words after an "on" or an "over" are such a food and no more: "toast", "a
+/// bagel", "brown rice", "a bed of rice". Not "the cob", "the side" or "easy".
+func servedOn(_ after: ArraySlice<String>) -> Bool {
+    let named = after.map { $0.lowercased().trimmingCharacters(in: .punctuationCharacters) }.filter {
+        !["a", "an", "the", "some", "bed", "of"].contains($0)
+    }
+    guard let last = named.last, (1...3).contains(named.count) else { return false }
+    return basesServedOn.contains(last)
+}
+
+/// A typed search with "on" or "over" before what the food is served on, said with "with",
+/// which is how what a food comes with is read: "eggs with toast" for "eggs on toast". Nil for
+/// any other search.
+func servedWith(_ typed: String) -> String? {
+    let said = typed.split(separator: " ").map(String.init)
+    guard
+        let at = said.indices.first(where: { i in
+            i > 0 && i + 1 < said.count && ["on", "over"].contains(said[i].lowercased()) && servedOn(said[(i + 1)...])
+        })
+    else { return nil }
+    return (said[..<at] + ["with"] + said[(at + 1)...]).joined(separator: " ")
+}
+
 /// A food as a model names it, apart from what it says comes with it: "Whole wheat toast with
 /// butter" is whole wheat toast, with butter beside; "Turkey sandwich on wheat bread" a turkey
 /// sandwich; "Chicken wings (buffalo)" chicken wings, said to be buffalo. The food is matched by
@@ -559,6 +662,10 @@ func seenName(_ said: String) -> (main: String, sides: [String], beside: [String
         let word = main[i].lowercased().trimmingCharacters(in: .punctuationCharacters)
         guard sideWords.contains(word) || word == "w" else { return false }
         if word == "with" || word == "w" { return true }
+        // Eggs on toast are eggs, however short the word: what follows is what they're on.
+        if word != "in", servedOn(main[(i + 1)...]) { return true }
+        // Fruit on the bottom is where a yogurt's fruit is, not what the fruit is on.
+        if word == "on", main[(i + 1)...].prefix(2).map({ $0.lowercased() }) == ["the", "bottom"] { return false }
         let before = words(main[..<i].joined(separator: " "))
         return before.count > 1 || (before.first.map { length($0) > 4 } ?? false)
     }) {

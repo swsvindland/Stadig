@@ -677,6 +677,8 @@ USDA_OTHER_NAMES = {
     "Cream, fluid, light (coffee cream or table cream)": ["Light cream", "Single cream", "Table cream"],
     "Oil, olive, salad or cooking": ["Extra virgin olive oil"],
     "Wheat flour, white, all-purpose, self-rising, enriched": ["Self rising flour"],
+    "Fat, beef tallow": ["Beef dripping", "Dripping"],
+    "Currants, zante, dried": ["Dried currants"],
     "Onions, yellow, sauteed": ["Caramelized onions"],
     "Corn, sweet, yellow, canned, cream style, regular pack": ["Creamed corn", "Cream style corn"],
     "Sweet potato, cooked, candied, home-prepared": ["Candied yams", "Candied sweet potatoes"],
@@ -911,6 +913,9 @@ FNDDS_REWORDED = (
     (re.compile(r"^Fish, white, mixed species"), "Fish, white fish"),
     (re.compile(r"^Fish, stick$"), "Fish sticks"),
     (re.compile(r"^Fish, pickled$"), "Pickled fish"),
+    # Named as the dish they are: a potato with no more said is the plain baked one, not the
+    # one roasted in fat.
+    (re.compile(r"^Potato, roasted$"), "Roasted potatoes"),
     (re.compile(r"^(Fruit salad), fresh or raw, (?:ex|in)cluding citrus fruits?, no dressing$"), r"\1"),
 )
 # The dishes that are whole foods put together or cooked: a salad without its dressing, eggs as
@@ -944,7 +949,8 @@ FNDDS_OTHER_NAMES = {
     "Coffee, Cafe Mocha": ["Mocha latte"],
     "Coffee, Iced Cafe Mocha": ["Iced mocha latte"],
     "Iced Coffee, brewed": ["Cold brew", "Cold brew coffee"],
-    "Coffee, brewed": ["Americano"],
+    "Coffee, brewed": ["Americano", "Long black"],
+    "Coffee, espresso": ["Short black"],
     "Tea, hot, with milk": ["Chai latte", "Chai tea latte", "Masala chai", "Matcha latte", "Tea latte"],
     "Tea, bubble": ["Boba", "Boba tea", "Milk tea"],
     "Tea, hot, hibiscus": ["Agua de Jamaica"],
@@ -995,6 +1001,12 @@ FNDDS_DISH_NAMES = {
     "Barbecue beef": ["Pulled beef"],
     "Fried summer squash, yellow or green": ["Fried zucchini", "Fried squash"],
     "Bao bun": ["Steamed bun", "Pork bun", "Steamed pork bun"],
+    # Three the survey files with foods the catalog takes from SR Legacy, which has none of
+    # them: the pressed juice sold as cider, potatoes roasted, and the popover a Yorkshire
+    # pudding is.
+    "Apple cider": ["Sweet cider"],
+    "Roasted potatoes": ["Roast potatoes"],
+    "Popover": ["Yorkshire pudding"],
     # Rice and beans with nothing else said are the plain ones, not the ones with meat.
     "Beans and white rice": ["Rice and beans", "Beans and rice"],
     # Neither source has an Arctic char: it's the trout, the fish it's closest to.

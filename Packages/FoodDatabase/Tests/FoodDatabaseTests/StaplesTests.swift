@@ -354,7 +354,7 @@ let forms: [(String, String)] = [
     ("grilled corn", "^Corn, sweet, .*cooked"),
     ("roasted sweet potato", "^Sweet potato, cooked, baked"),
     ("baked sweet potato", "^Sweet potato, cooked, baked"),
-    ("roasted potatoes", "^Potatoes, (roasted|baked)"),
+    ("roasted potatoes", "^Roasted potatoes"),
     ("raw spinach", "^Spinach, raw"),
     ("raw broccoli", "^Broccoli, raw"),
     ("raw carrots", "^Carrots, raw"),
@@ -484,7 +484,7 @@ let plates: [(String, String)] = [
     ("Sirloin steak, grilled", "^Beef, .*sirloin.*cooked"),
     ("Baked potato with sour cream", "^Potatoes, baked"),
     ("Mashed potatoes with gravy", "^Potato(es)?, mashed.*gravy"),
-    ("Roasted potatoes", "^Potatoes, (baked|roasted)"),
+    ("Roasted potatoes", "^Roasted potatoes"),
     ("Corn on the cob", "^Corn, sweet, .*cooked"),
     ("Steamed broccoli", "^Broccoli, cooked"),
     ("Asparagus spears, grilled", "^Asparagus, cooked"),
@@ -1238,7 +1238,7 @@ let ways: [(String, String)] = [
     ("pan fried pork chop", "^Pork.*chop.*(fried|cooked)"), ("pan seared steak", "^Steak, cooked"), ("pan seared scallops", "^Scallops, grilled"),
     ("oven roasted turkey", "^Turkey, whole, meat only, cooked, roasted"), ("oven roasted chicken", "^Chicken, baked, broiled, or roasted"),
     ("oven baked salmon", "^Fish, salmon, baked or broiled"), ("oven roasted vegetables", "^Vegetables, mixed.*cooked"),
-    ("oven roasted potatoes", "^Potatoes, baked, flesh, without salt"),
+    ("oven roasted potatoes", "^Roasted potatoes"),
     ("oven baked chicken breast", "^Chicken breast, baked, broiled, or roasted"), ("air fried chicken", "^Chicken, baked, broiled, or roasted"),
     ("air fryer chicken wings", "^Chicken wing, baked, broiled, or roasted"), ("air fried potatoes", "^Potatoes, baked, flesh, without salt"),
     ("deep fried shrimp", "^Shrimp, fried"), ("deep fried chicken", "^Chicken, fried, coated"), ("deep fried fish", "^Fish, fried"),
@@ -1327,7 +1327,7 @@ let cookedPairs: [(typed: String, first: String, second: String)] = [
     ("grilled chicken breast and brown rice", "^Chicken breast, grilled", "^Rice, brown.*cooked"),
     ("grilled chicken and vegetables", "^Chicken, grilled", "^Vegetables, mixed"),
     ("roasted chicken and vegetables", "^Chicken, baked, broiled, or roasted", "^Vegetables, mixed"),
-    ("baked chicken and roasted potatoes", "^Chicken, baked, broiled, or roasted", "^Potatoes, (baked|roasted)"),
+    ("baked chicken and roasted potatoes", "^Chicken, baked, broiled, or roasted", "^Roasted potatoes"),
     ("roasted chicken and potatoes", "^Chicken, baked, broiled, or roasted", "^Potatoes"),
     ("grilled shrimp and rice", "^Shrimp, grilled", "^Rice, white.*cooked"),
     ("grilled salmon and rice", "^Fish, salmon, grilled", "^Rice, white.*cooked"),
@@ -1418,6 +1418,80 @@ let otherNames: [(String, String)] = [
     ("marg", "^Margarita"), ("blt", "^Bacon, lettuce, tomato sandwich"), ("oj", "^Orange juice"), ("pb", "^Peanut butter"),
     ("pbj", "^Peanut butter and jelly sandwich"), ("apple crisp", "^Crisp, apple"), ("sweet potato", "^Sweet potato"),
     ("minced garlic", "(?i)garlic"), ("tater tots", "^Potato tots"), ("veggie burger", "^Veggie burgers"),
+    // More of both, and what's asked for at a British or an Australian table.
+    ("silverbeet", "^Chard"), ("kumara", "^Sweet potato"), ("snags", "^Sausage"), ("bangers", "^Sausage"), ("butty", "^Sandwich"),
+    ("sarnie", "^Sandwich"), ("bacon butty", "(?i)^bacon.*sandwich"), ("bacon sarnie", "(?i)^bacon.*sandwich"),
+    ("toastie", "^Grilled cheese sandwich"), ("cheese toastie", "^Grilled cheese sandwich"), ("cuppa", "(?i)tea"), ("rashers", "^Bacon"),
+    ("bacon rashers", "^Bacon"), ("long black", "^Coffee, brewed"), ("short black", "^Coffee, espresso"), ("yorkshire pudding", "^Popover"),
+    ("roast potatoes", "^Roasted potatoes"), ("dripping", "^Fat, beef tallow"), ("beef dripping", "^Fat, beef tallow"),
+    ("rapeseed oil", "^Oil, canola"), ("groundnut oil", "^Oil, peanut"), ("granary bread", "^Bread, multi-grain"),
+    ("fizzy pop", "^Soft drink"), ("chook", "^Chicken"), ("bikkies", "^Cookie"), ("stock", "^Soup, stock, chicken"),
+    ("dried currants", "^Currants, zante"), ("apple cider", "^Apple cider"), ("chicken sando", "(?i)chicken.*sandwich"),
+    // What only labels are named by: a plain food that happens to have the words comes after.
+    ("brown sauce", "(?i)^brown sauce$"), ("salad cream", "(?i)^salad cream$"), ("sausage roll", "(?i)^sausage rolls?$"),
+    ("baking soda", "^Leavening agents, baking soda"), ("taco seasoning", "^Seasoning mix, dry, taco"), ("bok choy", "^Cabbage, chinese"),
+]
+
+/// Words that mean one food in Britain, Ireland, Australia or New Zealand and another in the
+/// United States, by the region of the phone, with the food that comes first there; and the
+/// names around them that mean the same everywhere.
+let regionalWords: [(region: String, typed: String, first: String)] = [
+    ("gb", "chips", "^Potato, french fries"), ("ie", "chips", "^Potato, french fries"), ("us", "chips", "^Potato chips"),
+    ("au", "chips", "^Potato chips"), ("fr", "chips", "^Potato chips"), ("gb", "hot chips", "^Potato, french fries"),
+    ("au", "hot chips", "^Potato, french fries"), ("gb", "cheesy chips", "^Potato, french fries, with cheese"),
+    ("gb", "oven chips", "^Potato, french fries, from frozen, baked"), ("gb", "portion of chips", "^Potato, french fries"),
+    ("gb", "biscuits", "^Cookie"), ("ie", "biscuit", "^Cookie"), ("au", "biscuits", "^Cookie"), ("nz", "biscuits", "^Cookie"),
+    ("us", "biscuits", "^Biscuits"), ("fr", "biscuits", "^Biscuits"), ("gb", "2 biscuits", "^Cookie"), ("us", "2 biscuits", "^Biscuits"),
+    ("gb", "chocolate biscuits", "^Cookie, chocolate"), ("gb", "jelly", "^Gelatin dessert"), ("au", "jelly", "^Gelatin dessert"),
+    ("us", "jelly", "^Jellies"), ("gb", "sugar free jelly", "^Gelatin dessert, sugar free"), ("gb", "cider", "^Hard cider"),
+    ("au", "cider", "^Hard cider"), ("fr", "cider", "^Hard cider"), ("ca", "cider", "^Hard cider"), ("us", "cider", "^Apple cider"),
+    ("us", "ciders", "^Apple cider"), ("gb", "glass of cider", "^Hard cider"), ("us", "hard cider", "^Hard cider"),
+    ("gb", "currants", "^Currants, zante"), ("us", "currants", "^Currants, (red|european)"), ("au", "lollies", "^Candy$"),
+    ("nz", "tomato sauce", "^Ketchup|^Catsup"), ("au", "tomato sauce", "^Ketchup|^Catsup"), ("us", "tomato sauce", "^Tomato sauce"),
+    ("gb", "tomato sauce", "^Tomato sauce"), ("us", "flapjack", "^Pancakes"), ("ca", "flapjacks", "^Pancakes"),
+    ("gb", "flapjack", "(?i)flapjack"),
+    // The same everywhere.
+    ("gb", "tortilla chips", "^Tortilla chips"), ("gb", "chocolate chips", "^Chocolate chips"), ("gb", "potato chips", "^Potato chips"),
+    ("gb", "crisps", "^Potato chips"), ("gb", "biscuits and gravy", "^Biscuit with gravy"),
+    ("gb", "peanut butter and jelly", "^Peanut butter and jelly"), ("gb", "jelly beans", "(?i)jelly ?beans"),
+    ("gb", "cider vinegar", "^Vinegar, cider"), ("gb", "chips ahoy", "(?i)chips ahoy"),
+]
+
+/// The same for foods typed together, with the food that comes second.
+let regionalPairs: [(region: String, typed: String, first: String, second: String)] = [
+    ("gb", "steak and chips", "^Steak, cooked", "^Potato, french fries"), ("us", "steak and chips", "^Steak, cooked", "^Potato chips"),
+    ("gb", "egg and chips", "^Egg, whole, cooked, fried", "^Potato, french fries"), ("gb", "chips and gravy", "^Potato, french fries", "^Gravy"),
+    ("gb", "sausage and chips", "^Sausage", "^Potato, french fries"), ("gb", "burger and chips", "^Hamburger", "^Potato, french fries"),
+    ("gb", "fish and chips", "^Fish, fried", "^Potato, french fries"), ("us", "fish and chips", "^Fish, fried", "^Potato, french fries"),
+    // With salsa, guacamole or queso, chips are tortilla chips wherever they're eaten.
+    ("gb", "chips and salsa", "^Tortilla chips", "^Salsa"), ("us", "chips and salsa", "^Tortilla chips", "^Salsa"),
+    ("us", "chips and guac", "^Tortilla chips", "^Guacamole"), ("us", "chips and dip", "^Potato chips", "^Dip"),
+    ("gb", "jelly and ice cream", "^Gelatin dessert", "^Ice cream"), ("gb", "tea and biscuits", "(?i)tea", "^Cookie"),
+    ("gb", "cheese and biscuits", "^Cheese, cheddar", "^Crackers"), ("us", "cheese and biscuits", "^Cheese, cheddar", "^Biscuits"),
+]
+
+/// A food typed with what it's put on or over, which is the food and then what it's on; the
+/// short names of such pairs; and the names with an "on" or an "over" that are one food.
+let servedOnPairs: [(typed: String, first: String, second: String)] = [
+    ("eggs on toast", "^Egg, whole, cooked", "^Bread.*toasted"), ("egg on toast", "^Egg, whole, cooked", "^Bread.*toasted"),
+    ("scrambled eggs on toast", "^Egg, whole, cooked, scrambled", "^Bread.*toasted"),
+    ("poached egg on toast", "^Egg, whole, cooked, poached", "^Bread.*toasted"), ("beans on toast", "^Beans, baked", "^Bread.*toasted"),
+    ("cheese on toast", "^Cheese, cheddar", "^Bread.*toasted"), ("jam on toast", "^Jams", "^Bread.*toasted"),
+    ("peanut butter on toast", "^Peanut butter", "^Bread.*toasted"), ("butter on toast", "^Butter", "^Bread.*toasted"),
+    ("honey on toast", "^Honey", "^Bread.*toasted"), ("sardines on toast", "^Fish, sardine", "^Bread.*toasted"),
+    ("avocado toast", "^Avocados", "^Bread.*toasted"), ("avocado on toast", "^Avocados", "^Bread.*toasted"),
+    ("cream cheese on a bagel", "^Cheese, cream", "^Bagels"), ("peanut butter on a bagel", "^Peanut butter", "^Bagels"),
+    ("lox on a bagel", "(?i)lox", "^Bagels"), ("tuna on crackers", "^Fish, tuna", "^Crackers"),
+    ("cheese on crackers", "^Cheese, cheddar", "^Crackers"), ("butter on bread", "^Butter", "^Bread"),
+    ("eggs over rice", "^Egg, whole, cooked", "^Rice, white.*cooked"), ("salmon on rice", "^Fish, salmon", "^Rice, white.*cooked"),
+    ("chili over rice", "^Chili", "^Rice, white.*cooked"), ("pulled pork on a bun", "^Barbecue pork", "^Rolls, hamburger"),
+    ("hot dog on a bun", "^Hot dog", "^Rolls, hamburger"), ("steak on a salad", "^Steak, cooked", "^Lettuce, salad"),
+    ("chip butty", "^Potato, french fries", "^Bread"), ("bangers and mash", "^Sausage", "^Potato, mashed"),
+    // One food, whatever it's on or over.
+    ("eggs over easy", "^Egg, whole, cooked, fried", ""), ("corn on the cob", "^Corn, sweet.*cooked", ""),
+    ("egg sandwich on english muffin", "^Egg sandwich on English muffin", ""), ("turkey sandwich on wheat", "^Turkey sandwich on wheat", ""),
+    ("burger on a bun", "^Hamburger, on white bun", ""), ("pigs in a blanket", "^Pig in a blanket", ""),
+    ("fruit on the bottom yogurt", "(?i)yogurt", ""),
 ]
 
 let snacks: [(String, String)] = [
@@ -2754,6 +2828,92 @@ struct StaplesTests {
         // Two words that are one food there: the sugar, not a cookie with icing.
         #expect(catalog.respell("icing sugar").also["icing"] == ["powdered"])
         #expect(catalog.top("apple crisp", 1).first == "Crisp, apple")
+    }
+
+    @Test("a word that names another food in Britain or Australia is read by the phone's region, typed and named as a model would")
+    func byRegion() {
+        var opened: [String: FoodCatalog] = [:]
+        func catalog(_ region: String) -> FoodCatalog {
+            if let catalog = opened[region] { return catalog }
+            let catalog = FoodCatalog(usda: Catalogs.usdaURL, off: Catalogs.offURL, region: region)
+            opened[region] = catalog
+            return catalog
+        }
+        for seen in [false, true] {
+            var missed: [String] = []
+            for (region, query, pattern) in regionalWords {
+                let found = catalog(region)
+                let names = seen ? found.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : found.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) != true { missed.append("\(region) \(query): \(names.first ?? "nothing")") }
+            }
+            print(
+                "Words by region \(seen ? "as a model names them" : "typed"): \(regionalWords.count - missed.count) of \(regionalWords.count) first")
+            #expect(Double(missed.count) <= 0.05 * Double(regionalWords.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        var first = 0
+        var second = 0
+        for pair in regionalPairs {
+            let names = catalog(pair.region).top(pair.typed, 2)
+            if names.first.map({ matches(pair.first, $0) }) == true { first += 1 }
+            if names.dropFirst().first.map({ matches(pair.second, $0) }) == true { second += 1 }
+        }
+        print("Foods typed together by region: \(first) of \(regionalPairs.count) first, the second food second for \(second)")
+        #expect(first == regionalPairs.count && second == regionalPairs.count)
+        // A word on its way to one is read the same: "cide" is the cider of the place.
+        #expect(catalog("us").top("cide", 1) == ["Apple cider"] && catalog("gb").top("cide", 1) == ["Hard cider"])
+        #expect(catalog("gb").top("biscu", 1) == ["Cookie"])
+        // What a model names so is logged as surely as the food by its American name.
+        let fries = catalog("gb").candidates(name: "Chips", brand: nil).first
+        #expect(fries?.food.name == "Potato, french fries" && fries?.named == true)
+        // The words alone, with no region to read them by.
+        #expect(regionalName(["chips"], in: "gb") == "french fries" && regionalName(["chips"], in: "us") == nil)
+        #expect(regionalName(["chips"], in: "au") == nil && regionalName(["hot", "chips"], in: "au") == "french fries")
+        #expect(regionalName(["chips"], in: nil) == nil && regionalName(["cider"], in: "us") == "apple cider")
+    }
+
+    @Test("a food typed with what it's put on or over is the food, then what it's on")
+    func servedOnSomething() {
+        for seen in [false, true] {
+            var missed: [String] = []
+            for (query, pattern, _) in servedOnPairs {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) != true { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print(
+                "Foods on or over another \(seen ? "as a model names them" : "typed"): \(servedOnPairs.count - missed.count) of \(servedOnPairs.count) first"
+            )
+            #expect(Double(missed.count) <= 0.05 * Double(servedOnPairs.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        let pairs = servedOnPairs.filter { !$0.second.isEmpty }
+        let second = pairs.filter { pair in catalog.top(pair.typed, 2).dropFirst().first.map { matches(pair.second, $0) } == true }
+        print("Foods on or over another: what it's on is second for \(second.count) of \(pairs.count)")
+        #expect(Double(second.count) >= 0.95 * Double(pairs.count))
+        // The words: only before what food is served on, and not "in".
+        #expect(servedWith("eggs on toast") == "eggs with toast" && servedWith("chili over rice") == "chili with rice")
+        #expect(servedWith("cream cheese on a bagel") == "cream cheese with a bagel")
+        #expect(servedWith("corn on the cob") == nil && servedWith("eggs over easy") == nil && servedWith("on toast") == nil)
+        #expect(seenName("Eggs on toast").main == "Eggs" && seenName("Jam on toast").beside == ["toast"])
+        #expect(seenName("Corn on the cob").main == "Corn on the cob")
+        #expect(seenName("Fruit on the bottom yogurt").main == "Fruit on the bottom yogurt")
+        // A model's avocado toast is two foods, so neither is logged without a look.
+        #expect(catalog.candidates(name: "Avocado toast", brand: nil).first?.named == false)
+        // What's said for a food instead of its name is read whole before it's taken apart.
+        #expect(catalog.candidates(name: "Hamburger with cheese", brand: nil).first?.food.name.hasPrefix("Cheeseburger") == true)
+        #expect(FoodCatalog.food(in: "Beans on toast") == "baked beans")
+        // And a word that stands for a food is judged as that food: roasties aren't something roasted.
+        #expect(FoodCatalog.food(in: "Roasties") == "roast potatoes" && FoodCatalog.food(in: "Roast potatoes") == "Roast potatoes")
+        #expect(catalog.candidates(name: "Roasties", brand: nil).first?.food.name == "Roasted potatoes")
+    }
+
+    @Test("roasted potatoes are the ones roasted in fat, and a potato with no more said the baked one")
+    func roastedPotatoes() {
+        #expect(catalog.top("roasted potatoes", 1) == ["Roasted potatoes"] && catalog.top("roast potatoes", 1) == ["Roasted potatoes"])
+        #expect(catalog.top("potato", 1).first?.hasPrefix("Potatoes, baked") == true)
+        #expect(catalog.top("potatoes", 1).first?.hasPrefix("Potatoes, baked") == true)
+        #expect(catalog.top("baked potato", 1).first?.hasPrefix("Potatoes, baked") == true)
+        // A way of cooking no plain food is named by is still the nearest one cooked so.
+        #expect(catalog.top("roasted chicken", 1) == ["Chicken, baked, broiled, or roasted"])
+        #expect(catalog.top("roasted broccoli", 1).first?.hasPrefix("Broccoli, cooked") == true)
     }
 
     @Test("a search just made is found again without searching, for the same foods of the person's own")

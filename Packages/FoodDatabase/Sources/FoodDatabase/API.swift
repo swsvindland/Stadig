@@ -111,10 +111,19 @@ public final class FoodCatalog: Sendable {
     /// "Cereal with milk") and from what it puts in brackets, with a word for the food's form
     /// kept ("fresh Orange juice" for "Orange juice (fresh squeezed)"). Its last word names the
     /// food, which the last word of the whole name needn't.
-    /// What people say for a food instead of its name is that name: "oj" is orange juice.
+    /// What people say for a food instead of its name is that name: "oj" is orange juice, and
+    /// "roasties" are roast potatoes, not something roasted.
     public static func food(in name: String) -> String {
-        let main = seenName(name).main
-        return shortNames[tokens(main).joined(separator: " ")] ?? main
+        let main = seenName(named(name, in: nil)).main
+        let said = tokens(main)
+        return shortNames[said.joined(separator: " ")] ?? (said.count == 1 ? describingName(said[0]) : nil) ?? main
+    }
+
+    /// A name as it's read where the whole of it is what people say for a food instead of its
+    /// name, there or anywhere: "beans on toast" are baked beans on toast.
+    static func named(_ name: String, in region: String?) -> String {
+        let said = tokens(name)
+        return regionalName(said, in: region) ?? shortNames[said.joined(separator: " ")] ?? name
     }
 
     /// A food by id: "usda:171287", "off:00016000275287", and the earlier "off:" forms that leave out

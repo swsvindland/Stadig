@@ -134,6 +134,13 @@ private let keptWords = stems("canned frozen dried dehydrated")
 /// white, steamed (Navajo)", "Blueberries, wild, raw (Alaska Native)".
 private let traditionWords = stems("navajo hopi apache alaska shoshone bannock plains")
 
+/// Names that only labels are, where the plain foods with the words are other foods: USDA's
+/// "Rice, brown, with vegetables, soy-based sauce" isn't brown sauce, its poppyseed dressing
+/// that says "creamy" isn't salad cream, nor its "Honey roll sausage" a sausage roll. Those
+/// come after the labels named so. A list, not a rule: nothing in a name tells such a food
+/// from "Tomato products, canned, paste", which is tomato paste.
+private let onlyLabelled: Set<[String]> = Set(["brown sauce", "salad cream", "sausage roll"].map { words($0).map(stem) })
+
 /// The everyday variety when a food doesn't name one ("rice" is usually long-grain).
 private struct Usual {
     let marks: [String]
@@ -260,6 +267,8 @@ private let everydayVarieties: [String: Usual] = [
     "sardine": Usual(["canned"], ["fresh", "raw"]),
     // Raisins are the dark seedless ones, not USDA's seeded.
     "raisin": Usual(["dark"], ["golden", "seeded"]),
+    // Stock with no more said is chicken stock.
+    "stock": Usual(["chicken"], ["fish", "beef", "vegetable", "cube"]),
     "anchov": Usual(["canned"], ["fresh", "raw", "paste"]),
     "soup": Usual(["canned"], "dry mix dehydrated homemade home stock broth bouillon cube powder ramen".split(separator: " ").map(String.init)),
     "stew": Usual(["canned"], ["chuck", "meat", "raw"]),
@@ -1836,8 +1845,17 @@ func scoreFoods(
                     ease.uncooked = true
                     fits = true
                 }
-                // Where no food is spared the word, it says which food is meant.
-                eases[word] = fits && !listing.contains(where: \.leads) ? ease : Ease(said, listed: true)
+                // Where no food is spared the word, it says which food is meant. Nor is any
+                // where a plain food is named by exactly the way and the food: "Roasted
+                // potatoes" are the ones roasted in fat, not the baked potato.
+                // The way as it was said, not another word for it: barbecued chicken is
+                // grilled, where "Barbecue chicken" is the dish in its sauce.
+                let exactly = plain.contains { food in
+                    let words = food.text.said
+                    return words.count == target.count
+                        && words.indices.dropLast().contains { i in same(words[i], said) && rest.contains { starts(words[i + 1], stem($0)) } }
+                }
+                eases[word] = fits && !exactly && !listing.contains(where: \.leads) ? ease : Ease(said, listed: true)
             }
         }
     }
@@ -2262,6 +2280,8 @@ func scoreFoods(
     // such a food leads with the words, so is any dish that says more: green beans before
     // Szechuan-style ones.
     let plainly = plain.contains { $0.match.leads || filedWhole($0.match) }
+    // What only labels are named by (see `onlyLabelled`).
+    let labelled = onlyLabelled.contains(saidStems)
     var ranked: [Ranked] = []
     let maker = seen.brand.isEmpty ? [] : words(seen.brand).map(stem)
     let phrased = rows.contains { !$0.text.branded && $0.match.missing == 0 && $0.match.asSaid }
@@ -2348,6 +2368,9 @@ func scoreFoods(
             let itself = match.headsWhole || (leads && !match.heads) || match.kind
             if !itself || (food && match.mixed.contains(where: more)) || (plainly && match.extra.contains(where: more)) { score -= 1.5 }
         }
+        // By enough to follow such a label in a model's candidates too, where a label has no
+        // more than its name to go by.
+        if labelled, !row.text.branded, !row.called { score -= 1.25 }
         // Every food of a brand searched for alone answers it as well as any other.
         if alone && row.mine { score = 3 }
         // Not half typed for a brand that isn't sold here: "dal" isn't Dallmayr's coffee begun.

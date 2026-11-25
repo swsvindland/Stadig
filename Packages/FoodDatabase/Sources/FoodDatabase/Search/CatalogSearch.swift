@@ -454,6 +454,12 @@ extension FoodCatalog {
         return nil
     }
 
+    /// Whether the whole of a search is what's said for something else, here or anywhere.
+    private func shortened(_ typed: String) -> Bool {
+        let said = tokens(typed)
+        return regionalName(said, in: region) != nil || shortNames[said.joined(separator: " ")] != nil
+    }
+
     func respell(_ query: String, typing: Bool = true, meant: [String: String] = [:]) -> Respelt {
         let scalars = plainScalars(query)
         let tokens = scanTokens(scalars)
@@ -479,7 +485,10 @@ extension FoodCatalog {
         // labels have "fire" in their names, and "refried bens" refried beans.
         let namedTokens = tokens.indices.filter(named)
         // Not a word with a meaning of its own, typed alone: a "cuke" is a cucumber, not a Coke.
-        let own = namedTokens.count == 1 && tokens.count == 1 && (describingName(tokens[0].word) != nil || shortNames[tokens[0].word] != nil)
+        let own =
+            namedTokens.count == 1 && tokens.count == 1
+            && (describingName(tokens[0].word) != nil || shortNames[tokens[0].word] != nil || aloneName(tokens[0].word) != nil
+                || isRegionalName(tokens[0].word, in: region))
         if typing, !own, let (at, word) = EverydayPhrases.misspelt(namedTokens.map { tokens[$0].word }) {
             let token = tokens[namedTokens[at]]
             // After other words of the food it's a word, known only as written: the "saue" of
@@ -509,7 +518,8 @@ extension FoodCatalog {
         // to, where the words begin an everyday name: "mac and chees".
         let short = tokens.map(\.word)
         let begun = typing && tokens.last?.end == scalars.count && EverydayPhrases.isBegun(short)
-        if let name = shortNames[short.joined(separator: " ")] ?? (begun ? shortNameBegun(short) : nil) {
+        // First what the words mean where the phone is: in Britain chips are fries.
+        if let name = regionalName(short, in: region) ?? shortNames[short.joined(separator: " ")] ?? (begun ? shortNameBegun(short) : nil) {
             var read = respell(name, typing: false)
             read.typed = read.typed ?? query
             return read
@@ -574,7 +584,9 @@ extension FoodCatalog {
             let described =
                 tokens.count == 1
                 ? describingName(alone.word) ?? likely.flatMap { length(alone.word) >= 4 ? describingName($0) : nil } : nil
-            if let meant = aloneName(word) ?? described {
+            // First what the word means where the phone is, whole or on its way: in Britain
+            // "2 biscuits" are cookies.
+            if let meant = regionalName([word], in: region) ?? aloneName(word) ?? described {
                 write(meant, over: alone.start..<alone.end)
                 text += scalars[copied...]
                 // Read as any search of those words is: a bell pepper is USDA's sweet pepper,
@@ -952,6 +964,9 @@ extension FoodCatalog {
     private static let beside: [(food: String, with: String, means: String)] = [
         ("pepper", "salt", "black pepper"), ("fish", "chips", "fried fish"), ("chips", "fish", "french fries"),
         ("chicken", "waffles", "fried chicken"),
+        // With salsa, guacamole or queso, chips are tortilla chips, wherever chips are fries.
+        ("chips", "salsa", "tortilla chips"), ("chips", "guacamole", "tortilla chips"), ("chips", "guac", "tortilla chips"),
+        ("chips", "queso", "tortilla chips"),
     ]
 
     /// A flavour is the food of that flavour: the foods found whose names join the two as
@@ -1046,7 +1061,11 @@ extension FoodCatalog {
     /// found together. Nil where the words are one food (see `Together`) or a brand's, and
     /// where a part alone is no plain food: "salt and vinegar chips", "surf and turf".
     private func searchApart(_ typed: String, _ search: CatalogSearch, known: [String: Double]) -> CatalogSearch? {
-        guard search.brand.isEmpty, let foods = Self.foodsTyped(typed) else { return nil }
+        // As what was typed is read, where the whole of it is said for something else: avocado
+        // toast is avocado and toast, and in Britain cheese and biscuits are cheese and
+        // crackers. Else as typed.
+        let reworded = search.typed != nil && shortened(typed) ? Self.foodsTyped(search.text) : nil
+        guard search.brand.isEmpty, let foods = reworded ?? Self.foodsTyped(typed) else { return nil }
         let first = { (ranked: [Ranked]) in
             var named = search
             named.ranked = ranked
@@ -1108,8 +1127,10 @@ extension FoodCatalog {
     /// as typed or as read (its "Pasta with meat sauce", its "Biscuit with gravy"), however
     /// it's said to be cooked.
     private func searchWith(_ search: CatalogSearch, known: [String: Double]) -> CatalogSearch? {
-        guard tokens(search.text).contains("with") else { return nil }
-        let read = seenName(search.text)
+        // What a food is served on is what it comes with: eggs on toast, chili over rice.
+        let typed = servedWith(search.text) ?? search.text
+        guard tokens(typed).contains("with") else { return nil }
+        let read = seenName(typed)
         guard !read.sides.isEmpty, !isPlainName(Self.foodWords(search.text, fixes: search.fixes)[...]) else { return nil }
         if let first = search.ranked.first, first.called || first.calling { return nil }
         var with = searchCatalog(read.main, known: known, out: nil, sides: read.sides, beside: read.beside)
@@ -1120,7 +1141,7 @@ extension FoodCatalog {
         let text = FoodText(first.food)
         let without = wordsWithout(text)
         var beside: [Ranked] = []
-        for food in Self.besideTyped(search.text) {
+        for food in Self.besideTyped(typed) {
             // The salad "with assorted vegetables, no dressing" doesn't have the dressing.
             let named = Self.foodWords(food).filter(read.beside.contains)
             let lacks = named.contains { word in without.contains { same($0, stem(word)) } }
@@ -1144,6 +1165,9 @@ extension FoodCatalog {
                 continue
             } else if word == "and" || word == "&" || word == "+" {
                 foods.append([])
+            } else if foods[foods.count - 1].isEmpty, ["a", "an", "the", "some"].contains(word) {
+                // "A bun" is a bun.
+                continue
             } else if word.hasSuffix(",") {
                 foods[foods.count - 1].append(word.dropLast())
                 foods.append([])
@@ -1421,7 +1445,7 @@ extension FoodCatalog {
         // each one's candidates, none of them named by the whole, so nothing is logged for
         // the two without a look.
         var whole = true
-        if brand.isEmpty, let both = candidatesTogether(seenName(said).main, ranked, personal: personal, known: known) {
+        if brand.isEmpty, let both = candidatesTogether(seenName(Self.named(said, in: region)).main, ranked, personal: personal, known: known) {
             ranked = both.ranked
             whole = !both.apart
         }
@@ -1433,6 +1457,9 @@ extension FoodCatalog {
     /// The candidates in order. With `out`, the food as such a place serves it comes first (see
     /// `RankHints.out`).
     private func rankCandidates(name said: String, brand: String, personal: [PersonalFood], known: [String: Double], out: String?) -> [Ranked] {
+        // What's said for a food instead of its name is read by the whole of it first: a
+        // "hamburger with cheese" is a cheeseburger, not a hamburger that comes with cheese.
+        let said = brand.isEmpty ? Self.named(said, in: region) : said
         // What a model says comes with a food or about it ("toast with butter", "yogurt
         // (nonfat)") is kept apart from its name: the food is found by its own words. A brand's
         // product keeps its whole name.
