@@ -29,6 +29,11 @@ let alternatives: [String: [String]] = [
     "fresh": ["fresh", "raw"],
     // The herb is its spearmint and peppermint.
     "mint": ["mint", "spearmint", "peppermint"],
+    // One french fry is its fries.
+    "fry": ["fry", "fries"],
+    // And in the plural, as they're asked for by the round.
+    "sodas": ["soda", "carbonated"], "cokes": ["coke", "cola"], "lagers": ["lager", "beer"], "pilsners": ["pilsner", "beer"],
+    "stouts": ["stout", "beer"], "portobellos": ["portobello", "portabella"], "chillis": ["chilli", "chili"], "beetroots": ["beetroot", "beet"],
     // USDA's kiwi is "Kiwifruit".
     "kiwi": ["kiwi", "kiwifruit"], "kiwis": ["kiwi", "kiwifruit"],
     // Ribs are its spareribs and backribs.
@@ -128,6 +133,9 @@ let everydayNames: [(said: [String], means: [(at: Int, word: String)])] =
         (["basmati", "rice"], [(0, "white")]),
         // A tuna steak is its fresh tuna, not the canned; a burger patty its ground beef patty.
         (["tuna", "steak"], [(1, "fresh")]),
+        // Sashimi is the fish raw.
+        (["salmon", "sashimi"], [(1, "raw")]),
+        (["tuna", "sashimi"], [(1, "raw")]),
         (["hamburger", "patty"], [(0, "ground")]),
         (["burger", "patty"], [(0, "ground")]),
         // Cherry, grape, roma and plum tomatoes are its red ones; a red or white onion its
@@ -202,6 +210,10 @@ let shortNames: [String: String] = [
     "cayenne pepper": "spices pepper red cayenne", "cayenne": "spices pepper red cayenne",
     // A cheese stick is string cheese.
     "cheese stick": "string cheese", "cheese sticks": "string cheese",
+    // Dolmas are its stuffed grape leaves, and a few dishes it spells its own way.
+    "dolmas": "stuffed grape leaves", "dolma": "stuffed grape leaves", "dolmades": "stuffed grape leaves",
+    "egg foo young": "egg foo yung", "arroz con gandules": "arroz con grandules", "tres leches": "tres leche cake",
+    "tres leches cake": "tres leche cake",
     // Mac and cheese is macaroni and cheese, not the one named "Easy Mac".
     "mac and cheese": "macaroni and cheese", "mac n cheese": "macaroni and cheese", "mac cheese": "macaroni and cheese",
 ]
@@ -219,7 +231,8 @@ let typedAlternatives: Set<String> = [
     "bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts", "skim", "bbq", "coke", "burger", "burgers", "rib", "ribs", "unsalted",
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
-    "venison", "calamari", "crawfish", "fresh", "mint",
+    "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",
+    "beetroots",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

@@ -923,6 +923,37 @@ let cookedFoods: [(String, String)] = [
     ("cooked edamame", "^Edamame"),
 ]
 
+/// Dishes known by their own names, from other kitchens than the diner's, with a few plurals: a
+/// twelfth list. The last patterns only ask for a food of that name, where the catalogs have
+/// no plain one.
+let world: [(String, String)] = [
+    ("pho", "^Soup, pho"), ("bibimbap", "^Bibimbap"), ("tikka masala", "^Chicken curry"), ("chicken tikka masala", "^Chicken curry"),
+    ("butter chicken", "^Chicken curry"), ("saag paneer", "^Palak Paneer"), ("palak paneer", "^Palak Paneer"), ("samosa", "^Samosa"),
+    ("falafel", "^Falafel"), ("gyro", "^Gyro sandwich"), ("pierogi", "^Pierogi"), ("borscht", "^Soup, borscht"), ("ramen", "^Ramen bowl"),
+    ("miso soup", "^Soup, miso"), ("empanada", "^Empanada"), ("arepa", "(?i)arepa"), ("pupusa", "^Pupusa"), ("tamale", "^Tamale"),
+    ("churro", "^Churros"), ("flan", "^Flan"), ("tres leches", "^Cake, tres leche"), ("baklava", "^Baklava"), ("tiramisu", "^Tiramisu"),
+    ("gelato", "^Gelato"), ("crepe", "^Crepe"), ("quiche", "^Quiche"), ("ratatouille", "^Ratatouille"), ("paella", "^Paella"),
+    ("gazpacho", "^Soup, gazpacho"), ("plantains", "^Plantains"), ("fried plantains", "^Plantains, .*fried"), ("congee", "^Congee"),
+    ("bao", "^Bao bun"), ("potstickers", "^Wonton, dumpling or pot sticker"), ("gyoza", "^Wonton, dumpling or pot sticker"),
+    ("dumplings", "^Wonton, dumpling or pot sticker"), ("lo mein", "^Lo mein"), ("chow mein", "^Chow mein"),
+    ("kung pao chicken", "^Kung pao chicken"), ("general tso chicken", "^General Tso chicken"), ("sweet and sour pork", "^Sweet and sour pork"),
+    ("sweet and sour chicken", "^Sweet and sour chicken"), ("egg foo young", "^Egg foo yung"),
+    ("teriyaki chicken", "^Chicken or turkey with teriyaki"), ("tteokbokki", "^Dukboki"), ("biryani", "^Biryani"),
+    ("chicken biryani", "^Biryani with chicken"), ("naan", "^Bread, naan"), ("roti", "^Bread, chapati or roti"),
+    ("chapati", "^Bread, chapati or roti"), ("dosa", "^Dosa"), ("idli", "^Idli"), ("pakora", "^Pakora"), ("chai", "^Tea, hot, with milk"),
+    ("masala chai", "^Tea, hot, with milk"), ("hummus", "^Hummus"), ("tabbouleh", "^Tabbouleh"), ("kebab", "shish kabob"),
+    ("shish kebab", "shish kabob"), ("spanakopita", "^Spanakopita"), ("dolmas", "rape leaves"), ("stuffed grape leaves", "rape leaves"),
+    ("gnocchi", "^Gnocchi"), ("carbonara", "^Pasta with cream sauce and meat"), ("bruschetta", "^Bruschetta"), ("minestrone", "^Soup, minestrone"),
+    ("ceviche", "^Ceviche"), ("cubano", "^Cuban sandwich"), ("pozole", "^Soup, pozole"), ("menudo", "^Menudo"), ("carnitas", "^Pork, carnitas"),
+    ("chilaquiles", "^Chilaquiles"), ("huevos rancheros", "^Huevos rancheros"), ("enchiladas", "^Enchilada"), ("chile relleno", "^Chiles rellenos"),
+    ("mole", "^Mole sauce"), ("horchata", "^Horchata"), ("pan dulce", "^Pan dulce"), ("arroz con gandules", "Arroz con grandules"),
+    ("wonton soup", "^Soup, wonton"), ("egg drop soup", "^Soup, egg drop"), ("hot and sour soup", "^Soup, hot and sour"),
+    ("salmon sashimi", "^Fish, salmon, .*raw"), ("tuna sashimi", "^Fish, tuna, .*raw"), ("raita", "(?i)raita"), ("mapo tofu", "(?i)ma.?po"),
+    ("kimchi", "^(Kimchi|Cabbage, kimchi)"), ("edamame", "^Edamame"), ("udon", "(?i)udon"), ("sodas", "^(Soft drink|Beverages, carbonated)"),
+    ("cokes", "^(Soft drink, cola|Beverages, carbonated, cola)"), ("lagers", "(?i)beer"), ("french fry", "^Potato(es)?, french fri"),
+    ("sweet potato fry", "^Sweet potato fries"), ("tzatziki", "(?i)tzatziki"), ("shawarma", "(?i)shawarma"), ("bulgogi", "(?i)bulgogi"),
+]
+
 /// Breakfast, snacks, wraps and what's drunk from a can, as they're logged through a day: each
 /// with a pattern for the plain food that should come first ("oatmeal with milk" FNDDS's oatmeal
 /// made with milk, "pretzels" the hard ones, "shredded chicken" cooked chicken, "sparkling
@@ -2012,6 +2043,38 @@ struct StaplesTests {
         #expect(rankSearch("cooked lamb", lamb).first?.food.name == "Lamb, ground, cooked, broiled")
         #expect(catalog.top("cooked spaghetti", 1).first.map { matches("^Pasta, cooked", $0) } == true)
         #expect(catalog.top("spaghetti squash", 1).first.map { matches("(?i)spaghetti", $0) } == true)
+    }
+
+    @Test("a dish known by its own name comes first typed and named as a model would")
+    func worldBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in world {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Dishes by their own names \(seen ? "as a model names them" : "typed"): \(first) of \(world.count) first")
+            // The last eight are packaged foods' names, which the bundled catalog alone hasn't.
+            #expect(
+                Double(first) >= (Catalogs.hasOFF ? 0.95 : 0.85) * Double(world.count),
+                "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // An everyday food's whole name has no typo in it, however few foods have the word.
+        #expect(EverydayPhrases.isName(["raita"]) && EverydayPhrases.isName(["mapo", "tofu"]) && !EverydayPhrases.isName(["mapo"]))
+        #expect(catalog.top("raita", 1).first.map { matches("(?i)ratatouille", $0) } != true)
+        #expect(catalog.top("mapo tofu", 1).first.map { matches("(?i)mayo", $0) } != true)
+        // A word that is a food's whole name isn't another's begun: roti isn't rotisserie chicken.
+        #expect(catalog.top("roti", 1).first.map { matches("^Bread, chapati or roti", $0) } == true)
+        // The plural of a word the catalogs word their own way is read as the word is.
+        #expect(searchForms("sodas").contains("carbonated") && searchForms("cokes").contains("cola") && searchForms("lagers").contains("beer"))
+        #expect(!searchForms("mints").contains("spearmint"))
+        // One french fry is french fries, and sashimi the fish raw.
+        #expect(catalog.top("french fry", 1).first.map { matches("^Potato(es)?, french fri", $0) } == true)
+        #expect(catalog.top("salmon sashimi", 1).first.map { matches("^Fish, salmon, .*raw", $0) } == true)
+        // As a model spells them, where USDA spells them its own way.
+        #expect(catalog.candidates(name: "Egg foo young", brand: nil).first?.food.name.hasPrefix("Egg foo yung") == true)
+        #expect(catalog.candidates(name: "Dolmas", brand: nil).first.map { matches("rape leaves", $0.food.name) } == true)
     }
 
     @Test("a product is first before its name is typed out")

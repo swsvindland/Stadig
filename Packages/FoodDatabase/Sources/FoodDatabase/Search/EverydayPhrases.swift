@@ -118,6 +118,12 @@ enum EverydayPhrases {
         "stuffed cabbage", "pierogi", "samosa", "empanada", "spinach dip", "deviled eggs", "creamed spinach", "green bean casserole",
         "baked ziti", "stuffed shells", "manicotti", "tuna casserole", "huevos rancheros", "philly cheesesteak", "pulled pork sandwich",
         "meatball sub", "reuben", "gumbo", "stromboli", "churro", "baklava",
+        // Dishes known by their own names.
+        "pho", "bibimbap", "tikka masala", "palak paneer", "saag paneer", "biryani", "chicken biryani", "roti", "chapati", "dosa", "idli",
+        "pakora", "raita", "chai", "masala chai", "gyro", "shawarma", "tabbouleh", "tzatziki", "dolmas", "spanakopita", "kebab", "gnocchi",
+        "carbonara", "bruschetta", "borscht", "gazpacho", "ratatouille", "ceviche", "arepa", "pupusa", "pozole", "menudo", "carnitas",
+        "chilaquiles", "chile relleno", "mole", "horchata", "pan dulce", "flan", "tres leches", "gelato", "cubano", "plantains", "congee",
+        "bao", "gyoza", "mapo tofu", "egg foo young", "sweet and sour pork", "tteokbokki", "bulgogi", "sashimi", "udon", "tempura",
         // Supplements.
         "whey protein", "fish oil",
     ]
@@ -291,6 +297,11 @@ enum EverydayPhrases {
 
     /// Whether a word, as searched, is one of an everyday food's: "bar", "bread", "water".
     static func isWord(_ stem: String) -> Bool { known.contains(stem) }
+
+    /// Whether the words are an everyday food's name, whole and as written: "raita", "mapo
+    /// tofu". None of them is a typo then, however few foods the catalogs have by them.
+    static func isName(_ typed: [String]) -> Bool { names.contains(typed.joined(separator: " ")) }
+    private static let names: Set<String> = Set(all.map { $0.words.joined(separator: " ") })
 
     /// Whether a word is one of an everyday food's as it's written, whole: "curry", where "curr"
     /// is searched the same and may still be on its way to currants.

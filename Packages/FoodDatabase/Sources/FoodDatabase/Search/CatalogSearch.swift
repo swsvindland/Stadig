@@ -786,7 +786,10 @@ extension FoodCatalog {
     func typos(in typed: String) -> [String: String] {
         let scalars = plainScalars(typed)
         let tokens = scanTokens(scalars)
-        let names = Set(searchedWords(readQuery(typed).words))
+        let searched = searchedWords(readQuery(typed).words)
+        // An everyday food's whole name has no typo in it: raita isn't ratatouille.
+        guard !EverydayPhrases.isName(searched) else { return [:] }
+        let names = Set(searched)
         var meant: [String: String] = [:]
         for (i, token) in tokens.enumerated() where names.contains(token.word) && length(token.word) >= 4 && !stopWords.contains(token.word) {
             let spelling = spell(token.word, whole: i < tokens.count - 1 || token.end < scalars.count)
@@ -855,7 +858,9 @@ extension FoodCatalog {
         guard !foods.isEmpty else { return CatalogSearch(text: query) }
         var fixes: Fixes = [:]
         var doubted = Set<String>()
-        for (i, word) in searched.enumerated() where !isNumber(word) && fixes[word] == nil {
+        // Not the words of an everyday food's whole name: "mapo tofu" isn't mayo.
+        let everyday = EverydayPhrases.isName(searched)
+        for (i, word) in searched.enumerated() where !everyday && !isNumber(word) && fixes[word] == nil {
             let spelling = spell(word, whole: i < searched.count - 1)
             if !spelling.fixes.isEmpty { fixes[word] = spelling.fixes }
             if spelling.doubted { doubted.insert(word) }

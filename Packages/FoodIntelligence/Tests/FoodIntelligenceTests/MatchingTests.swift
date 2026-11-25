@@ -154,6 +154,10 @@ struct MatchingTests {
         #expect(Matching.qualifies("chicken", food("Chicken or turkey salad")))
         #expect(!Matching.qualifies("turkey salad", food("Chicken or turkey salad")))
         #expect(!Matching.qualifies("ham sandwich", food("Ham sandwich or sub, restaurant")))
+        // Two words for one food: a ramen bowl is ramen, a bao bun bao, mole sauce mole. A
+        // burrito bowl is no burrito.
+        #expect(!Matching.qualifies("ramen", food("Ramen bowl")) && !Matching.qualifies("bao", food("Bao bun")))
+        #expect(!Matching.qualifies("mole", food("Mole sauce")) && Matching.qualifies("burrito", food("Burrito bowl")))
         #expect(Matching.fits("mac and cheese", FoodMatch(food: food("Macaroni or noodles with cheese"), score: 4, personal: false, named: true)))
         // What the catalog also calls by exactly the name seen is that, though its own name
         // says more: a grilled cheese sandwich is a grilled cheese, where a tuna salad
