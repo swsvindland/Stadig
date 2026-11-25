@@ -72,6 +72,7 @@ let alternatives: [String: [String]] = [
     // butty, a sarnie, a sanga and a sando are sandwiches, snags and bangers sausages, rashers
     // bacon, bikkies cookies and a chook a chicken.
     "silverbeet": ["silverbeet", "chard"], "rapeseed": ["rapeseed", "canola"], "groundnut": ["groundnut", "peanut"],
+    "liquorice": ["liquorice", "licorice"],
     "butty": ["butty", "sandwich"], "sarnie": ["sarnie", "sandwich"], "sanga": ["sanga", "sandwich"], "sando": ["sando", "sandwich"],
     "snags": ["snag", "sausage"], "bangers": ["banger", "sausage"], "rashers": ["rasher", "bacon"], "rasher": ["rasher", "bacon"],
     "bikkies": ["bikkie", "cookie"], "bikkie": ["bikkie", "cookie"], "chook": ["chook", "chicken"],
@@ -436,7 +437,7 @@ let typedAlternatives: Set<String> = [
     "beetroots", "catsup", "lasagne", "decaf", "mince", "minced", "rocket", "sultana", "sultanas", "crisps", "swede", "swedes", "tinned",
     "wholemeal", "gammon", "mangetout", "capsicum", "capsicums", "rockmelon", "cornflour", "sweets", "goujons", "veggies", "taters", "spuds",
     "spud", "cuke", "cukes", "slaw", "silverbeet", "rapeseed", "groundnut", "butty", "sarnie", "sanga", "sando", "snags", "bangers", "rashers",
-    "rasher", "bikkies", "bikkie", "chook",
+    "rasher", "bikkies", "bikkie", "chook", "liquorice",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.

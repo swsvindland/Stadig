@@ -1517,6 +1517,19 @@ def build(source, path, destination, limits=None, fndds=None):
             -- A misspelled word is checked against the words in many foods, not all of them.
             CREATE INDEX terms_foods ON terms(foods);
         """)
+        if also:
+            # A word that is the whole of a food's name, or of another name kept for it, is
+            # one people look for however few foods say it: a screwdriver, a manhattan, an
+            # americano, baklava. It counts as in ten foods, which is what a misspelled word
+            # is read as: "screwdrirer" found nothing. Of six letters or more: a shorter one
+            # is a letter from too many words.
+            whole = set()
+            for name, others in connection.execute("SELECT name, also FROM foods"):
+                for text in [name] + (others.split("\n") if others else []):
+                    if len(text) >= 6 and text.isascii() and text.isalpha():
+                        whole.add(text.lower())
+            connection.executemany("UPDATE terms SET foods = max(foods, 10) WHERE term = ?", [(word,) for word in sorted(whole)])
+            stats["wholeNameTerms"] = len(whole)
         license_id, notice = LICENSES[source]
         notice = notice.format(recipe=RECIPE_URL)
         url = source_url(source, path)

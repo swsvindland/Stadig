@@ -2088,6 +2088,11 @@ func scoreFoods(
     // What was said, without a label's word for how it was grown or made: "organic manicotti"
     // is still what the catalog calls "Manicotti".
     let saidStems = target.map(stem).filter { !labelWords.contains($0) }
+    // The same read through a word's one correction: "americno" is what the catalog calls
+    // "Americano", as it is typed right.
+    let correctedStems = target.map { word in
+        fixes[word].flatMap { $0.count == 1 && !$0[0].contains(" ") && !hints.respelt.contains($0[0]) ? stem($0[0]) : nil } ?? stem(word)
+    }.filter { !labelWords.contains($0) }
     let saidJoins = joining(seen.name)
     var rows: [Row] = []
     rows.reserveCapacity(keys.count)
@@ -2108,7 +2113,8 @@ func scoreFoods(
                 var named = query.cover(name.text)
                 // Or as much, by the one that is exactly what was said: a "Stir fry chicken"
                 // listed after "Chicken stir fry".
-                let exactly = named.exact && name.text.titled == saidStems && saidJoins.isSubset(of: name.joins)
+                let exactly =
+                    named.exact && (name.text.titled == saidStems || name.text.titled == correctedStems) && saidJoins.isSubset(of: name.joins)
                 if named.name > match.name || (exactly && !called && named.name == match.name) {
                     // The food is cooked as its own name says, whichever name found it.
                     named.cooked = max(named.cooked, match.cooked)
@@ -2122,7 +2128,8 @@ func scoreFoods(
             // And by another name that is exactly what was said, though its own has the words
             // too: "manicotti" is the one the catalog also calls "Manicotti", among the four
             // it lists.
-            for name in entry.also where name.text.titled == saidStems && saidJoins.isSubset(of: name.joins) {
+            for name in entry.also
+            where (name.text.titled == saidStems || name.text.titled == correctedStems) && saidJoins.isSubset(of: name.joins) {
                 var named = query.cover(name.text)
                 if named.exact {
                     named.cooked = max(named.cooked, match.cooked)

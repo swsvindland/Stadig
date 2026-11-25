@@ -49,5 +49,13 @@ enum Misspellings {
         ("gnocchi", "gnochi gnocci"), ("bruschetta", "brushetta bruchetta"), ("pepperoni", "peperoni pepporoni"), ("ricotta", "ricota"),
         ("mascarpone", "marscapone"), ("tofu", "tofoo"), ("turmeric", "tumeric"), ("cilantro", "cilentro celantro"), ("basil", "bazil"),
         ("oregano", "oregeno"), ("rosemary", "rosemarry"), ("molasses", "molases"), ("syrup", "sirup syrop"),
+        // Drinks by names few foods say, which a label or a brand is as near: Manhatten is a
+        // popcorn's brand, and "mezcal" is a word only the search knows.
+        ("manhattan", "manhatten manhatan"), ("cosmopolitan", "cosmopolitian cosmopolitain"), ("negroni", "negronni"),
+        ("mezcal", "mezcall mescal"), ("daiquiri", "daquiri daiquri dacquiri"), ("margarita", "margharita margerita"),
+        ("mojito", "mohito mojitto"), ("sangria", "sangira"), ("tequila", "tequilla"), ("whiskey", "wiskey"), ("bourbon", "burbon"),
+        ("champagne", "champange champaign"), ("prosecco", "prosseco proseco"), ("kombucha", "kombutcha kambucha"),
+        ("americano", "americno ameriacno americanno"), ("frappuccino", "fappuccino frapuchino"), ("horchata", "horchta orchata"),
+        ("churros", "churos"), ("mortadella", "mortadela"), ("kielbasa", "kilbasa kielbassa keilbasa"),
     ]
 }

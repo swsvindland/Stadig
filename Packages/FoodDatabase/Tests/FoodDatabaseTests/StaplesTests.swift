@@ -1006,6 +1006,14 @@ let misspellings: [(wrong: String, right: String)] = [
     ("terriyaki chicken", "teriyaki chicken"), ("general tsos chicken", "general tso chicken"), ("kung pow chicken", "kung pao chicken"),
     ("pad tai", "pad thai"), ("sushi role", "sushi roll"), ("california role", "california roll"), ("gyro sandwhich", "gyro sandwich"),
     ("fallafel", "falafel"), ("tabouli", "tabbouleh"), ("baclava", "baklava"), ("canoli", "cannoli"),
+    // Drinks and dishes by names few foods say: a word that is a plain food's whole name is one
+    // a misspelling is read as.
+    ("screwdrirer", "screwdriver"), ("screwdrivr", "screwdriver"), ("screwdiver", "screwdriver"), ("manhatten", "manhattan"),
+    ("americno", "americano"), ("ameriacno", "americano"), ("mezcall", "mezcal"), ("prosseco", "prosecco"), ("fappuccino", "frappuccino"),
+    ("negronni", "negroni"), ("cosmopolitian", "cosmopolitan"), ("liquorice", "licorice"), ("churos", "churros"), ("mortadela", "mortadella"),
+    ("baklva", "baklava"), ("falafal", "falafel"), ("empanda", "empanada"), ("paela", "paella"), ("spanikopita", "spanakopita"),
+    ("kilbasa", "kielbasa"), ("lolipop", "lollipop"), ("popcicle", "popsicle"), ("wasabe", "wasabi"), ("caviare", "caviar"),
+    ("samossa", "samosa"), ("cornstach", "cornstarch"),
 ]
 
 /// Sweets, snacks and what's bought at a bakery counter, by the names they're asked for: a
@@ -2772,6 +2780,11 @@ struct StaplesTests {
         #expect(catalog.top("mac n chese", 1) == catalog.top("mac n cheese", 1))
         // A word USDA writes is no misspelling, though another spelling of it is searched too.
         #expect(Misspellings.meant["lasagne"] == nil && searchForms("lasagne").contains("lasagna") && searchForms("catsup").contains("ketchup"))
+        // A word that is the whole of a plain food's name is one a misspelling is read as,
+        // however few foods say it: with USDA's foods alone, where no label helps.
+        #expect(Catalogs.usda.top("screwdrirer", 1) == ["Screwdriver"] && Catalogs.usda.top("baklva", 1) == ["Baklava"])
+        // And a name the catalog keeps for a food is as exact misspelt as typed right.
+        #expect(catalog.top("americno", 1) == ["Coffee, brewed"] && catalog.top("manhatten", 1) == ["Manhattan"])
         // The person's own food is found by the word meant.
         let own = Food(id: "custom:broccoli", name: "Roasted Broccoli", basis: .g, nutrients: .zero, source: .custom)
         #expect(catalog.search("brocolli", personal: [PersonalFood(food: own, score: 1)]).first?.food.id == own.id)
