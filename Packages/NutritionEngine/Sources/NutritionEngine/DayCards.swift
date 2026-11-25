@@ -154,6 +154,9 @@ public enum FoodLabel {
         "cafe mocha": ["coffee"], "iced cafe mocha": ["coffee"], "cafe con leche": ["coffee"],
         // Fries and hash browns are potatoes, and a brownie is filed with the cookies.
         "french fries": ["potato"], "home fries": ["potato"], "hash brown": ["potato"], "brownie": ["cookie"], "brownies": ["cookies"],
+        // Sweets the survey files under "Candy" that have names of their own.
+        "lollipop": ["candy"], "licorice": ["candy"], "marshmallow": ["candy"], "taffy": ["candy"], "fruit snacks": ["candy"],
+        "fruit leather": ["candy"], "peanut brittle": ["candy"], "sprinkles": ["candy"],
     ]
     /// Dishes a catalog files with their kind after them, which is said before them: "Soup,
     /// tomato" is tomato soup, "Pie, apple" apple pie, "Taco, fish" a fish taco. The value is
@@ -163,7 +166,7 @@ public enum FoodLabel {
         "cookies": "cookies", "doughnut": "doughnut", "muffin": "muffin", "muffins": "muffins", "pudding": "pudding", "puddings": "pudding",
         "cobbler": "cobbler", "crisp": "crisp", "taco": "taco", "burrito": "burrito", "quesadilla": "quesadilla", "enchilada": "enchilada",
         "tamale": "tamale", "fajita": "fajita", "nachos": "nachos", "lasagna": "lasagna", "gravy": "gravy", "frozen yogurt": "frozen yogurt",
-        "ice cream": "ice cream", "ice creams": "ice cream", "sushi roll": "roll",
+        "ice cream": "ice cream", "ice creams": "ice cream", "sushi roll": "roll", "candy": "candy",
     ]
     /// Words that say how a dish comes, is made or is sold, not which kind it is: "Pizza, no
     /// cheese" and "Soup, canned" stay as they're filed.

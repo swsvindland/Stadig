@@ -88,7 +88,7 @@ let firstResults: [(String, String)] = [
     ("93% lean ground beef", "^Beef, ground, 93% lean"),
     ("90/10 ground beef", "^Beef, ground, 90% lean meat / ?10% fat"),
     ("cup noodles", "(?i)cup noodle"),
-    ("peanut butter cups", "(?i)peanut butter cups"),
+    ("peanut butter cups", "(?i)peanut butter (cups|filled)"),
     ("fries", "(?i)fries"),
     ("pop tarts", "(?i)pop.?tarts"),
     ("burger", "(?i)burger"),
@@ -150,7 +150,7 @@ let firstResults: [(String, String)] = [
     ("cofee", "^Beverages, coffee, brewed|^Coffee(, brewed)?$"),
     ("peanutbutter", "^Peanut butter, "),
     ("icecream", "^Ice creams, |^Ice cream$"),
-    ("protien bar", "(?i)protein bar"),
+    ("protien bar", "(?i)protein bar|^Nutrition bar"),
     ("teff", "^Teff, "),
     ("beet", "^Beets, raw"),
     // A word typed as spelled on a label ranks before the correction of it.

@@ -154,7 +154,7 @@ struct CatalogTests {
         #expect(pool.failures.load(ordering: .relaxed) == 0)
         pool.trim()
         #expect(pool.idleCount == 1)
-        try pool.with { connection in try connection.query("SELECT count(*) FROM foods") { #expect($0.int(0) == 10403) } }
+        try pool.with { connection in try connection.query("SELECT count(*) FROM foods") { #expect($0.int(0) == 10577) } }
     }
 
     @Test("generic foods say how processed they are, and which are fermented")
@@ -194,7 +194,7 @@ struct CatalogTests {
         let info = try #require(catalog.sources.first)
         #expect(info.version.hasPrefix("usda-v3-0fe8ae486a2c-dfb06ae7-"), "SR Legacy and FNDDS, packed rows")
         #expect(info.license == "CC0-1.0")
-        #expect(info.foods == 10403, "SR Legacy's 7,793 and FNDDS's 2,610 restaurant foods, drinks and dishes")
+        #expect(info.foods == 10577, "SR Legacy's 7,793 and FNDDS's 2,784 restaurant foods, drinks, dishes, sweets and snacks")
         #expect(info.attribution.contains("USDA") && info.attribution.contains("FNDDS"))
         let apples = try #require(catalog.search("apples").first)
         #expect(apples.food.name.hasPrefix("Apples, raw"))

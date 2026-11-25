@@ -158,6 +158,7 @@ struct MatchingTests {
         // burrito bowl is no burrito.
         #expect(!Matching.qualifies("ramen", food("Ramen bowl")) && !Matching.qualifies("bao", food("Bao bun")))
         #expect(!Matching.qualifies("mole", food("Mole sauce")) && Matching.qualifies("burrito", food("Burrito bowl")))
+        #expect(!Matching.qualifies("danish", food("Danish pastry, plain or spice")))
         #expect(Matching.fits("mac and cheese", FoodMatch(food: food("Macaroni or noodles with cheese"), score: 4, personal: false, named: true)))
         // What the catalog also calls by exactly the name seen is that, though its own name
         // says more: a grilled cheese sandwich is a grilled cheese, where a tuna salad

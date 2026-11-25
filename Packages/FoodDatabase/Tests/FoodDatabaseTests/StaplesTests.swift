@@ -181,18 +181,18 @@ let staples: [(String, String)] = [
     ("espresso", "^Beverages, coffee, brewed, espresso|^Coffee, espresso$"),
     ("milkshake", "^Milk shakes?, "),
     // Snacks and sweets.
-    ("chips", "^Snacks, potato chips, plain"),
-    ("potato chips", "^Snacks, potato chips, plain, salted"),
+    ("chips", "^(Snacks, potato chips, plain|Potato chips)"),
+    ("potato chips", "^(Snacks, potato chips, plain, salted|Potato chips)"),
     ("tortilla chips", "^(Snacks, )?[Tt]ortilla chips"),
-    ("popcorn", "^Snacks, popcorn, (air-popped|oil-popped|home-prepared)"),
+    ("popcorn", "^(Snacks, popcorn, (air-popped|oil-popped|home-prepared)|Popcorn$)"),
     ("pretzels", "^(Snacks, pretzels|Pretzels)"),
     ("cookie", "^Cookies?, |^Cookie$"),
     ("chocolate", "^(Chocolate|Candies, milk chocolate)"),
-    ("dark chocolate", "^Chocolate, dark"),
+    ("dark chocolate", "^(Chocolate, dark|Dark chocolate candy)"),
     ("brownie", "^Cookies, brownies|^Cookie, brownie$"),
     ("donut", "^Doughnuts|^Doughnut$"),
     ("muffin", "^Muffins, (blueberry|plain)"),
-    ("granola bar", "granola bars?"),
+    ("granola bar", "(?i)granola bars?"),
     // Dishes.
     ("french fries", "[Ff]rench fries"),
     ("pizza", "^Pizza, cheese"),
@@ -636,7 +636,7 @@ let kitchen: [(String, String)] = [
     ("powdered sugar", "^Sugars, powdered"), ("all purpose flour", "^Wheat flour, white, all-purpose"),
     ("whole wheat flour", "^Wheat flour, whole-grain"), ("cornstarch", "^Cornstarch"), ("baking soda", "^Leavening agents, baking soda"),
     ("baking powder", "(?i)baking powder"), ("vanilla extract", "^Vanilla extract"), ("cocoa powder", "^Cocoa, dry powder, unsweetened$"),
-    ("chocolate chips", "^Candies, semisweet chocolate"), ("yeast", "^Leavening agents, yeast"),
+    ("chocolate chips", "^(Candies, semisweet chocolate|Chocolate chips)"), ("yeast", "^Leavening agents, yeast"),
     ("breadcrumbs", "^Bread, crumbs, dry, grated, plain"), ("bread crumbs", "^Bread, crumbs, dry, grated, plain"), ("salt", "^Salt, table"),
     ("black pepper", "^Spices, pepper, black"), ("garlic powder", "^Spices, garlic powder"), ("onion powder", "^Spices, onion powder"),
     ("paprika", "^Spices, paprika"), ("cumin", "^Spices, cumin seed"), ("cinnamon", "^Spices, cinnamon"), ("oregano", "^Spices, oregano"),
@@ -995,6 +995,48 @@ let misspellings: [(wrong: String, right: String)] = [
     ("fallafel", "falafel"), ("tabouli", "tabbouleh"), ("baclava", "baklava"), ("canoli", "cannoli"),
 ]
 
+/// Sweets, snacks and what's bought at a bakery counter, by the names they're asked for: a
+/// thirteenth list.
+let sweets: [(String, String)] = [
+    ("milk chocolate", "^(Candies, milk chocolate|Chocolate candy)$"), ("chocolate milk", "^(Chocolate milk|Milk, chocolate)"),
+    ("white chocolate", "^(Candies, white chocolate|White chocolate candy)"), ("dark chocolate", "^(Chocolate, dark|Dark chocolate candy)"),
+    ("chocolate bar", "^(Candies, milk chocolate|Chocolate candy)$"), ("candy bar", "^(Chocolate candy|Candies, )"),
+    ("candy", "^(Candy$|Candies, )"), ("peanut butter cup", "(?i)peanut butter (filled|cups)"),
+    ("peanut butter cups", "(?i)peanut butter (filled|cups)"), ("fudge", "^(Candies, fudge|Chocolate candy, fudge)"),
+    ("truffles", "^Candies, truffles"), ("gummy bears", "^(Candy, gummy|Candies, gumdrops)"), ("gummies", "^(Candy, gummy|Candies, gumdrops)"),
+    ("jelly beans", "^Candies, jellybeans"), ("licorice", "^Candy, licorice"), ("lollipop", "^(Candy, lollipop|Candies, hard)"),
+    ("marshmallows", "^(Candies, marshmallows|Candy, marshmallow)"), ("caramels", "^(Candies, caramels|Candy, caramel)"),
+    ("toffee", "^Candies, toffee"), ("cotton candy", "^Candy, cotton"), ("hard candy", "^(Candies, hard|Candy, hard)"),
+    ("taffy", "^(Candies, taffy|Candy, taffy)"), ("mints", "^Candy, mint"), ("gum", "^Chewing gum"), ("chewing gum", "^Chewing gum"),
+    ("chocolate covered almonds", "^Almonds, chocolate covered candy"), ("kettle corn", "^Popcorn, .*kettle|(?i)^kettle corn"),
+    ("air popped popcorn", "^(Snacks, popcorn, air-popped|Popcorn, air-popped)"), ("microwave popcorn", "^Popcorn, microwave"),
+    ("caramel corn", "^(Popcorn, caramel coated|Snacks, popcorn, caramel-coated)"), ("movie theater popcorn", "^Popcorn, movie theater"),
+    ("tortilla chips", "^(Snacks, tortilla chips|Tortilla chips)"), ("corn chips", "^(Snacks, corn-based|Corn chips)"),
+    ("cheese puffs", "^(Cheese flavored corn snacks|Snacks, corn-based, extruded, puffs or twists, cheese)"),
+    ("veggie straws", "^Vegetable chips|(?i)veggie straws"), ("veggie chips", "^(Vegetable chips|Snacks, vegetable chips)"),
+    ("pork rinds", "^Snacks, pork skins"), ("plantain chips", "^Plantain chips"), ("sweet potato chips", "^Sweet potato chips"),
+    ("pita chips", "^Snacks, pita chips"), ("protein bar", "^Nutrition bar or meal replacement bar"),
+    ("energy bar", "^Nutrition bar or meal replacement bar"), ("granola bar", "^(Snacks, granola bars|Cereal or Granola bar)"),
+    ("cereal bar", "^(Cereal or Granola bar|Snacks, granola bar)"), ("fruit snacks", "^(Candy, fruit snacks|Snacks, fruit leather)"),
+    ("fruit roll up", "^(Candy, fruit leather|Snacks, fruit leather)"), ("toaster pastry", "^Toaster pastries"),
+    ("saltines", "^Crackers, saltines"), ("graham crackers", "^(Graham crackers|Crackers, graham)"),
+    ("animal crackers", "^Cookies, animal crackers"), ("vanilla wafers", "^Cookie, vanilla wafer"), ("biscotti", "^Cookie, biscotti"),
+    ("shortbread", "^Cookie, shortbread"), ("macaroon", "^Cookie, macaroon"), ("macaron", "(?i)macaron(s)?( |$)"),
+    ("macarons", "(?i)macaron(s)?( |$)"), ("smores", "(?i)s.?mores?"), ("donut holes", "^Doughnut holes"), ("bran muffin", "^Muffins?, .*bran"),
+    ("danish", "^Danish pastry"), ("chocolate croissant", "^Croissant, chocolate"), ("tapioca pudding", "^Puddings?, tapioca"),
+    ("creme brulee", "^Creme brulee"), ("cobbler", "^Cobbler"), ("eclair", "^Cream puff, eclair"), ("cream puff", "^Cream puff, eclair"),
+    ("funnel cake", "^Funnel cake"), ("snack mix", "^(Snack mix|Snacks, trail mix|Snacks, oriental mix)"), ("trail mix", "^Snacks, trail mix"),
+    ("popsicle", "^Popsicle"), ("ice cream cone", "^Ice cream cone"), ("frozen yogurt", "^Frozen yogurt"), ("sorbet", "^Sorbet"),
+    ("jello", "^Gelatin dessert"), ("cookie dough", "^Cookies, .*dough"), ("lemon bar", "^Cookie, lemon bar"), ("rice cake", "^Snacks, rice cakes"),
+    ("peanut brittle", "^(Candies, peanut brittle|Candy, peanut brittle)"), ("gumdrops", "^Candies, gumdrops"),
+    ("butterscotch", "^Candies, butterscotch"), ("nougat", "^(Candies, nougat|Candy, nougat)"), ("churros", "^Churros"), ("beignet", "^Beignet"),
+    ("soft pretzel", "^Pretzels, soft"), ("nachos with cheese", "^(Nachos, cheese only|Fast foods, nachos, with cheese|Nachos$)"),
+    ("mixed nuts", "^Nuts, mixed nuts"), ("dried mango", "^Mango, dried"), ("banana chips", "^Snacks, banana chips"),
+    ("chocolate chip cookie", "^Cookie, chocolate chip"), ("brownie", "^Cookie, brownie"), ("cheesecake", "^(Cheesecake|Cake, cheesecake)"),
+    ("cupcake", "^Cake or cupcake"), ("ice cream", "^Ice cream"), ("chocolate ice cream", "^Ice creams?, chocolate"), ("apple pie", "^Pie, apple"),
+    ("donut", "^Doughnut"), ("muffin", "^Muffin"),
+]
+
 /// Breakfast, snacks, wraps and what's drunk from a can, as they're logged through a day: each
 /// with a pattern for the plain food that should come first ("oatmeal with milk" FNDDS's oatmeal
 /// made with milk, "pretzels" the hard ones, "shredded chicken" cooked chicken, "sparkling
@@ -1004,12 +1046,15 @@ let snacks: [(String, String)] = [
     ("yogurt parfait", "^Yogurt parfait"), ("egg and cheese sandwich", "^Egg sandwich on .*with cheese"),
     ("blueberry pancakes", "^Pancakes, blueberry"), ("turkey bacon", "^Bacon, turkey"), ("turkey sausage", "^Sausage, turkey"),
     ("sausage patty", "^Pork sausage, link/patty"), ("hash brown patty", "hash browns, round pieces or patty"),
-    ("english muffin", "^Muffins, English"), ("granola", "granola"), ("granola bar", "^Snacks, granola bars"), ("trail mix", "^Snacks, trail mix"),
+    ("english muffin", "^Muffins, English"), ("granola", "granola"), ("granola bar", "^(Snacks, granola bars|Cereal or Granola bar)"),
+    ("trail mix", "^Snacks, trail mix"),
     ("beef jerky", "beef jerky"), ("rice cakes", "^Snacks, rice cakes"), ("pretzels", "^Snacks, pretzels, hard, plain"),
-    ("popcorn", "^Snacks, popcorn"), ("microwave popcorn", "^Popcorn, microwave"), ("crackers", "^Crackers"), ("pita chips", "^Snacks, pita chips"),
+    ("popcorn", "^(Snacks, popcorn|Popcorn$)"), ("microwave popcorn", "^Popcorn, microwave"), ("crackers", "^Crackers"),
+    ("pita chips", "^Snacks, pita chips"),
     ("tortilla chips", "^Tortilla chips|^Snacks, tortilla chips"), ("applesauce", "^Applesauce"), ("fruit salad", "^Fruit salad"),
     ("mixed nuts", "^Nuts, mixed nuts"), ("dried mango", "^Mango, dried"), ("banana chips", "^Snacks, banana chips"),
-    ("dark chocolate", "^Chocolate, dark"), ("turkey wrap", "^Turkey sandwich wrap"), ("tuna wrap", "^Tuna salad sandwich wrap"),
+    ("dark chocolate", "^(Chocolate, dark|Dark chocolate candy)"), ("turkey wrap", "^Turkey sandwich wrap"),
+    ("tuna wrap", "^Tuna salad sandwich wrap"),
     ("burrito bowl", "^Burrito bowl"), ("spaghetti squash", "^Squash, winter, spaghetti"), ("sweet potato", "^Sweet potato, cooked"),
     ("mixed vegetables", "^Vegetables, mixed"), ("side salad", "^Lettuce, salad with assorted vegetables"), ("rotisserie chicken", "rotisserie"),
     ("grilled chicken", "^Chicken, .*grilled"), ("shredded chicken", "^Chicken, broilers or fryers, .*cooked"),
@@ -2096,9 +2141,8 @@ struct StaplesTests {
                 if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
             }
             print("Dishes by their own names \(seen ? "as a model names them" : "typed"): \(first) of \(world.count) first")
-            // The last eight are packaged foods' names, which the bundled catalog alone hasn't.
             #expect(
-                Double(first) >= (Catalogs.hasOFF ? 0.95 : 0.85) * Double(world.count),
+                Double(first) >= 0.95 * Double(world.count),
                 "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
         }
         // An everyday food's whole name has no typo in it, however few foods have the word.
@@ -2139,6 +2183,59 @@ struct StaplesTests {
         // The person's own food is found by the word meant.
         let own = Food(id: "custom:broccoli", name: "Roasted Broccoli", basis: .g, nutrients: .zero, source: .custom)
         #expect(catalog.search("brocolli", personal: [PersonalFood(food: own, score: 1)]).first?.food.id == own.id)
+    }
+
+    @Test("sweets and snacks come first by the names they're asked for, typed and named as a model would")
+    func sweetsBasket() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in sweets {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Sweets and snacks \(seen ? "as a model names them" : "typed"): \(first) of \(sweets.count) first")
+            #expect(
+                Double(first) >= 0.95 * Double(sweets.count),
+                "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // A name with the words said back to front is another food, where a plain food is named
+        // by them as said. Typed category first with no such food, the food is still the food.
+        let chocolate = [
+            Entry(OwnWordsTests.food("Chocolate milk")), Entry(OwnWordsTests.food("Chocolate candy"), also: "Milk chocolate\nChocolate bar"),
+        ]
+        #expect(rankSearch("milk chocolate", chocolate).first?.food.name == "Chocolate candy")
+        #expect(rankSearch("chocolate milk", chocolate).first?.food.name == "Chocolate milk")
+        let juice = [OwnWordsTests.food("Juice, apple and grape blend"), OwnWordsTests.food("Apple juice, canned or bottled")]
+        #expect(rankSearch("juice apple", juice).first?.food.name == "Apple juice, canned or bottled")
+        // Another name is what was said only when its words are joined as said: nachos with
+        // cheese aren't the dip also called "Nacho cheese".
+        let nachos = [
+            Entry(OwnWordsTests.food("Cheese dip"), also: "Queso\nNacho cheese"), Entry(OwnWordsTests.food("Nachos, cheese only"), dish: true),
+        ]
+        #expect(rankSearch("nachos with cheese", nachos).first?.food.name == "Nachos, cheese only")
+        #expect(rankSearch("nacho cheese", nachos).first?.food.name == "Cheese dip")
+        // The name the catalog keeps, exactly as said, before a food's own name read into it.
+        #expect(catalog.top("peanut butter cup", 1).first == "Chocolate candy, peanut butter filled")
+        #expect(catalog.candidates(name: "Peanut butter cups", brand: nil).first?.food.name == "Chocolate candy, peanut butter filled")
+        // A label listed under a food's own word isn't the maker of the food by that name.
+        #expect(catalog.top("cereal bar", 1).first == "Cereal or Granola bar")
+        // Nor does a plain food's other form of a word make it no brand's: Ruffles, typed as
+        // written, aren't the "ruffled" of the survey's potato chips.
+        #expect(catalog.search("ruffles").first?.food.brand?.lowercased() == "ruffles")
+        // A word that starts a plain food's is still on its way to it, though a brand is
+        // written just so: "sam" is a samosa before Sam's cola. And the name the catalog keeps
+        // for a plain food is that food before the brand it was once.
+        #expect(catalog.top("sam", 1).first == "Samosa")
+        #expect(catalog.top("ok", 1).first?.hasPrefix("Okra") == true)
+        #expect(catalog.top("jello", 1).first == "Gelatin dessert")
+        // Mint is the herb and mints the sweet; a protein bar is the survey's nutrition bar.
+        #expect(catalog.top("mints", 1).first == "Candy, mint")
+        #expect(catalog.top("protein bar", 1).first == "Nutrition bar or meal replacement bar")
+        // Sweets and snacks from the survey are read as snacks are, not as a restaurant's dish.
+        for name in ["chocolate candy", "potato chips", "air popped popcorn", "gummy bears"] {
+            #expect(catalog.search(name).first?.food.processing == .ultraProcessed, "\(name)")
+        }
     }
 
     @Test("a product is first before its name is typed out")

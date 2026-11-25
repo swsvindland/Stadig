@@ -216,6 +216,8 @@ let shortNames: [String: String] = [
     "dolmas": "stuffed grape leaves", "dolma": "stuffed grape leaves", "dolmades": "stuffed grape leaves",
     "egg foo young": "egg foo yung", "arroz con gandules": "arroz con grandules", "tres leches": "tres leche cake",
     "tres leches cake": "tres leche cake",
+    // S'mores are searched as one word, which is how labels that drop the apostrophe write them.
+    "s mores": "smores", "s more": "smores",
     // As they're said and written by ear.
     "kung pow chicken": "kung pao chicken", "pad tai": "pad thai", "french frys": "french fries", "ice tea": "iced tea",
     "ice coffee": "iced coffee",
@@ -237,7 +239,7 @@ let typedAlternatives: Set<String> = [
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
     "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",
-    "beetroots", "catsup", "lasagne",
+    "beetroots", "catsup", "lasagne", "decaf",
 ]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
@@ -382,6 +384,9 @@ private let methodHelpers: Set<String> = ["pan", "oven", "air", "deep", "stir", 
 func nameWords(_ name: String) -> [String] {
     // Without its amount, as a typed search is read: "2 large", "2 tbsp", "glass of".
     var list = readQuery(name).words
+    // An everyday food's whole name keeps its words, whatever they measure elsewhere: a peanut
+    // butter cup isn't a cup of peanut butter.
+    if EverydayPhrases.isName(list) { return list }
     list = list.indices.filter { i in
         !(methodHelpers.contains(list[i]) && i + 1 < list.count && (isHeat(list[i + 1]) || list[i + 1] == "cooked" || list[i + 1] == "fired"))
     }.map { list[$0] }

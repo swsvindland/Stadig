@@ -213,6 +213,12 @@ struct FoodLabelTests {
                 "canned, prepared with equal volume water, commercial"
             ),
             ("Soup, New England clam chowder", "New England clam chowder", nil),
+            // The survey's sweets: its kinds of candy, and the ones with names of their own.
+            ("Candy, gummy", "Gummy candy", nil),
+            ("Candy, cotton", "Cotton candy", nil),
+            ("Candy, lollipop", "Lollipop", nil),
+            ("Candy, fruit snacks", "Fruit snacks", nil),
+            ("Chocolate candy, peanut butter filled", "Chocolate candy", "peanut butter filled"),
             ("Soup, pho, with meat", "Pho", "with meat"),
             ("Pie, apple", "Apple pie", nil),
             ("Pizza, cheese, from restaurant or fast food", "Cheese pizza", "from restaurant or fast food"),

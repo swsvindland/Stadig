@@ -665,6 +665,8 @@ def fdc_nutrients(raw):
 # What an SR Legacy dish is called where its own name says where it's from first.
 USDA_OTHER_NAMES = {
     "Restaurant, family style, spaghetti and meatballs": ["Spaghetti and meatballs", "Spaghetti with meatballs"],
+    "Candies, truffles, prepared-from-recipe": ["Chocolate truffles", "Truffles"],
+    "Snacks, pork skins, plain": ["Pork rinds", "Chicharrones"],
 }
 # SR Legacy's groups of dishes: a burger, a restaurant's lo mein, a frozen lasagna.
 USDA_DISHES = {"fast foods", "restaurant foods", "meals, entrees, and side dishes"}
@@ -785,6 +787,17 @@ FNDDS_PREPARED = {
     "Ice cream and frozen dairy desserts", "Pudding", "Gelatins, ices, sorbets", "French fries and other fried white potatoes",
     "Mashed potatoes and white potato mixtures", "Fried vegetables", "Dips, gravies, other sauces", "Tomato-based condiments",
     "Oatmeal", "Grits and other cooked cereals",
+    # Sweets and snacks by the names they're asked for: SR Legacy has a candy bar by each maker
+    # and "Snacks, corn-based, extruded, puffs or twists", where these are "Chocolate candy",
+    # "Candy, gummy" and "Popcorn, movie theater, with added butter".
+    "Candy containing chocolate", "Candy not containing chocolate", "Nutrition bars", "Cereal bars", "Popcorn", "Potato chips",
+    "Tortilla, corn, other chips",
+}
+# The SR Legacy group each of those is read as for how processed it is: a bag of chips is a
+# snack, not a restaurant's dish.
+FNDDS_GROUPS = {
+    "Candy containing chocolate": "sweets", "Candy not containing chocolate": "sweets", "Nutrition bars": "snacks", "Cereal bars": "snacks",
+    "Popcorn": "snacks", "Potato chips": "snacks", "Tortilla, corn, other chips": "snacks",
 }
 # The survey's own distinctions, which no one logging a plate makes: which vegetables a mixture
 # had by the survey's classes, which fat it was cooked in where butter, oil or none says it,
@@ -792,7 +805,7 @@ FNDDS_PREPARED = {
 # same from a restaurant and from a home recipe.
 FNDDS_CODED = re.compile(r"excluding\s+carrots|excluding tomato|dark[- ]green vegetables|other than dark|and/or tomato-based|"
                          r"margarine|animal fat|cooking spray|mayonnaise-type|creamy dressing|Italian dressing|"
-                         r"any type of fat free dressing|ready-to-heat", re.I)
+                         r"any type of fat free dressing|ready-to-heat|, other$", re.I)
 # The survey's wording for what an answer wasn't or might have been, as what it usually was:
 # a meat, a starch and vegetables is that whichever vegetables they were, a salad "made with
 # mayonnaise" is the salad, and scrambled eggs are made with butter.
@@ -853,6 +866,36 @@ FNDDS_OTHER_NAMES = {
 # each: the survey files a chicken parmesan under "Chicken or turkey parmigiana" and fettuccine
 # alfredo under "Pasta with cream sauce".
 FNDDS_DISH_NAMES = {
+    # Sweets and snacks, which the survey files by kind: milk chocolate is its "Chocolate
+    # candy", gummy bears its "Candy, gummy" and a protein bar its nutrition bar.
+    "Chocolate candy": ["Milk chocolate", "Chocolate bar", "Milk chocolate bar", "Candy bar"],
+    "Dark chocolate candy": ["Dark chocolate", "Dark chocolate bar"],
+    "White chocolate candy": ["White chocolate"],
+    "Chocolate candy, peanut butter filled": ["Peanut butter cup", "Peanut butter cups"],
+    "Chocolate candy, fudge": ["Fudge", "Chocolate fudge"],
+    "Almonds, chocolate covered candy": ["Chocolate covered almonds"],
+    "Peanuts, chocolate covered candy": ["Chocolate covered peanuts"],
+    "Candy, gummy": ["Gummy bears", "Gummies", "Gummy worms", "Gummy candy"],
+    "Candy, licorice": ["Licorice"],
+    "Candy, lollipop": ["Lollipop", "Sucker"],
+    "Candy, cotton": ["Cotton candy"],
+    "Candy, marshmallow": ["Marshmallows", "Marshmallow"],
+    "Candy, caramel": ["Caramels", "Caramel candy"],
+    "Candy, taffy": ["Taffy", "Salt water taffy"],
+    "Candy, mint": ["Mints", "Breath mints"],
+    "Candy, hard": ["Hard candy"],
+    "Candy, fruit snacks": ["Fruit snacks"],
+    "Candy, fruit leather": ["Fruit leather", "Fruit roll up"],
+    "Candy, peanut brittle": ["Peanut brittle"],
+    "Chewing gum": ["Gum"],
+    "Chewing gum, sugar free": ["Sugar free gum", "Sugarless gum"],
+    "Cheese flavored corn snacks": ["Cheese puffs", "Cheese curls", "Cheese doodles"],
+    "Popcorn, ready-to-eat, kettle": ["Kettle corn"],
+    "Popcorn, caramel coated": ["Caramel corn", "Caramel popcorn"],
+    "Popcorn, movie theater, with added butter": ["Movie theater popcorn", "Buttered popcorn"],
+    "Vegetable chips": ["Veggie chips", "Veggie straws"],
+    "Nutrition bar or meal replacement bar": ["Protein bar", "Energy bar", "Meal replacement bar", "Nutrition bar"],
+    "Cereal or Granola bar": ["Granola bar", "Cereal bar"],
     "Cheese steak sandwich or sub on white": ["Philly cheesesteak", "Cheesesteak"],
     "Chicken fillet sandwich, fried, from fast food": ["Fried chicken sandwich", "Crispy chicken sandwich"],
     "Chicken fillet sandwich, grilled, from fast food": ["Grilled chicken sandwich"],
@@ -1049,7 +1092,7 @@ def fndds_foods(path, stats):
             # still whole foods.
             nova = 1
         else:
-            nova = usda_processing("fast foods" if fast else "restaurant foods", dish)
+            nova = usda_processing(FNDDS_GROUPS.get(category) or ("fast foods" if fast else "restaurant foods"), dish)
         # Kombucha is the one of them with live cultures.
         fermented = TRAIT_FERMENTED if re.search(r"\bkombucha\b", name, re.I) else 0
         yield Food(id=f"usda:{raw['fdcId']}", name=name, brand="", barcode=None, basis="g", nutrients=nutrients,

@@ -52,7 +52,8 @@ enum EverydayPhrases {
         "maple syrup", "jam", "jelly", "guacamole", "marinara sauce", "tomato sauce", "alfredo sauce", "salad dressing", "italian dressing",
         "caesar dressing",
         // Drinks.
-        "iced coffee", "latte", "cappuccino", "espresso", "green tea", "iced tea", "apple juice", "lemonade", "soda", "coke", "diet coke",
+        "iced coffee", "decaf coffee", "latte", "cappuccino", "espresso", "green tea", "iced tea", "apple juice", "lemonade", "soda", "coke",
+        "diet coke",
         "sparkling water", "coconut water", "sports drink", "energy drink", "beer", "wine", "red wine", "white wine", "vodka", "whiskey",
         "margarita", "smoothie", "milkshake", "hot chocolate", "juice",
         // Snacks and sweets.
@@ -124,6 +125,13 @@ enum EverydayPhrases {
         "carbonara", "bruschetta", "borscht", "gazpacho", "ratatouille", "ceviche", "arepa", "pupusa", "pozole", "menudo", "carnitas",
         "chilaquiles", "chile relleno", "mole", "horchata", "pan dulce", "flan", "tres leches", "gelato", "cubano", "plantains", "congee",
         "bao", "gyoza", "mapo tofu", "egg foo young", "sweet and sour pork", "tteokbokki", "bulgogi", "sashimi", "udon", "tempura",
+        // Sweets and snacks.
+        "milk chocolate", "white chocolate", "chocolate bar", "candy bar", "peanut butter cup", "fudge", "truffles", "gummy bears", "jelly beans",
+        "licorice", "lollipop", "marshmallows", "caramels", "toffee", "cotton candy", "hard candy", "mints", "gum", "kettle corn", "caramel corn",
+        "corn chips", "cheese puffs", "pork rinds", "plantain chips", "pita chips", "veggie straws", "energy bar", "cereal bar", "fruit snacks",
+        "graham crackers", "animal crackers", "saltines", "biscotti", "shortbread", "macaron", "macarons", "macaroon", "smores", "donut holes",
+        "scone", "danish", "eclair", "cream puff", "funnel cake", "cobbler", "creme brulee", "tapioca pudding", "popsicle", "sorbet", "jello",
+        "cookie dough", "lemon bar", "peanut brittle", "soft pretzel", "snack mix",
         // Supplements.
         "whey protein", "fish oil",
     ]
@@ -298,10 +306,11 @@ enum EverydayPhrases {
     /// Whether a word, as searched, is one of an everyday food's: "bar", "bread", "water".
     static func isWord(_ stem: String) -> Bool { known.contains(stem) }
 
-    /// Whether the words are an everyday food's name, whole and as written: "raita", "mapo
-    /// tofu". None of them is a typo then, however few foods the catalogs have by them.
-    static func isName(_ typed: [String]) -> Bool { names.contains(typed.joined(separator: " ")) }
-    private static let names: Set<String> = Set(all.map { $0.words.joined(separator: " ") })
+    /// Whether the words are an everyday food's name, whole, in the singular or the plural:
+    /// "raita", "mapo tofu", "peanut butter cups". None of them is a typo then, however few
+    /// foods the catalogs have by them.
+    static func isName(_ typed: [String]) -> Bool { names.contains(typed.map(stem).joined(separator: " ")) }
+    private static let names: Set<String> = Set(all.map { $0.words.map(stem).joined(separator: " ") })
 
     /// Whether a word is one of an everyday food's as it's written, whole: "curry", where "curr"
     /// is searched the same and may still be on its way to currants.
