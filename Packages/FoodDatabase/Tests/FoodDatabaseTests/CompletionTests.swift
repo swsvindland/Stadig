@@ -219,6 +219,32 @@ struct CompletionTests {
         #expect(Array(FoodCompletions.suggest("cholu", from: begun).prefix(2)) == ["chou", "cholula"])
     }
 
+    @Test func whatIsTypedBeforeTheFoodStays() {
+        // An amount: the food after it is completed, and few are offered.
+        #expect(FoodCompletions.suggest("2 eg", from: []).first == "2 eggs" && FoodCompletions.suggest("2 eg", from: []).count <= 3)
+        #expect(FoodCompletions.suggest("cup of ri", from: []).first == "cup of rice")
+        #expect(FoodCompletions.suggest("slice of pi", from: []).first == "slice of pizza")
+        #expect(FoodCompletions.suggest("jar of pea", from: []).first == "jar of peanut butter")
+        #expect(FoodCompletions.suggest("200g chi", from: []).first == "200g chicken")
+        // A number as a word, where nothing typed so far is a name; a brand that starts so is still offered.
+        #expect(FoodCompletions.suggest("two eg", from: []).first == "two eggs")
+        let yogurt = [label("Two Good Vanilla Yogurt", brand: "Two Good", popularity: 3), label("Two Good Strawberry Yogurt", brand: "Two Good")]
+        #expect(FoodCompletions.suggest("two g", from: yogurt).first?.hasPrefix("two good") == true)
+        // A food and what joins the next to it.
+        #expect(FoodCompletions.suggest("eggs on to", from: []).first == "eggs on toast")
+        #expect(FoodCompletions.suggest("burger and fr", from: []).first == "burger and french fries")
+        // After "with", what most often comes with a food leads.
+        #expect(FoodCompletions.suggest("toast with bu", from: []).first == "toast with butter")
+        #expect(FoodCompletions.suggest("coffee with cr", from: []).first == "coffee with cream")
+        #expect(FoodCompletions.suggest("coffee with m", from: []) == ["coffee with milk"])
+        // A name with "and" in it goes on as the name.
+        #expect(FoodCompletions.suggest("chicken and r", from: []).first == "chicken and rice")
+        #expect(FoodCompletions.suggest("mac and ch", from: []).first == "mac and cheese")
+        #expect(FoodCompletions.suggest("peanut butter and j", from: []).first == "peanut butter and jelly")
+        // One letter after the amount is too few, as it is alone.
+        #expect(FoodCompletions.suggest("2 e", from: []).isEmpty && FoodCompletions.suggest("cup of r", from: []).isEmpty)
+    }
+
     @Test func theCatalogsResultsComplete() {
         let found = Catalogs.usda.search("chick", limit: 60)
         #expect(FoodCompletions.suggest("chick", from: found).contains("chicken"))

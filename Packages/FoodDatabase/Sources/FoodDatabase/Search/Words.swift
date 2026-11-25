@@ -467,7 +467,7 @@ let unitWords: Set<String> = [
 
 /// A number written as a word, which is how many of a food when it comes first and the food is
 /// counted or measured after it: "two eggs", "three slices of pizza", "one banana".
-private let numberWords: Set<String> = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
+let numberWords: Set<String> = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
 
 /// What follows "one" in a name that isn't one of a food: ONE's protein bars, One A Day.
 private let afterOne: Set<String> = ["bar", "bars", "protein", "a"]

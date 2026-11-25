@@ -56,7 +56,71 @@ public enum FoodCompletions {
 
     /// Phrases for what's typed, the likeliest first, in lower case. `label` is a food's name as a
     /// person would say it. Nothing for fewer than two letters, as the search itself waits for them.
+    ///
+    /// What comes before the food still being typed stays as typed: its amount ("2 ", "cup
+    /// of ", "two "), or a food and what joins the next to it ("eggs on ", "toast with ").
+    /// Where nothing offered goes on from the whole of what's typed, the food is completed
+    /// after it: "2 eg" goes on to "2 eggs", "slice of pi" to "slice of pizza" and "eggs on
+    /// to" to "eggs on toast", where the search's foods alone offered "egg" and "cheese pizza".
     public static func suggest(_ query: String, from matches: [FoodMatch], limit: Int = options, label: (Food) -> String = \.name) -> [String] {
+        let whole = phrases(query, from: matches, limit: limit, label: label)
+        let typed = phraseWords(query)
+        guard let kept = lead(of: typed, in: query), !whole.contains(where: { goesOn($0, from: typed) }) else { return whole }
+        let food = typed[kept...].joined(separator: " ")
+        var onward = suggest(food, from: matches, limit: limit, label: label)
+        // After "with", what most often comes with a food leads: "coffee with cr" goes on to
+        // cream before cream cheese, "toast with bu" to butter.
+        if typed[kept - 1] == "with" || typed[kept - 1] == "w" {
+            // The likeliest one or two: after a single letter, mayo isn't what coffee comes with.
+            let sides = Array(comesWith.filter { $0.hasPrefix(food) && $0 != food }.prefix(food.count > 1 ? 2 : 1))
+            onward = sides + onward.filter { !sides.contains($0) }
+        }
+        guard !onward.isEmpty else { return whole }
+        let before = typed[..<kept].joined(separator: " ")
+        // A few, each another food: past the likeliest, a food by its first letters says
+        // little after "cup of", and "bag of chi" is chicken or chips, not three of chicken.
+        var different: [String] = []
+        for phrase in onward where !different.contains(where: { phrase.hasPrefix($0 + " ") }) { different.append(phrase) }
+        return different.prefix(afterLead).map { "\(before) \($0)" }
+    }
+
+    /// How many are offered after an amount or another food.
+    private static let afterLead = 3
+
+    /// What a food most often comes with, the likeliest first.
+    private static let comesWith: [String] = [
+        "butter", "cream", "milk", "sugar", "cheese", "honey", "syrup", "gravy", "jam", "jelly", "ketchup", "mayo", "mustard", "ranch",
+        "salsa", "sour cream", "rice", "beans", "fries", "toast", "bacon", "eggs", "fruit", "berries", "granola", "peanut butter",
+        "cream cheese", "lemon", "ice", "almond milk", "oat milk", "whipped cream", "maple syrup", "hot sauce", "soy sauce", "olive oil",
+        "dressing", "croutons", "vegetables", "salad", "chips", "bread",
+    ]
+
+    /// What joins a food to the one typed after it.
+    private static let joiners: Set<String> = ["with", "on", "over", "and", "&", "+", "w"]
+
+    /// Where the food still being typed starts, after an amount or after a food and what joins
+    /// the next to it; nil where what's typed is one food from its first word.
+    private static func lead(of typed: [String], in query: String) -> Int? {
+        if let join = typed.indices.dropFirst().dropLast().last(where: { joiners.contains(typed[$0]) }) { return join + 1 }
+        // The amount, as the search reads it: everything before its first word for the food.
+        if let first = readQuery(query).words.first, let at = typed.firstIndex(of: first), at > 0, at < typed.count { return at }
+        // A number as a word counts what follows once nothing typed so far is a name: "two eg".
+        if typed.count > 1, let first = typed.first, numberWords.contains(first) { return 1 }
+        return nil
+    }
+
+    /// Whether a phrase goes on from what's typed: it has every word typed, the last as far as
+    /// it's typed. "And" is "&", and a plural its singular.
+    private static func goesOn(_ phrase: String, from typed: [String]) -> Bool {
+        let words = phrase.split(separator: " ").map { same(String($0)) }
+        guard let last = typed.last else { return false }
+        return typed.dropLast().allSatisfy { words.contains(same($0)) } && words.contains { $0.hasPrefix(same(last)) || $0.hasPrefix(plain(last)) }
+    }
+
+    /// A word as two spellings of it compare: "&" is "and", "eggs" is "egg".
+    private static func same(_ word: String) -> String { word == "&" || word == "n" ? "and" : singular(plain(word)) }
+
+    private static func phrases(_ query: String, from matches: [FoodMatch], limit: Int, label: (Food) -> String) -> [String] {
         let typed = phraseWords(query)
         let wanted = typed.map(plain)
         guard limit > 0, wanted.joined().count >= 2 else { return [] }
@@ -92,7 +156,7 @@ public enum FoodCompletions {
             // With what does read as typed among the other foods: "cholu" may be a typo, and
             // is as far as Cholula is typed.
             let asTyped = tally.ranked(without: wanted, limit: limit)
-            let onward = suggest(meant, from: matches, limit: limit - 1, label: label)
+            let onward = phrases(meant, from: matches, limit: limit - 1, label: label)
             var offered = [meant]
             for phrase in asTyped + onward where !offered.contains(phrase) { offered.append(phrase) }
             return Array(offered.prefix(limit))
