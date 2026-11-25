@@ -416,6 +416,26 @@ extension FoodCatalog {
     /// its amount, and the one word has to be a whole word of the catalogs': "pea che" is on its
     /// way to pea cheese as much as to peaches. A name a model gave isn't being typed (`typing`
     /// false), so its last word is whole too.
+    /// A search with a way of cooking said in two words as the one the catalogs use, and without
+    /// where the food was cooked: "pan seared salmon" is "seared salmon" and "slow cooker
+    /// chicken" "chicken". Nil where it says neither, or names nothing beside it.
+    func plainlyCooked(_ query: String) -> String? {
+        let scalars = plainScalars(query)
+        let tokens = scanTokens(scalars)
+        for way in cookingWays where tokens.count > way.said.count {
+            guard
+                let at = tokens.indices.first(where: { i in
+                    i + way.said.count <= tokens.count && way.said.indices.allSatisfy { tokens[i + $0].word == way.said[$0] }
+                })
+            else { continue }
+            let rest = makeString(scalars[tokens[at + way.said.count - 1].end...])
+            let text = (makeString(scalars[..<tokens[at].start]) + way.means.joined(separator: " ") + rest).trimmingCharacters(in: .whitespaces)
+            // A second way in the same search: "oven baked chicken with pan fried potatoes".
+            return plainlyCooked(text) ?? text
+        }
+        return nil
+    }
+
     func respell(_ query: String, typing: Bool = true, meant: [String: String] = [:]) -> Respelt {
         let scalars = plainScalars(query)
         let tokens = scanTokens(scalars)
@@ -819,6 +839,22 @@ extension FoodCatalog {
 
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
         let search = searchCatalog(typed, known: known, out: nil)
+        // A way of cooking said in two words is searched as the catalogs' one, where no brand
+        // is named and a plain food has every word left: "pan seared salmon" is the salmon,
+        // "air fried chicken" baked chicken. Its first three, then the foods with every word
+        // as typed, which is where a label called "Air Fried Chicken" is, then the rest of
+        // each. A brand's search is left as typed.
+        if search.brand.isEmpty, let plainly = plainlyCooked(typed) {
+            let plain = searchCatalog(plainly, known: known)
+            if let first = plain.ranked.first, first.name >= 1, !FoodText(first.food).branded {
+                var both = plain
+                let asTyped = Self.joined(Array(plain.ranked.prefix(3)), search.ranked.filter { $0.name >= 1 })
+                both.ranked = Self.joined(asTyped, Self.joined(plain.ranked, search.ranked))
+                both.elsewhere.formUnion(search.elsewhere)
+                both.typed = plain.typed ?? typed
+                return both
+            }
+        }
         if let apart = searchApart(typed, search, known: known) { return apart }
         if let with = searchWith(search, known: known) { return with }
         // A restaurant chain typed with a food: where no food found is the chain's and has the
@@ -1292,7 +1328,7 @@ extension FoodCatalog {
         // come with: its "Pasta with meat sauce", its "Biscuit with gravy".
         if !sides.isEmpty, isPlainName(words(said)[...]) { (food, sides, beside) = (said, [], []) }
         // A plain dish is looked up in the catalog's words.
-        let dish = brand.isEmpty ? catalogDish(food) : said
+        let dish = brand.isEmpty ? catalogDish(plainlyCooked(food) ?? food) : said
         // Its names are read as a typed search's are: written the way most labels write them
         // ("hotdog" is "hot dog", "soy milk" is "soymilk"), and also by the catalogs' own name for
         // them, so a hot dog is USDA's frankfurter and a bell pepper its sweet pepper.

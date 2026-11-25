@@ -383,13 +383,20 @@ enum Heat: Sendable { case dry, moist, fat }
 /// the nearest way it does (see `Ease`).
 let heats: [String: Heat] = {
     var kinds: [String: Heat] = [:]
-    for word in stems("roasted roast baked broiled grilled seared blackened charred rotisserie barbecued chargrilled toasted browned") {
+    // Smoked is a way too, where no plain food is named so: smoked brisket is the brisket, and
+    // smoked salmon still its own.
+    for word in stems(
+        "roasted roast baked broiled grilled seared blackened charred rotisserie barbecued chargrilled charbroiled toasted browned smoked")
+    {
         kinds[word] = .dry
     }
     for word in stems("boiled steamed poached braised stewed simmered microwaved blanched") { kinds[word] = .moist }
     for word in stems("fried sauteed") { kinds[word] = .fat }
     return kinds
 }()
+
+/// Foods that cooking dries into another food, weight for weight: roasted seaweed and coffee.
+private let driedByHeat = stems("seaweed nori kelp laver wakame coffee cocoa cacao")
 
 /// How a food is cut, or how young it was picked, which USDA mostly leaves unsaid: a salmon
 /// fillet is its salmon, broccoli florets its broccoli, baby spinach its spinach and shredded
@@ -461,6 +468,9 @@ struct Ease {
     /// says which food is meant, and a food without it lacks it, though it's a word for how a
     /// food comes: fried rice isn't USDA's plain cooked rice, nor fresh mozzarella its block.
     var listed = false
+    /// The catalog has the food only uncooked, so that is the one cooked this way: roasted
+    /// garlic is its "Garlic, raw", as a cooked egg white is its raw one.
+    var uncooked = false
 
     init(_ said: String, listed: Bool = false) {
         heat = heats[said]
@@ -480,7 +490,7 @@ struct Ease {
         if raw { return !text.cooking.cooked && !text.titled.contains(where: keptWords.contains) }
         guard let heat else { return true }
         let cooking = text.cooking
-        guard cooking.cooked else { return false }
+        guard cooking.cooked else { return uncooked }
         return heat == .fat ? !fried || cooking.kinds.contains(.fat) : cooking.kinds != [.fat]
     }
 
@@ -1775,7 +1785,9 @@ func scoreFoods(
             let plain = having.map { food in
                 (
                     text: food.text, forms: food.match.forms,
-                    leads: food.match.leads || (!food.match.filed.isEmpty && food.match.filed.allSatisfy(under.contains))
+                    leads: food.match.leads || (!food.match.filed.isEmpty && food.match.filed.allSatisfy(under.contains)),
+                    // Named by those words and where it's filed, no more: "Cheese, gouda".
+                    filed: !food.match.filed.isEmpty && food.match.others == food.match.filed.count
                 )
             }
             for word in easable {
@@ -1798,7 +1810,24 @@ func scoreFoods(
                 let listing = plain.filter { food in
                     food.forms.allSatisfy { same($0, said) || same(said, $0) } && food.text.all.contains { same($0, said) || same(said, $0) }
                 }
-                let fits = plain.contains { $0.leads && ease.fits($0.text) }
+                var fits = plain.contains { $0.leads && ease.fits($0.text) }
+                // A food the catalog has no entry cooked that way for is the uncooked one there
+                // is: grilled pineapple is its raw pineapple, smoked gouda its gouda and baked
+                // tofu its tofu, which it otherwise has fried; not a label named so. Not fried,
+                // which adds the oil, nor seaweed, which roasting dries: a sheet of it is ten
+                // times its raw kelp. Nor where a plain food is named by the way and then the
+                // food, as said: "grilled chee" is a grilled cheese sandwich begun, not cheese.
+                let namedSo = { (words: [String]) in
+                    words.indices.dropLast().contains { i in
+                        (same(words[i], said) || same(said, words[i])) && rest.contains { starts(words[i + 1], stem($0)) }
+                    }
+                }
+                if !fits, ease.heat != nil, !ease.fried, !rest.contains(where: { driedByHeat.contains(stem($0)) }),
+                    plain.contains(where: { ($0.leads || $0.filed) && !$0.text.cooking.cooked }), !plain.contains(where: { namedSo($0.text.said) })
+                {
+                    ease.uncooked = true
+                    fits = true
+                }
                 // Where no food is spared the word, it says which food is meant.
                 eases[word] = fits && !listing.contains(where: \.leads) ? ease : Ease(said, listed: true)
             }
@@ -2051,12 +2080,15 @@ func scoreFoods(
         if match.name < 1 {
             for name in entry.also where mentionForms.contains(where: { $0.contains { starts(name.head, $0) } }) {
                 var named = query.cover(name.text)
-                if named.name > match.name {
+                // Or as much, by the one that is exactly what was said: a "Stir fry chicken"
+                // listed after "Chicken stir fry".
+                let exactly = named.exact && name.text.titled == saidStems && saidJoins.isSubset(of: name.joins)
+                if named.name > match.name || (exactly && !called && named.name == match.name) {
                     // The food is cooked as its own name says, whichever name found it.
                     named.cooked = max(named.cooked, match.cooked)
                     match = named
                     other = name.text
-                    called = named.exact && name.text.titled == saidStems && saidJoins.isSubset(of: name.joins)
+                    called = exactly
                     calling = named.missing == 0 && name.text.titled.count == saidStems.count && saidJoins.isSubset(of: name.joins)
                 }
             }

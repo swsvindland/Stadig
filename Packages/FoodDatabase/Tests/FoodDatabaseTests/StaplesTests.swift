@@ -1229,6 +1229,93 @@ let cuts: [(String, String)] = [
     ("blackened fish", "^Fish, (cooked|grilled|baked or broiled)"), ("charred corn", "^Corn.*(cooked|grilled|roasted)"),
 ]
 
+/// Foods by how they were cooked or come: a way of cooking said in two words ("pan seared
+/// salmon", "air fried chicken"), where it was cooked ("slow cooker chicken"), smoked, bbq,
+/// crispy and breaded, a way the catalog has no entry for ("roasted garlic"), and the single
+/// ways and states the other lists don't have.
+let ways: [(String, String)] = [
+    ("pan seared salmon", "^Fish, salmon, grilled"), ("pan fried chicken", "^Chicken, fried, coated"), ("pan fried tofu", "^Tofu, fried"),
+    ("pan fried pork chop", "^Pork.*chop.*(fried|cooked)"), ("pan seared steak", "^Steak, cooked"), ("pan seared scallops", "^Scallops, grilled"),
+    ("oven roasted turkey", "^Turkey, whole, meat only, cooked, roasted"), ("oven roasted chicken", "^Chicken, baked, broiled, or roasted"),
+    ("oven baked salmon", "^Fish, salmon, baked or broiled"), ("oven roasted vegetables", "^Vegetables, mixed.*cooked"),
+    ("oven roasted potatoes", "^Potatoes, baked, flesh, without salt"),
+    ("oven baked chicken breast", "^Chicken breast, baked, broiled, or roasted"), ("air fried chicken", "^Chicken, baked, broiled, or roasted"),
+    ("air fryer chicken wings", "^Chicken wing, baked, broiled, or roasted"), ("air fried potatoes", "^Potatoes, baked, flesh, without salt"),
+    ("deep fried shrimp", "^Shrimp, fried"), ("deep fried chicken", "^Chicken, fried, coated"), ("deep fried fish", "^Fish, fried"),
+    ("stir fried vegetables", "^Tofu and vegetables, with soy\\-based sauce"),
+    ("stir fried chicken", "^Chicken or turkey and vegetables, with soy\\-based sauce"),
+    ("stir fry vegetables", "^Tofu and vegetables, with soy\\-based sauce"), ("slow cooked pork", "^Pork, cooked"),
+    ("slow cooker chicken", "^Chicken, cooked"), ("slow roasted pork", "^Pork.*roasted"), ("pressure cooked chicken", "^Chicken, cooked"),
+    ("instant pot chicken", "^Chicken, cooked"), ("char grilled chicken", "^Chicken, grilled"), ("chargrilled chicken", "^Chicken, grilled"),
+    ("flame grilled burger", "^Hamburger"), ("charbroiled burger", "^Hamburger"), ("wood fired pizza", "^Pizza, cheese"),
+    ("hard boiled egg", "^Egg, whole, cooked, hard\\-boiled"), ("hard boiled eggs", "^Egg, whole, cooked, hard\\-boiled"),
+    ("soft boiled egg", "^Egg, whole, cooked, hard\\-boiled"), ("over easy eggs", "^Egg, whole, cooked, fried"),
+    ("over medium eggs", "^Egg, whole, cooked, fried"), ("over hard egg", "^Egg, whole, cooked, fried"),
+    ("sunny side up egg", "^Egg, whole, cooked, fried"), ("poached egg", "^Egg, whole, cooked, poached"),
+    ("poached eggs", "^Egg, whole, cooked, poached"), ("boiled egg", "^Egg, whole, cooked, hard\\-boiled"),
+    ("scrambled eggs", "^Egg, whole, cooked, scrambled"), ("fried egg", "^Egg, whole, cooked, fried"),
+    ("smoked brisket", "^Beef, brisket, cooked"), ("smoked turkey", "^Turkey.*smoked"), ("smoked sausage", "^Sausage.*smoked"),
+    ("smoked chicken", "^Chicken, grilled"), ("smoked ribs", "^Ribs, cooked"), ("smoked ham", "^(Ham|Pork, cured, ham)"),
+    ("bbq chicken", "^Barbecue chicken"), ("barbecue chicken", "^Barbecue chicken"), ("barbecued chicken", "^Chicken, grilled"),
+    ("bbq ribs", "^Ribs, cooked"), ("bbq pork", "^Barbecue pork"), ("bbq brisket", "^Beef, brisket, cooked"),
+    ("rotisserie chicken", "^Chicken, rotisserie"), ("pulled chicken", "^Chicken, cooked"), ("pulled pork", "^Barbecue pork"),
+    ("shredded beef", "^Beef, pot roast"), ("shredded pork", "^Pork"), ("crispy chicken", "^Chicken, fried, coated"),
+    ("crispy tofu", "^Tofu, fried"), ("crispy bacon", "^Bacon, cooked"), ("breaded chicken", "^Chicken, fried, coated"),
+    ("breaded fish", "^Fish, fried"), ("battered fish", "^Fish, fried"), ("breaded shrimp", "shrimp.*breaded and fried|^Shrimp, fried"),
+    ("tempura shrimp", "^Shrimp, fried"), ("mashed sweet potatoes", "^Sweet potato, canned, mashed"), ("mashed cauliflower", "(?i)cauliflower"),
+    ("mashed potatoes", "^Potato, mashed"), ("stuffed peppers", "^Stuffed pepper, with meat"), ("stuffed mushrooms", "^Mushrooms, stuffed"),
+    ("creamed spinach", "^Spinach, creamed"), ("creamed corn", "^Corn.*cream style"),
+    ("candied yams", "^Sweet potato, cooked, candied, home\\-prepared"), ("caramelized onions", "^Onions, yellow, sauteed"),
+    ("pickled onions", "(?i)onion"), ("pickled beets", "^Beets, pickled"), ("pickled ginger", "(?i)ginger"),
+    ("stewed tomatoes", "^Tomatoes.*stewed"), ("stewed chicken", "^Chicken, stewed"), ("braised beef", "^Beef.*braised|^Beef, pot roast"),
+    ("braised short ribs", "^Beef.*short ?ribs.*braised"), ("braised pork", "^Pork.*braised"), ("boiled potatoes", "^Potatoes, boiled"),
+    ("boiled chicken", "^Chicken, stewed"), ("boiled shrimp", "^Shrimp, steamed or boiled"), ("boiled corn", "^Corn.*boiled"),
+    ("boiled peanuts", "^Peanuts.*boiled"), ("steamed vegetables", "^Vegetables, mixed.*cooked"), ("steamed fish", "^Fish, steamed"),
+    ("steamed dumplings", "^Wonton, dumpling or pot sticker, steamed"), ("roasted vegetables", "^Vegetables, mixed.*cooked"),
+    ("roasted chicken", "^Chicken, baked, broiled, or roasted"), ("roasted turkey", "^Turkey, whole, meat only, cooked, roasted"),
+    ("roasted garlic", "^Garlic, raw"), ("roasted peppers", "^Peppers, sweet.*(cooked|sauteed)"),
+    ("roasted red peppers", "^Peppers, sweet, red.*(cooked|sauteed)"), ("roasted beets", "^Beets, cooked, boiled, drained"),
+    ("roasted peanuts", "^Peanuts.*roasted"), ("dry roasted peanuts", "^Peanuts.*dry-roasted"),
+    ("grilled vegetables", "^Vegetables, mixed.*cooked"), ("grilled fish", "^Fish.*grilled"), ("grilled chicken", "^Chicken, grilled"),
+    ("grilled cheese", "^Grilled cheese sandwich"), ("grilled portobello", "^Mushrooms, portabella, grilled"),
+    ("grilled eggplant", "^Eggplant, cooked"), ("grilled pineapple", "^Pineapple, raw, all varieties"),
+    ("grilled peppers", "^Peppers, sweet.*(cooked|sauteed)"), ("fried chicken", "^Chicken, fried, coated"), ("fried fish", "^Fish, fried"),
+    ("fried tofu", "^Tofu, fried"), ("fried plantains", "^Plantains, green, fried"), ("fried potatoes", "^Potato.*fried"),
+    ("fried onions", "^Onions, yellow, sauteed"), ("fried okra", "^Fried okra"), ("fried zucchini", "^Fried summer squash, yellow or green"),
+    ("fried mushrooms", "^Fried mushrooms"), ("seared tuna", "^Fish, tuna.*fresh.*cooked"), ("seared scallops", "^Scallops, grilled"),
+    ("seared steak", "^Steak, cooked"), ("toasted bread", "^Bread.*toasted"), ("toasted bagel", "^Bagels.*toasted"),
+    ("toasted sesame seeds", "^Seeds, sesame.*toasted"), ("microwaved potato", "^Potatoes, microwaved"),
+    ("baked potato", "^Potatoes, baked, flesh, without salt"), ("baked beans", "^Beans, baked, home prepared"),
+    ("baked chicken", "^Chicken, baked, broiled, or roasted"), ("baked fish", "^Fish, baked or broiled"), ("baked ham", "^(Ham|Pork, cured, ham)"),
+    ("baked apple", "^Apples.*cooked"), ("sauteed shrimp", "^Shrimp, cooked"), ("sauteed vegetables", "^Vegetables, mixed.*cooked"),
+    ("sauteed peppers", "^Peppers, sweet, red, sauteed"), ("sauteed zucchini", "zucchini.*cooked"), ("sauteed green beans", "^Beans, snap, green"),
+    ("dried mango", "^Mango, dried, sweetened"), ("dried apricots", "^Apricots, dried"), ("dried cranberries", "^Cranberries, dried"),
+    ("canned tuna", "^Fish, tuna, canned"), ("canned chicken", "^Chicken, canned, meat only"), ("canned corn", "^Corn.*canned"),
+    ("canned peaches", "^Peaches, canned"), ("canned green beans", "^Beans, snap, green, canned"), ("canned beans", "^Beans.*canned"),
+    ("frozen peas", "^Peas, green, frozen"), ("frozen spinach", "^Spinach, frozen"), ("frozen broccoli", "^Broccoli, frozen"),
+    ("frozen corn", "^Corn.*frozen"), ("air fryer salmon", "^Fish, salmon, baked or broiled"),
+    ("sous vide chicken breast", "^Chicken breast, cooked, without skin"), ("crock pot chili", "^Chili"),
+    ("instant pot rice", "^Rice, white.*cooked"), ("fire roasted tomatoes", "^Tomatoes, red, ripe, cooked"), ("barbecue ribs", "^Ribs, cooked"),
+    ("pulled beef", "^Barbecue beef"), ("smoked gouda", "^Cheese, gouda"), ("smoked paprika", "^Spices, paprika"),
+    ("smoked cheddar", "^Cheese, cheddar"), ("smoked almonds", "^Nuts, almonds.*roasted"), ("smoked mackerel", "^Fish, mackerel, grilled"),
+    ("smoked pork chop", "^Pork, chop, cooked"), ("smoked turkey breast", "^Turkey, whole, breast, meat only, cooked, roasted"),
+    ("smoked salmon", "^Fish, salmon, smoked"), ("roasted seaweed", "(?i)seaweed"), ("grilled peaches", "^Peaches, yellow, raw"),
+    ("grilled avocado", "^Avocados, raw"), ("grilled watermelon", "^Watermelon, raw"), ("sauteed garlic", "^Garlic, raw"),
+    ("boiled milk", "^Milk, (whole|reduced|lowfat)"), ("steamed milk", "^Milk, (whole|reduced|lowfat)"), ("steamed buns", "^Bao bun"),
+    ("pork bun", "^Bao bun"), ("baked feta", "^Cheese, feta"), ("toasted sesame oil", "^Oil, sesame, salad or cooking"),
+    ("over easy egg", "^Egg, whole, cooked, fried"), ("sunny side up eggs", "^Egg, whole, cooked, fried"),
+    ("soft boiled eggs", "^Egg, whole, cooked, hard\\-boiled"), ("stir fried shrimp", "^Shrimp and vegetables, with soy\\-based sauce"),
+    ("stir fried beef", "^Beef and vegetables, with soy\\-based sauce"), ("pan fried fish", "^Fish, fried"),
+    ("pan fried potatoes", "^Potato.*fried"), ("oven baked fries", "^Potato, french fries, from (fresh|frozen), baked"),
+    ("oven roasted broccoli", "^Broccoli, cooked"), ("air fried tofu", "^Tofu, (raw|firm|extra firm)"),
+    ("air fryer fries", "^Potato, french fries, from (fresh|frozen), baked"), ("deep fried turkey", "^Turkey"),
+    ("slow cooked beef", "^Beef, cooked"), ("slow cooker pulled pork", "^Barbecue pork"),
+    ("crispy chicken sandwich", "^Chicken fillet sandwich, fried"), ("breaded chicken breast", "^Chicken breast, fried, coated$"),
+    ("shrimp tempura", "^Shrimp, fried"), ("candied sweet potatoes", "^Sweet potato, cooked, candied, home\\-prepared"),
+    ("fried squash", "^Fried summer squash, yellow or green"), ("bacon strips", "^Bacon, cooked"), ("blackened chicken", "^Chicken, grilled"),
+    ("charred corn", "^Corn.*cooked"),
+]
+
 let snacks: [(String, String)] = [
     ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk$"), ("protein shake", "^Nutritional drink or shake, high protein"),
     ("yogurt parfait", "^Yogurt parfait"), ("egg and cheese sandwich", "^Egg sandwich on .*with cheese"),
@@ -2669,6 +2756,49 @@ struct StaplesTests {
         // A plural isn't a longer name begun: tortilla strips aren't a strip steak.
         #expect(catalog.top("tortilla strips", 1).first.map { matches("(?i)tortilla strips", $0) } == true)
         #expect(catalog.top("fruits", 1).first == "Fruit")
+    }
+
+    @Test("a food by how it was cooked is the food cooked that way, or the one the catalog has, typed and named as a model would")
+    func waysOfCooking() {
+        for seen in [false, true] {
+            var first = 0
+            var missed: [String] = []
+            for (query, pattern) in ways {
+                let names = seen ? catalog.candidates(name: query, brand: nil).prefix(1).map(\.food.name) : catalog.top(query, 1)
+                if names.first.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(names.first ?? "nothing")") }
+            }
+            print("Ways of cooking \(seen ? "as a model names them" : "typed"): \(first) of \(ways.count) first")
+            #expect(Double(first) >= 0.95 * Double(ways.count), "\(seen ? "seen" : "typed"): \(missed.joined(separator: " | "))")
+        }
+        // A way said in two words is the catalogs' one, and where it was cooked isn't the food.
+        #expect(catalog.plainlyCooked("pan seared salmon") == "seared salmon")
+        #expect(catalog.plainlyCooked("slow cooker chicken") == "chicken")
+        #expect(catalog.plainlyCooked("sunny side up eggs") == "fried eggs")
+        #expect(catalog.plainlyCooked("oven baked chicken with pan fried potatoes") == "baked chicken with fried potatoes")
+        // Only beside a food, and not a word that is only like one.
+        #expect(catalog.plainlyCooked("pan seared") == nil)
+        #expect(catalog.plainlyCooked("pancakes") == nil && catalog.plainlyCooked("oven") == nil)
+        #expect(catalog.top("air fried chicken", 1).first == "Chicken, baked, broiled, or roasted")
+        // A brand's label that says it the way it was typed is still the one found.
+        #expect(catalog.top("tyson air fried chicken", 1).first.map { matches("(?i)air fried", $0) } == true)
+        #expect(catalog.top("aldi pan seared steak", 1).first.map { matches("(?i)pan-seared", $0) } == true)
+        // And with no brand typed it comes right after the first plain foods.
+        #expect(catalog.top("pan seared steak", 6).contains { matches("(?i)pan-seared steak", $0) })
+        #expect(catalog.top("air fried chicken", 6).contains { matches("(?i)air fried chicken", $0) })
+        // Smoked is a way where no plain food is named so.
+        #expect(catalog.top("smoked brisket", 1).first == "Beef, brisket, cooked")
+        #expect(catalog.top("smoked salmon", 1).first == "Fish, salmon, smoked")
+        // A food the catalog has no entry cooked that way for is the uncooked one there is:
+        // not a cracker flavoured like it, and not seaweed, which roasting dries.
+        #expect(catalog.top("roasted garlic", 1).first == "Garlic, raw")
+        #expect(catalog.top("smoked gouda", 1).first == "Cheese, gouda")
+        #expect(catalog.top("grilled cheese", 1).first == "Grilled cheese sandwich")
+        #expect(catalog.top("grilled chee", 1).first?.hasPrefix("Grilled cheese sandwich") == true)
+        #expect(catalog.top("roasted seaweed", 1).first.map { matches("(?i)roasted seaweed", $0) } == true)
+        #expect(catalog.top("fried banana", 1).first != nil)
+        // The name that is exactly what was said, whichever of a food's other names comes first.
+        let stirFry = catalog.candidates(name: "Stir-fried chicken", brand: nil).first
+        #expect(stirFry?.food.name == "Chicken or turkey and vegetables, with soy-based sauce" && stirFry?.called == true)
     }
 
     @Test("a product is first before its name is typed out")

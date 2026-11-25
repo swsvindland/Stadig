@@ -104,6 +104,25 @@ func catalogDish(_ name: String) -> String {
     return list.filter { seen.insert($0).inserted }.joined(separator: " ")
 }
 
+/// Ways of cooking said in two words, as the one the catalogs use, and where a food was cooked,
+/// which says nothing of which food it is: "pan seared" is seared, "deep fried" fried, and a
+/// slow cooker's chicken is chicken. An air fryer bakes, and USDA's boiled egg is hard-boiled.
+/// Longest first.
+let cookingWays: [(said: [String], means: [String])] = [
+    (["sunny", "side", "up"], ["fried"]),
+    (["pan", "seared"], ["seared"]), (["pan", "fried"], ["fried"]), (["pan", "roasted"], ["roasted"]), (["pan", "grilled"], ["grilled"]),
+    (["pan", "cooked"], ["cooked"]), (["oven", "roasted"], ["roasted"]), (["oven", "baked"], ["baked"]), (["oven", "fried"], ["baked"]),
+    (["oven", "cooked"], ["cooked"]), (["oven", "grilled"], ["grilled"]), (["oven", "broiled"], ["broiled"]), (["deep", "fried"], ["fried"]),
+    (["air", "fried"], ["baked"]), (["air", "fryer"], ["baked"]), (["slow", "cooked"], ["cooked"]), (["slow", "roasted"], ["roasted"]),
+    (["slow", "cooker"], []), (["crock", "pot"], []), (["instant", "pot"], []), (["pressure", "cooked"], ["cooked"]),
+    (["pressure", "cooker"], []), (["char", "grilled"], ["grilled"]), (["flame", "grilled"], ["grilled"]),
+    (["flame", "broiled"], ["grilled"]), (["char", "broiled"], ["grilled"]), (["fire", "roasted"], ["roasted"]), (["wood", "fired"], []),
+    (["sous", "vide"], []), (["soft", "boiled"], ["hard", "boiled"]), (["over", "easy"], ["fried"]), (["over", "medium"], ["fried"]),
+    (["over", "hard"], ["fried"]), (["over", "well"], ["fried"]),
+    // What's stir fried is the catalogs' stir fry.
+    (["stir", "fried"], ["stir", "fry"]),
+]
+
 /// Everyday names of two words that the catalogs file under another: a hot dog is USDA's
 /// frankfurter and a bell pepper its sweet pepper. For each, the words as typed, and the
 /// catalogs' word for the one at each place; both are compared by their stems.
@@ -213,6 +232,8 @@ let shortNames: [String: String] = [
     // Tenders and legs with no animal named are a chicken's: USDA's "mock tender" is a cut of
     // beef chuck, and its legs a pig's, a frog's and a crab's.
     "tenders": "chicken tenders", "legs": "chicken legs",
+    // Beef alone is ground beef; shredded, it's a pot roast.
+    "shredded beef": "beef pot roast",
     // Red pepper flakes are its red or cayenne pepper.
     "red pepper flakes": "spices pepper red cayenne", "crushed red pepper": "spices pepper red cayenne",
     "cayenne pepper": "spices pepper red cayenne", "cayenne": "spices pepper red cayenne",
