@@ -15,9 +15,11 @@ export const brand = {
   // The line under every App Store button.
   free: "Free and open source. No account.",
   // Where the source is and the licence it's under: the Free section's "Read the source", the
-  // footer's "Source", the FAQ and the llms files.
+  // footer's "Source", the FAQ, the privacy and principles pages, and the llms files.
   source: "https://github.com/swsvindland/Stadig",
   license: "GPL-3.0",
+  // SECURITY.md as GitHub shows it, with the private "Report a vulnerability" button: the support page.
+  security: "https://github.com/swsvindland/Stadig/security/policy",
 };
 
 /** A phone screenshot: 624 × 1357, the status bar painted out. */

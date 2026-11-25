@@ -2,6 +2,9 @@
 import Base from "../layouts/Base.astro";
 import Rule from "../components/Rule.astro";
 import { brand, faq } from "../content/site";
+// The answers are plain text (they're the JSON-LD too), so the repository's address in one is
+// turned into a link here.
+const sourceHost = brand.source.replace(/^https:\/\//, "");
 const jsonLd = [
   {
     "@context": "https://schema.org",
@@ -21,7 +24,9 @@ const jsonLd = [
       {faq.map((f, i) => (
         <details open={i < 4}>
           <summary>{f.q}</summary>
-          <p class="lede ans">{f.a}</p>
+          <p class="lede ans">
+            {f.a.split(sourceHost).map((part, j) => (j === 0 ? part : <><a class="inline-link" href={brand.source} rel="noopener">{sourceHost}</a>{part}</>))}
+          </p>
         </details>
       ))}
     </div>

@@ -14,10 +14,16 @@ import { choices, limits, trap } from "../../api/feedback";
     <Rule label="Support" />
     <div class="intro">
       <h1 class="h1" id="support-title">Tell us what happened.</h1>
-      <p class="lede">
-        Something broken, an idea, or a question the <a class="inline-link" href="/faq">FAQ</a> doesn't answer. It goes straight to {brand.publisher},
-        who makes the apps. Leave an email if you'd like a reply.
-      </p>
+      <div class="stack">
+        <p class="lede">
+          Something broken, an idea, or a question the <a class="inline-link" href="/faq">FAQ</a> doesn't answer. It goes straight to {brand.publisher},
+          who makes the apps. Leave an email if you'd like a reply.
+        </p>
+        <p class="lede">
+          For a security problem, this form is private, or you can <a class="inline-link" href={brand.security} rel="noopener">report it privately on GitHub</a>,
+          where the <a class="inline-link" href={brand.source} rel="noopener">source for both apps</a> is.
+        </p>
+      </div>
     </div>
 
     <form class="form" method="post" action="/api/feedback">

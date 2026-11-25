@@ -28,10 +28,14 @@ const apps = [
 ---
 <Base title="Privacy" description={`How ${brand.name}'s apps and website handle your data: no accounts, no analytics, no third-party SDKs, everything on your devices and in your iCloud.`}>
   <section class="wrap page" aria-labelledby="privacy-title">
-    <Rule label="Privacy" aside="Last updated 18 November 2026" />
+    <Rule label="Privacy" aside="Last updated 25 November 2026" />
     <div class="intro">
       <h1 class="h1" id="privacy-title">Your data stays yours.</h1>
-      <p class="lede">The short version: there is no account, no analytics, and no third-party code in either app. Your data lives on your devices and in your private iCloud database. We never see it.</p>
+      <p class="lede">
+        The short version: there is no account, no analytics, and no third-party code in either app. Your data lives on your devices and in your private iCloud
+        database. We never see it. You don't have to take that on trust: both apps and this website are open source, under the <span style="white-space:nowrap">{brand.license}</span>.
+        <a class="inline-link" href={brand.source} rel="noopener">Read the source</a>
+      </p>
     </div>
   </section>
   <section class="wrap sec" aria-labelledby="privacy-apps">

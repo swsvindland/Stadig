@@ -2,6 +2,13 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **The site says open source where it makes a claim.** 2026-11-25, you asked that the site mention open source and point at the repository. The line under the buttons, the Free section, the footer, the FAQ and the llms files already did (the entry on the site saying open source, below). The rest is mine to check:
+  - **Privacy's short version** ends "You don't have to take that on trust: both apps and this website are open source, under the GPL-3.0. Read the source", and its date moved to 25 November. No policy changed.
+  - **Principles** has one line under the seven, "Each of these can be checked", with the same link. The seven principles stay seven; open source isn't made an eighth (`llms.txt` and the page's description count them).
+  - **Support** says a security problem can go through the form, which is private, or to GitHub's private report (the repository's security policy page, `brand.security`), as `SECURITY.md` says.
+  - **The FAQ's address is a link** now. The answers stay plain text for the JSON-LD; the page links the repository's address where an answer has it.
+  - **Not in the header.** The footer's Source is on every page; the header keeps its app and page links. Say if you want it there too.
+
 - **PR 12's held weights kept; the two tests it broke changed instead.** 2026-11-25, you asked for the two Lift tests that PR 12 broke to be fixed. The calls, yours to check:
   - **The engine stays as PR 12 left it.** Since a weight done for the reps next time asks is held at least (`Progression.prescribe`), the summary's "starts 2.5 kg heavier next time" is gone: it came from the step back to below today's heaviest that PR 12 took out, then the climb back within the session. A lifter now gets stronger within sessions: an easy set moves the rest of the session's sets up, and next time holds where it ended, so the summary says "held". "Moves up" comes only after a last set with reps to spare. Say if you'd rather the summary said more often that next time is heavier than today started, or that the lift went up over the week.
   - **`SessionLessonsTests`' lifter gains 1.2% a session**, twice `Performer`'s usual. At 0.6% the five-week block never has a last set with reps to spare, so never a "moves up" to check. It now needs 15 promises kept, not 20: one held lift is said a session, so the block makes about one promise a session it loads. Every promise is still checked.

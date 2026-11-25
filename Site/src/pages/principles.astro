@@ -17,6 +17,10 @@ const appNames = { lift: "Stadig Lift", macro: "Stadig Macro" } as const;
         <li><span class="fn" aria-hidden="true">{i + 1}</span><h2 class="h3">{p.title}</h2><p class="lede">{p.body}</p></li>
       ))}
     </ol>
+    <p class="lede" style="margin-top:var(--gap-l);max-width:36em">
+      Each of these can be checked. Both apps, the Swift packages they're built on and this website are open source, under the <span style="white-space:nowrap">{brand.license}</span>.
+      <a class="inline-link" href={brand.source} rel="noopener">Read the source</a>
+    </p>
   </section>
 
   <section class="paper" aria-labelledby="scores-title">
