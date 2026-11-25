@@ -2099,6 +2099,8 @@ func scoreFoods(
     // What was said, without a label's word for how it was grown or made: "organic manicotti"
     // is still what the catalog calls "Manicotti".
     let saidStems = target.map(stem).filter { !labelWords.contains($0) }
+    // The same in every wording the catalogs have: "coke" is also cola.
+    let askedForms = Set(target.flatMap { forms($0).map(stem) } + saidStems)
     // The same read through a word's one correction: "americno" is what the catalog calls
     // "Americano", as it is typed right.
     let correctedStems = target.map { word in
@@ -2486,6 +2488,17 @@ func scoreFoods(
             // And the one named by nothing but what was said, cooked: "Lamb, cooked" before the
             // composite of its retail cuts.
             if onlyCooked, match.others == 0, said.allSatisfy({ w in w == plainlyCooked || saidStems.contains { same(w, $0) } }) { score += 0.1 }
+        }
+        // A drink or a dish of two foods isn't the second of them: for "diet cola" the survey's
+        // "Whiskey and diet cola" came before the cola, and "Gin and tonic" second for tonic.
+        // Where the words say something of what follows the "and" and nothing of what's
+        // before it; a name begun ("mac" for macaroni and cheese) is its first food's.
+        if !row.text.branded, !row.called, match.missing == 0, let after = row.text.joint.min() {
+            let text = row.text
+            let said = { (run: Int) in
+                text.said.indices.contains { i in text.runs[i] == run && askedForms.contains { same(text.said[i], $0) || starts(text.said[i], $0) } }
+            }
+            if said(after), !text.said.indices.contains(where: { text.runs[$0] < after && said(text.runs[$0]) }) { score -= 0.75 }
         }
         // Of the sizes a plain food comes in, where none was asked for, the middle one: a
         // burger's medium patty, a pizza's medium crust.

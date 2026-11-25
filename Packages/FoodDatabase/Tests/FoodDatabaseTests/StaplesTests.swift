@@ -543,7 +543,8 @@ let products: [(String, String)] = [
     ("quest bar", "(?i)\\[quest"), ("rxbar", "(?i)rxbar"), ("fairlife", "(?i)\\[fairlife"), ("premier protein", "(?i)\\[premier protein"),
     ("muscle milk", "(?i)\\[muscle milk"), ("gatorade", "(?i)\\[gatorade"), ("red bull", "(?i)\\[red bull"), ("monster energy", "(?i)\\[monster"),
     ("celsius", "(?i)\\[celsius"), ("la croix", "(?i)\\[la ?croix"), ("coke zero", "(?i)coke zero|coca.cola zero"),
-    ("diet coke", "(?i)diet coke|diet cola"), ("sprite", "(?i)\\[sprite"), ("dr pepper", "(?i)dr.? pepper"), ("mountain dew", "(?i)mountain dew"),
+    ("diet coke", "(?i)^diet coke|^Soft drink, cola, diet"), ("sprite", "(?i)\\[sprite"), ("dr pepper", "(?i)dr.? pepper"),
+    ("mountain dew", "(?i)mountain dew"),
     ("halo top", "(?i)\\[halo top"), ("ben and jerrys", "(?i)\\[ben & jerry"), ("haagen dazs", "(?i)\\[h.agen.dazs"),
     ("chobani", "(?i)\\[chobani"), ("oikos", "(?i)\\[oikos"), ("siggis", "(?i)\\[siggi"), ("yoplait", "(?i)\\[yoplait"),
     ("activia", "(?i)\\[activia"), ("kraft mac and cheese", "(?i)macaroni.*\\[kraft"), ("velveeta", "(?i)\\[velveeta"), ("spam", "(?i)spam"),
@@ -1586,6 +1587,74 @@ let chainPlates: [(typed: String, first: String, second: String)] = [
     ("mcdonalds sausage mcmuffin with egg", "^McDONALD'S, Sausage McMUFFIN with Egg", ""),
     ("mcdonalds bacon egg and cheese biscuit", "^McDONALD'S, Bacon,? Egg (&|and) Cheese Biscuit", ""),
     ("subway turkey sub with cheese", "^SUBWAY, turkey breast sub", ""),
+]
+
+/// A food typed without something ("whopper no cheese", "salad without dressing", "coffee with
+/// no sugar"), with the food that comes first: the food, never the thing. Then the same said
+/// the other way, and the searches left as they are: a label's own wording, a recipe's name.
+let withoutTyped: [(String, String)] = [
+    ("whopper no cheese", "^BURGER KING, WHOPPER, no cheese"), ("burger king whopper no cheese", "^BURGER KING, WHOPPER, no cheese"),
+    ("burger no bun", "^Hamburger"), ("hamburger without bun", "^Hamburger"), ("burger, no bun", "^Hamburger"),
+    ("cheeseburger no bun", "^Cheeseburger"), ("hot dog no bun", "^(Hot dog|Frankfurter)"),
+    ("salad no dressing", "^Lettuce, salad with assorted vegetables, no dressing"),
+    ("salad without dressing", "^Lettuce, salad with assorted vegetables, no dressing"),
+    ("salad with no dressing", "^Lettuce, salad with assorted vegetables, no dressing"), ("caesar salad no dressing", "^Caesar salad"),
+    ("salad no croutons", "^(Lettuce, salad|Salad)"), ("coffee no sugar", "^Coffee$"), ("coffee without sugar", "^Coffee$"),
+    ("coffee with no sugar", "^Coffee$"), ("iced coffee no sugar", "^Iced Coffee"), ("latte no sugar", "^Coffee, Latte"),
+    ("latte no foam", "^Coffee, Latte"), ("tea without milk", "^(Beverages, tea, black, brewed|Tea, hot, leaf, black)"),
+    ("tea no milk", "^(Beverages, tea, black, brewed|Tea, hot, leaf, black)"),
+    ("tea no sugar", "^(Beverages, tea, black, brewed|Tea, hot, leaf, black)|^Tea"),
+    ("burrito bowl no rice", "^Burrito bowl($|, (chicken|beef or pork)$)"), ("burrito no cheese", "^Burrito"),
+    ("chicken breast no skin", "^Chicken breast, cooked, without skin"), ("chicken breast without skin", "^Chicken breast, cooked, without skin"),
+    ("chicken thigh no skin", "^Chicken thigh, cooked, without skin"), ("chicken no skin", "^Chicken.*(without skin|skinless|meat only)"),
+    ("green beans no salt", "^Beans, snap, green, .*(without salt|no salt)"),
+    ("peanut butter no salt", "^Peanut butter, smooth style, without salt"),
+    ("peanut butter without salt", "^Peanut butter, smooth style, without salt"), ("almonds no salt", "^Nuts, almonds, .*without salt"),
+    ("butter no salt", "^Butter, without salt"), ("butter without salt", "^Butter, without salt"),
+    ("cashews no salt", "^Nuts, cashew nuts, .*without salt"), ("applesauce no sugar", "^Applesauce, canned, unsweetened"),
+    ("applesauce no sugar added", "^Applesauce, canned, unsweetened"), ("oatmeal no sugar", "^(Cereals, oats|Oatmeal)"),
+    ("yogurt no sugar", "^Yogurt"), ("almond milk no sugar", "(?i:unsweetened)"), ("popcorn no butter", "^Popcorn, air-popped, no butter added"),
+    ("popcorn without butter", "^Popcorn, air-popped, no butter added"), ("baked potato no skin", "^Potatoes, baked, flesh"),
+    ("baked potato without skin", "^Potatoes, baked, flesh"), ("tuna no mayo", "^Fish, tuna"), ("sandwich no mayo", "^Sandwich"),
+    ("turkey sandwich no cheese", "^Turkey sandwich (or sub, restaurant|on)"),
+    ("turkey sandwich without cheese", "^Turkey sandwich (or sub, restaurant|on)"), ("taco no cheese", "^Taco, meat, no cheese"),
+    ("taco without cheese", "^Taco, meat, no cheese"), ("pizza no cheese", "^Pizza, no cheese"), ("fries no salt", "^Potato, french fries"),
+    ("eggs no oil", "^Egg"), ("scrambled eggs no butter", "^Egg(, whole, cooked, scrambled| omelet or scrambled egg)"),
+    ("rice no butter", "^Rice, white"), ("toast no butter", "^Bread.*toasted"), ("toast without butter", "^Bread.*toasted"),
+    ("bagel no cream cheese", "^Bagel"), ("pancakes no syrup", "^Pancakes"), ("pancakes without butter", "^Pancakes"),
+    ("cereal no milk", "^Cereal"), ("oatmeal without milk", "^(Cereals, oats|Oatmeal)"), ("milk no fat", "^Milk, nonfat"),
+    ("orange juice no pulp", "^Orange juice"), ("water no ice", "(?i:water)"), ("burger hold the mayo", "^Hamburger"),
+    ("burger minus the bun", "^Hamburger"), ("chili no beans", "^Chili, no beans|^Chili con carne"), ("pho no meat", "^Soup, pho, no meat"),
+    ("gumbo no rice", "^Gumbo, no rice"), ("nachos no cheese", "^Nachos"), ("quesadilla no cheese", "^Quesadilla"),
+    ("omelet no cheese", "^(Egg omelet|Egg, whole, cooked, omelet|Omelet)"), ("mashed potatoes no gravy", "^(Potato(es)?, mashed)"),
+    ("mashed potatoes without butter", "^Potato(es)?, mashed"), ("steak no sauce", "^(Steak|Beef)"), ("wings no sauce", "^Chicken"),
+    ("pasta no sauce", "^Pasta, cooked"), ("spaghetti without sauce", "^(Pasta|Spaghetti), cooked"),
+    ("ice cream no sugar added", "^Ice creams?, .*(?i:no sugar added)"),
+    ("burger king whopper with cheese", "^(BURGER KING, WHOPPER, with cheese|Whopper with cheese)"),
+    ("whopper with cheese", "^Whopper with cheese"), ("chicken thigh with skin", "^Chicken thigh, cooked, with skin"),
+    ("popcorn with butter", "^Popcorn, air-popped, with added butter"), ("salad with dressing", "^Lettuce, salad"),
+    ("coffee with sugar", "^Coffee"), ("no sugar added applesauce", "(?i:no sugar added applesauce)"),
+    ("coke no sugar", "(?i:(coca|coke).*(no sugar|zero)|cola, (diet|sugar free|low calorie))"), ("no bake cookies", "(?i:no.?bake)"),
+    ("no salt added green beans", "^Beans, snap, green, canned, no salt added"),
+]
+
+/// The same as a model names them.
+let withoutNamed: [(String, String)] = [
+    ("Burger patty (no bun)", "^(Beef, ground, patty|Hamburger)"), ("Hamburger without bun", "^(Hamburger|Beef, ground, patty)"),
+    ("Salad without dressing", "^Lettuce, salad with assorted vegetables, no dressing"),
+    ("Garden salad (no dressing)", "^Lettuce, salad with assorted vegetables, no dressing"), ("Side salad, no dressing", "^Lettuce, salad"),
+    ("Coffee without sugar", "^Coffee"), ("Black coffee, no sugar", "^Coffee"),
+    ("Tea without milk", "^(Beverages, tea, black, brewed|Tea, hot, leaf, black)|^Tea, hot"),
+    ("Turkey sandwich without cheese", "^Turkey sandwich (or sub, restaurant|on)"), ("Taco without cheese", "^Taco, meat, no cheese"),
+    ("Popcorn without butter", "^Popcorn, air-popped, no butter added"), ("Chicken breast without skin", "^Chicken breast, cooked, without skin"),
+    ("Baked potato without skin", "^Potatoes, baked, flesh"), ("Burrito bowl without rice", "^Burrito bowl($|, (chicken|beef or pork)$)"),
+    ("Oatmeal without sugar", "^(Cereals, oats|Oatmeal)"), ("Tuna salad without mayo", "^Tuna salad"),
+    ("Fries without salt", "^Potato, french fries"), ("Scrambled eggs (no butter)", "^Egg"), ("Latte, no sugar", "^Coffee, Latte"),
+    ("Grilled chicken breast, no skin", "^Chicken breast, grilled, without skin"), ("Toast without butter", "^Bread.*toasted"),
+    ("Pancakes without syrup", "^Pancakes"), ("Hot dog without bun", "^(Hot dog|Frankfurter)"), ("Cheeseburger without bun", "^Cheeseburger"),
+    ("Green beans, no salt", "^Beans, snap, green"), ("Unsalted almonds", "^Nuts, almonds"), ("Pizza without cheese", "^Pizza, no cheese"),
+    ("Rice without butter", "^Rice, white"), ("Steak, no sauce", "^(Steak|Beef)"), ("Pasta without sauce", "^Pasta, cooked"),
+    ("Whopper without cheese", "^(BURGER KING, WHOPPER, no cheese|Whopper)"), ("Yogurt, no sugar added", "^Yogurt"),
 ]
 
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
@@ -3189,6 +3258,50 @@ struct StaplesTests {
         // fried rice with chicken, which chicken and fried rice are.
         #expect(catalog.top("fried chicken and rice", 2).first.map { matches("^Chicken, fried", $0) } == true)
         #expect(catalog.top("chicken and fried rice", 1) == ["Rice, fried, with chicken"])
+    }
+
+    @Test("a food said to be without something is the food, and never the thing")
+    func saidWithout() {
+        var missed: [String] = []
+        for (query, pattern) in withoutTyped {
+            let first = catalog.search(query).first.map { found in found.food.brand.map { "\(found.food.name) [\($0)]" } ?? found.food.name }
+            if first.map({ matches(pattern, $0) }) != true { missed.append("\(query): \(first ?? "nothing")") }
+        }
+        print("Without something, typed: \(withoutTyped.count - missed.count) of \(withoutTyped.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(withoutTyped.count), "\(missed.joined(separator: " | "))")
+        missed = []
+        for (name, pattern) in withoutNamed {
+            let first = catalog.candidates(name: name, brand: nil).first?.food.name
+            if first.map({ matches(pattern, $0) }) != true { missed.append("\(name): \(first ?? "nothing")") }
+        }
+        print("Without something, as a model names it: \(withoutNamed.count - missed.count) of \(withoutNamed.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(withoutNamed.count), "\(missed.joined(separator: " | "))")
+        // The words: after the food, however it's joined on, and not where "no" starts a
+        // label's own wording or a number follows.
+        #expect(withoutSaid("whopper no cheese").map { [$0.main] + $0.lacked } == ["whopper", "cheese"])
+        #expect(withoutSaid("coffee with no sugar")?.main == "coffee" && withoutSaid("burger, hold the mayo")?.lacked == ["mayo"])
+        #expect(withoutSaid("Burger patty (no bun)").map { [$0.main] + $0.lacked } == ["Burger patty", "bun"])
+        #expect(withoutSaid("applesauce no sugar added")?.lacked == ["sugar"] && withoutSaid("salad w/o dressing")?.lacked == ["dressing"])
+        #expect(withoutSaid("no sugar added applesauce") == nil && withoutSaid("pho no 1") == nil && withoutSaid("coffee") == nil)
+        // A catalog name's words apart: what it's without, up to the next comma.
+        let pasta = wordsApart("Pasta with vegetables, no sauce or dressing")
+        #expect(pasta.without.contains(stem("dressing")) && pasta.with.contains("pasta") && !pasta.with.contains(stem("sauce")))
+        #expect(wordsApart("Chicken breast, cooked, without skin").without == ["skin"])
+        // The food a model's name is for leaves out what it's without.
+        #expect(FoodCatalog.food(in: "Salad without dressing") == "Salad")
+        // The thing itself is never first, nor the food with it.
+        #expect(catalog.top("burger no bun", 3).allSatisfy { !$0.hasPrefix("Rolls") })
+        #expect(catalog.top("tea without milk", 3).allSatisfy { !$0.contains("with milk") && !$0.hasPrefix("Milk") })
+        // The plain food is already without it, or has a word for being so.
+        #expect(catalog.top("tea no sugar", 1) == catalog.top("tea", 1) && catalog.top("milk no fat", 1).first?.hasPrefix("Milk, nonfat") == true)
+        #expect(catalog.top("coke no sugar", 1) == ["Soft drink, cola, diet"])
+        // Said the other way, the food that says it's without it isn't the one.
+        #expect(catalog.top("burger king whopper with cheese", 1) == ["BURGER KING, WHOPPER, with cheese"])
+        // A drink or dish of two foods isn't the second of them: diet cola isn't whiskey and
+        // diet cola. Asked for by both, or by its first, it still is.
+        #expect(catalog.top("diet coke", 1) == ["Soft drink, cola, diet"] && catalog.top("diet cola", 1) == ["Soft drink, cola, diet"])
+        #expect(catalog.top("tonic", 1) == ["Water, tonic"] && catalog.top("rum and coke", 1) == ["Rum and cola"])
+        #expect(catalog.top("gin and tonic", 1) == ["Gin and tonic"] && catalog.top("pb and j", 1) == ["Peanut butter and jelly sandwich"])
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

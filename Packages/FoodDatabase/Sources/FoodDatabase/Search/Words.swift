@@ -682,6 +682,62 @@ func servedWith(_ typed: String) -> String? {
     return (said[..<at] + ["with"] + said[(at + 1)...]).joined(separator: " ")
 }
 
+/// The words that say a food is without what follows them.
+private let withoutWords: Set<String> = ["no", "without", "w/o", "minus"]
+
+/// A food typed or named without something, apart: "whopper no cheese" is a Whopper, to be
+/// without cheese, as are "salad without dressing", "coffee with no sugar", "burger, hold the
+/// bun" and a model's "Burger patty (no bun)". Nil where "no" starts it, which is a label's
+/// own wording or a recipe's ("no sugar added applesauce", "no bake cookies"), and where a
+/// number follows ("no. 5").
+func withoutSaid(_ said: String) -> (main: String, lacked: [String])? {
+    // The food as it was written; the rest in small letters.
+    let written = said.split(separator: " ").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ",.()")) }.filter { !$0.isEmpty }
+    let all = written.map { $0.lowercased() }
+    guard
+        let at = all.indices.dropFirst().first(where: {
+            withoutWords.contains(all[$0]) || (all[$0] == "hold" && $0 + 1 < all.count && all[$0 + 1] == "the")
+        })
+    else { return nil }
+    var main = at
+    while main > 0, ["with", "and", "but"].contains(all[main - 1]) { main -= 1 }
+    let filler: Set<String> = ["hold", "the", "any", "added", "extra", "or", "and", "a"]
+    let lacked = all[(at + 1)...].filter { !withoutWords.contains($0) && !filler.contains($0) }
+    guard main > 0, !lacked.isEmpty, lacked.count <= 3, !lacked.contains(where: { $0.contains(where: \.isNumber) }) else { return nil }
+    return (written[..<main].joined(separator: " "), lacked)
+}
+
+/// A catalog name's words, stemmed, apart: the ones it says the food is without ("no cheese",
+/// "without salt added", "no sauce or dressing", up to the next comma) and the rest.
+func wordsApart(_ name: String) -> (without: [String], with: [String]) {
+    var without: [String] = []
+    var with: [String] = []
+    for part in name.lowercased().split(whereSeparator: { ",;()&".contains($0) }) {
+        var lacking = false
+        for word in tokens(String(part)) {
+            if word == "no" || word == "without" {
+                lacking = true
+            } else if lacking {
+                without.append(stem(word))
+            } else {
+                with.append(stem(word))
+            }
+        }
+    }
+    return (without, with)
+}
+
+/// What a food without something is called, where it has a word for it: with no sugar it's
+/// unsweetened or sugar free, with no skin skinless.
+let withoutForms: [String: [String]] = [
+    "sugar": ["unsweetened", "sugar free", "diet"], "salt": ["unsalted"], "sodium": ["unsalted"], "fat": ["nonfat", "fat free"],
+    "caffeine": ["decaf"], "skin": ["skinless"], "bone": ["boneless"], "bones": ["boneless"], "seeds": ["seedless"],
+    "gluten": ["gluten free"], "dairy": ["dairy free"], "lactose": ["lactose free"], "alcohol": ["non alcoholic"],
+]
+
+/// And what a food that has it may say instead of the word: sugar is in a "sweetened" one.
+let withForms: [String: [String]] = ["sugar": ["sweetened"], "sodium": ["salted", "salt"], "caffeine": ["caffeinated"]]
+
 /// A food as a model names it, apart from what it says comes with it: "Whole wheat toast with
 /// butter" is whole wheat toast, with butter beside; "Turkey sandwich on wheat bread" a turkey
 /// sandwich; "Chicken wings (buffalo)" chicken wings, said to be buffalo. The food is matched by

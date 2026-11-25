@@ -884,7 +884,7 @@ extension FoodCatalog {
     }
 
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
-        let search = searchCatalog(typed, known: known, out: nil)
+        var search = searchCatalog(typed, known: known, out: nil)
         // A search in Spanish, or a food's Hindi name, is searched as it reads in English,
         // where the catalog doesn't name a food by the words as typed ("Pollo asado") and a
         // plain food has every word of the English: "pollo" is chicken and "frijoles negros"
@@ -901,6 +901,15 @@ extension FoodCatalog {
                 both.typed = read.typed ?? typed
                 return both
             }
+        }
+        if let without = searchWithout(typed, search, known: known) { return without }
+        // And typed with something, a food that says it's without it comes after the ones
+        // that don't: Burger King's Whopper "no cheese" matched "whopper with cheese" word
+        // for word.
+        if let first = search.ranked.first, tokens(typed).contains("with") {
+            let sides = Self.besideTyped(typed).flatMap { Self.foodWords($0) }.map { [stem($0)] }
+            let lacks = { (found: Ranked) in sides.contains { Self.saysWithout(found.food, [$0]) } }
+            if !sides.isEmpty, lacks(first) { search.ranked = Self.joined(search.ranked.filter { !lacks($0) }, search.ranked.filter(lacks)) }
         }
         // A way of cooking said in two words is searched as the catalogs' one, where no brand
         // is named and a plain food has every word left: "pan seared salmon" is the salmon,
@@ -962,6 +971,109 @@ extension FoodCatalog {
         both.ranked = Self.joined(plain.ranked, search.ranked)
         both.elsewhere.formUnion(plain.elsewhere)
         return both
+    }
+
+    /// Whether a food's name says it's without each of these (stemmed, in every wording):
+    /// "Taco, meat, no cheese", "Peanut butter, smooth style, without salt".
+    private static func saysWithout(_ food: Food, _ lacked: [[String]]) -> Bool {
+        let without = wordsApart(food.name).without
+        return !without.isEmpty && lacked.allSatisfy { forms in forms.contains { form in without.contains { same($0, form) } } }
+    }
+
+    /// Whether its name has one of them, and not as what it's without: the tea "with milk",
+    /// the "salted" butter, the potato's skin.
+    private static func has(_ food: Food, _ lacked: [[String]], _ with: [String]) -> Bool {
+        let said = wordsApart(food.name).with
+        let named = { (form: String) in said.contains { same($0, form) } }
+        return lacked.contains { $0.contains(where: named) } || with.contains(where: named)
+    }
+
+    /// A food said to be without something is the food, and never the thing: "burger no bun"
+    /// was hamburger rolls, "coffee without sugar" sugar and "tea without milk" milk, since
+    /// the words were searched like any others. First the plain foods that say they're
+    /// without it ("Taco, meat, no cheese", "Butter, without salt", Burger King's Whopper "no
+    /// cheese"): the ones the food alone finds near the top, then the ones named for the food
+    /// that the food and the thing find as words, not another dish that has both ("Chili hot
+    /// dog, no bun" for a hot dog). Then the food by the word for being without it, where
+    /// there is one (unsweetened applesauce, skinless chicken); then the food as it's found
+    /// alone, the ones that have the thing last (not the tea "with milk" for tea with no
+    /// milk); then the labels that say so, and what the words found as said.
+    /// `plain` is what the food alone finds, `both` the food and the thing as words, `called`
+    /// each of those words for it with the food, and `said` the whole as it was said.
+    private static func without(
+        _ lacked: [String], of main: String, plain: [Ranked], both: [Ranked], called: [[Ranked]], said: [Ranked]
+    ) -> [Ranked] {
+        let forms = lacked.map { FoodDatabase.forms($0).map(stem) }
+        let with = lacked.flatMap { withForms[$0] ?? [] }.map(stem)
+        let has = { (found: Ranked) in Self.has(found.food, forms, with) }
+        let food = foodWords(main).map(stem)
+        let says = { (found: Ranked) in found.name >= 1 && saysWithout(found.food, forms) }
+        // Named for the food: its name, or what follows the group it's filed under, starts
+        // with one of the food's words ("Taco, meat, no cheese", "Nuts, almonds, dry roasted,
+        // without salt added"), not another dish that has it ("Chili hot dog, no bun"). And
+        // not the food with something else and without this: "Pasta with vegetables, no
+        // sauce or dressing" isn't pasta with no sauce.
+        let its = { (found: Ranked) -> Bool in
+            guard says(found), !wordsApart(found.food.name).with.contains("with") else { return false }
+            let text = FoodText(found.food)
+            let starts = text.said.indices.filter { $0 == 0 || (text.runs[$0] == 1 && text.runs[$0 - 1] == 0) }
+            return starts.contains { at in food.contains { same(text.said[at], $0) } }
+        }
+        // What makes no difference to the food leaves it as it is: orange juice with no pulp
+        // isn't the light one that says "no pulp", nor is water different for no ice.
+        let matters = !lacked.allSatisfy(Self.noMatter.contains)
+        // The first food found alone is the food, whatever it's named: a salad is "Lettuce,
+        // salad with assorted vegetables, no dressing".
+        let near = matters ? plain.prefix(1).filter(says) + plain.prefix(10).filter(its) : []
+        let named = matters ? both.filter(its) : []
+        var firsts = (near + named).filter { $0.food.source == .usda }
+        for found in called {
+            if let first = found.first, first.name >= 1, first.food.source == .usda { firsts.append(first) }
+        }
+        let labels = unique((near + named).filter { $0.food.source != .usda })
+        let rest = joined(labels, joined(plain, said.filter { !has($0) }))
+        return joined(unique(firsts), joined(plain.filter { !has($0) }, rest))
+    }
+
+    /// What a food is the same food without.
+    private static let noMatter: Set<String> = ["pulp", "ice", "foam", "whip", "straw", "lid"]
+
+    /// The words for being without it, where one thing is, and the food as it's found alone
+    /// isn't without it already: skim milk for milk with no fat, but no "unsweetened" tea for
+    /// tea with no sugar, which found the instant iced one.
+    private static func calledWithout(_ lacked: [String], _ food: Food) -> [String] {
+        guard lacked.count == 1, food.basis != .serving else { return [] }
+        let has: Double?
+        switch lacked[0] {
+        case "sugar": has = food.nutrients.sugar ?? food.nutrients.carbs
+        case "fat": has = food.nutrients.fat
+        case "salt", "sodium": has = food.nutrients.sodium.map { $0 / 20 }
+        case "caffeine": has = food.extras["caffeine"]
+        default: has = nil
+        }
+        if let has, has <= 0.5 { return [] }
+        return withoutForms[lacked[0]] ?? []
+    }
+
+    /// A food typed without something (see `without`). A brand's search is left as typed,
+    /// where "no sugar" is the product's name (Coke No Sugar), unless the brand is a chain.
+    private func searchWithout(_ typed: String, _ search: CatalogSearch, known: [String: Double]) -> CatalogSearch? {
+        guard let said = withoutSaid(typed),
+            search.brand.isEmpty || Chains.chain(in: searchedWords(readQuery(search.text).words), typed: typed) != nil
+        else { return nil }
+        var found = searchCatalog(said.main, known: known)
+        guard let food = found.ranked.first, food.name >= 1 else { return nil }
+        let both = searchCatalog("\(said.main) \(said.lacked.joined(separator: " "))", known: known, out: nil)
+        let called = Self.calledWithout(said.lacked, food.food).map { searchCatalog("\($0) \(said.main)", known: known).ranked }
+        found.ranked = Self.without(said.lacked, of: said.main, plain: found.ranked, both: both.ranked, called: called, said: search.ranked)
+        found.elsewhere.formUnion(search.elsewhere)
+        found.typed = found.typed ?? typed
+        return found
+    }
+
+    private static func unique(_ ranked: [Ranked]) -> [Ranked] {
+        var seen = Set<String>()
+        return ranked.filter { seen.insert($0.food.id).inserted }
     }
 
     /// A chain typed with two foods, or with a food and what it comes with, is each of them
@@ -1570,6 +1682,17 @@ extension FoodCatalog {
         if let chain = Chains.named(by: brand), !ranked.prefix(5).contains(where: { $0.mine && Chains.isBrand($0.food.brand, of: chain.name) }) {
             let plain = rankCandidates(name: said, brand: "", personal: personal, known: known, out: chain.place)
             if let first = plain.first, first.name >= 1, !FoodText(first.food).branded { ranked = Self.joined(plain, ranked) }
+        }
+        // A food named without something is the food, as when it's typed (see `without`):
+        // "Salad without dressing" isn't salad dressing, nor "Burger patty (no bun)" a bun.
+        if brand.isEmpty, let lacking = withoutSaid(said) {
+            let find = { (name: String) in self.rankCandidates(name: name, brand: "", personal: personal, known: known, out: nil) }
+            let plain = find(lacking.main)
+            if let food = plain.first, food.name >= 1 {
+                let both = find("\(lacking.main) \(lacking.lacked.joined(separator: " "))")
+                let called = Self.calledWithout(lacking.lacked, food.food).map { find("\($0) \(lacking.main)") }
+                ranked = Self.without(lacking.lacked, of: lacking.main, plain: plain, both: both, called: called, said: ranked)
+            }
         }
         // Two foods named as one: the food named as both first, or, where no food found is,
         // each one's candidates, none of them named by the whole, so nothing is logged for
