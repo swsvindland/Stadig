@@ -360,14 +360,15 @@ func shortNameBegun(_ typed: [String]) -> String? {
 }
 
 /// Where food goes by its British names.
-private let britishRegions: Set<String> = ["gb", "ie", "au", "nz", "za"]
+private let britishRegions: Set<String> = ["gb", "ie", "au", "nz", "za", "in", "pk", "bd", "lk", "sg", "my", "hk", "ng", "ke", "mt"]
 
 /// What a search or a model's name means where the phone is, by its words, where the same
 /// words mean another food elsewhere. The catalogs' plain foods are named in American English:
 /// their chips are crisps, their biscuits are eaten with gravy, their jelly is spread on toast
-/// and their cider is pressed apples. In Britain and Ireland chips are fries; there and in
-/// Australia, New Zealand and South Africa a biscuit is a cookie, jelly the gelatin dessert
-/// and currants the dried ones; in Australia and New Zealand lollies are candy and tomato
+/// and their cider is pressed apples. In Britain and Ireland chips are fries; there, in
+/// Australia, New Zealand and South Africa and where English came from Britain (India,
+/// Singapore, Nigeria) a biscuit is a cookie, jelly the gelatin dessert and currants the
+/// dried ones; in Australia and New Zealand lollies are candy and tomato
 /// sauce is ketchup. Only in the United States is cider the unfermented juice, and only there
 /// and in Canada is a flapjack a pancake, where a British one is an oat bar labels have.
 /// Chips in Australia are crisps and fries both, so only the "hot" ones are read as fries.
@@ -393,6 +394,15 @@ private let regionalNames: [(regions: Set<String>, names: [String: String])] = [
         ]
     ),
     (["au", "nz"], ["lollies": "candy", "lolly": "candy", "tomato sauce": "ketchup"]),
+    // In India curd is yogurt, not the curds of a cheese, a lady finger is okra, not the
+    // cookie, and a cold drink a soft drink.
+    (
+        ["in", "pk", "bd", "lk"],
+        [
+            "curd": "plain yogurt", "curds": "plain yogurt", "lady finger": "okra", "lady fingers": "okra", "ladies finger": "okra",
+            "ladies fingers": "okra", "ladyfinger": "okra", "ladyfingers": "okra", "cold drink": "soft drink",
+        ]
+    ),
     (["us"], ["cider": "apple cider", "ciders": "apple cider"]),
     (["us", "ca"], ["flapjack": "pancakes", "flapjacks": "pancakes"]),
 ]

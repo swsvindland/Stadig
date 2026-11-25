@@ -1432,6 +1432,59 @@ let otherNames: [(String, String)] = [
     ("baking soda", "^Leavening agents, baking soda"), ("taco seasoning", "^Seasoning mix, dry, taco"), ("bok choy", "^Cabbage, chinese"),
 ]
 
+/// Foods typed in Spanish, and by their Hindi or Indian-English names, each with the English
+/// search it's read as: the same food comes first for both.
+let otherLanguages: [(typed: String, english: String)] = [
+    ("pollo", "chicken"), ("arroz", "rice"), ("frijoles", "beans"), ("huevos", "eggs"), ("huevo", "egg"), ("leche", "milk"), ("carne", "meat"),
+    ("cerdo", "pork"), ("puerco", "pork"), ("pescado", "fish"), ("camarones", "shrimp"), ("atun", "tuna"), ("jamon", "ham"), ("tocino", "bacon"),
+    ("salchicha", "sausage"), ("pavo", "turkey"), ("papas", "potato"), ("papas fritas", "french fries"), ("cebolla", "onion"), ("ajo", "garlic"),
+    ("aguacate", "avocado"), ("lechuga", "lettuce"), ("zanahoria", "carrot"), ("maiz", "corn"),
+    ("manzana", "apple"), ("naranja", "orange"), ("fresas", "strawberries"), ("uvas", "grapes"), ("sandia", "watermelon"),
+    ("mantequilla", "butter"), ("azucar", "sugar"), ("aceite", "oil"), ("harina", "flour"), ("avena", "oatmeal"), ("jugo", "juice"),
+    ("jugo de naranja", "orange juice"), ("jugo de manzana", "apple juice"), ("agua", "water"), ("cerveza", "beer"), ("vino", "wine"),
+    ("refresco", "soda"), ("frijoles negros", "black beans"), ("frijoles refritos", "refried beans"), ("frijoles pintos", "pinto beans"),
+    ("arroz con leche", "rice pudding"), ("sopa", "soup"), ("ensalada", "salad"), ("pechuga de pollo", "chicken breast"),
+    ("pechuga", "chicken breast"), ("carne molida", "ground beef"), ("carne de res", "beef"), ("bistec", "steak"), ("chuleta", "pork chop"),
+    ("costillas", "ribs"), ("calabaza", "squash"), ("calabacita", "zucchini"), ("ejotes", "green beans"), ("espinacas", "spinach"),
+    ("coliflor", "cauliflower"), ("repollo", "cabbage"), ("pepino", "cucumber"), ("champinones", "mushrooms"), ("hongos", "mushrooms"),
+    ("nueces", "walnuts"), ("cacahuates", "peanuts"), ("almendras", "almonds"), ("miel", "honey"), ("mermelada", "jam"), ("galletas", "cookies"),
+    ("pastel", "cake"), ("helado", "ice cream"), ("palomitas", "popcorn"), ("tortilla de maiz", "corn tortilla"),
+    ("tortillas de harina", "flour tortillas"), ("arroz blanco", "white rice"), ("arroz integral", "brown rice"),
+    ("pollo frito", "fried chicken"), ("pollo a la plancha", "grilled chicken"), ("pechuga de pollo asada", "grilled chicken breast"),
+    ("pan blanco", "white bread"), ("pan integral", "whole wheat bread"), ("pan tostado", "toast"), ("te verde", "green tea"),
+    ("cafe negro", "black coffee"), ("leche entera", "whole milk"), ("leche descremada", "skim milk"), ("leche de almendra", "almond milk"),
+    ("leche de coco", "coconut milk"), ("agua de coco", "coconut water"), ("agua mineral", "sparkling water"),
+    ("huevos revueltos", "scrambled eggs"), ("huevo duro", "hard boiled egg"), ("claras de huevo", "egg whites"), ("queso crema", "cream cheese"),
+    ("crema de cacahuate", "peanut butter"), ("aceite de oliva", "olive oil"), ("ensalada de pollo", "chicken salad"),
+    ("ensalada de atun", "tuna salad"), ("sopa de verduras", "vegetable soup"), ("carne de res molida", "ground beef"),
+    ("bolillo", "french roll"), ("lengua", "beef tongue"), ("caldo", "broth"), ("2 huevos", "2 eggs"), ("pure de papa", "mashed potatoes"),
+    ("chuleta de puerco", "pork chop"), ("alitas de pollo", "chicken wings"), ("berenjena", "eggplant"), ("apio", "celery"),
+    ("toronja", "grapefruit"), ("durazno", "peach"), ("camote", "sweet potato"), ("langosta", "lobster"), ("tomate", "tomato"),
+    ("verduras", "vegetables"), ("fruta", "fruit"), ("yogur", "yogurt"), ("lentejas", "lentils"), ("brinjal", "eggplant"), ("bhindi", "okra"),
+    ("maida", "all purpose flour"), ("atta", "whole wheat flour"), ("dal", "lentil curry"), ("daal", "lentil curry"), ("chana", "chickpeas"),
+    ("chole", "chickpeas"), ("rajma", "kidney beans"), ("aloo", "potato"), ("gobi", "cauliflower"), ("palak", "spinach"), ("dahi", "yogurt"),
+    ("doodh", "milk"), ("anda", "egg"), ("murgh", "chicken"), ("keema", "ground meat"), ("methi", "fenugreek"), ("jeera", "cumin"),
+    ("haldi", "turmeric"), ("dhania", "coriander"), ("adrak", "ginger"), ("lehsun", "garlic"), ("pyaz", "onion"), ("tamatar", "tomato"),
+    ("kela", "banana"), ("aam", "mango"), ("seb", "apple"), ("nimbu", "lemon"), ("chawal", "rice"), ("sooji", "semolina"), ("rava", "semolina"),
+    ("sabudana", "tapioca"), ("makhan", "butter"), ("pulao", "rice pilaf"), ("kheer", "rice pudding"), ("moong dal", "mung beans"),
+    ("masoor dal", "red lentils"), ("toor dal", "pigeon peas"), ("matar", "peas"), ("gajar", "carrot"), ("kaju", "cashews"), ("badam", "almonds"),
+]
+
+/// Names in those languages that the catalogs have as typed, and English searches made of words
+/// that are also Spanish ("pan pizza", "pina colada"), each with the food that comes first.
+let keptAsTyped: [(String, String)] = [
+    ("huevos rancheros", "^Huevos rancheros"), ("carne asada", "(?i)^carne asada"), ("pollo asado", "^Pollo asado"),
+    ("caldo de pollo", "^Soup, sopa or caldo de pollo"), ("sopa de pollo", "^Soup, sopa or caldo de pollo"),
+    ("arroz con pollo", "(?i)arroz con pollo"), ("pan dulce", "^Pan dulce"), ("queso fresco", "^Cheese, fresh, queso fresco"),
+    ("queso", "^Cheese dip"), ("pozole", "^Soup, pozole"), ("tamales", "^Tamale"), ("horchata", "^Horchata"),
+    ("dulce de leche", "(?i)dulce de leche"), ("salsa verde", "^Salsa verde"), ("pan pizza", "(?i)^pan pizza"), ("masa harina", "^Masa harina"),
+    ("pina colada", "^Pina Colada"), ("pina", "^Pina Colada"), ("pan", "^Pancakes"), ("sal", "^Fish, salmon"),
+    ("dal makhani", "(?i)^dal makhani"), ("chana masala", "(?i)^chana masala"), ("palak paneer", "(?i)^palak paneer"),
+    ("aloo gobi", "(?i)^aloo gobi"), ("taco salad", "^Taco or tostada salad"), ("mango salsa", "(?i)mango salsa"), ("pinto", "^Beans, pinto"),
+    ("chili con carne", "(?i)chili"), ("jamon serrano", "(?i)jam[oó]n serrano"), ("paneer", "(?i)paneer"), ("roti", "^Bread, chapati or roti"),
+    ("ghee", "^Butter, Clarified butter"),
+]
+
 /// Words that mean one food in Britain, Ireland, Australia or New Zealand and another in the
 /// United States, by the region of the phone, with the food that comes first there; and the
 /// names around them that mean the same everywhere.
@@ -1449,7 +1502,7 @@ let regionalWords: [(region: String, typed: String, first: String)] = [
     ("gb", "currants", "^Currants, zante"), ("us", "currants", "^Currants, (red|european)"), ("au", "lollies", "^Candy$"),
     ("nz", "tomato sauce", "^Ketchup|^Catsup"), ("au", "tomato sauce", "^Ketchup|^Catsup"), ("us", "tomato sauce", "^Tomato sauce"),
     ("gb", "tomato sauce", "^Tomato sauce"), ("us", "flapjack", "^Pancakes"), ("ca", "flapjacks", "^Pancakes"),
-    ("gb", "flapjack", "(?i)flapjack"),
+    ("gb", "flapjack", "(?i)flapjack"), ("in", "biscuits", "^Cookie"), ("sg", "jelly", "^Gelatin dessert"),
     // The same everywhere.
     ("gb", "tortilla chips", "^Tortilla chips"), ("gb", "chocolate chips", "^Chocolate chips"), ("gb", "potato chips", "^Potato chips"),
     ("gb", "crisps", "^Potato chips"), ("gb", "biscuits and gravy", "^Biscuit with gravy"),
@@ -2324,8 +2377,9 @@ struct StaplesTests {
         #expect(catalog.top("meat", 1).first.map { matches("^(Beef|Meat), ground", $0) } == true)
         #expect(catalog.top("protein", 1).first.map { matches("(?i)protein powder", $0) } == true)
         #expect(catalog.top("salad", 1).first.map { matches("^Lettuce, salad", $0) } == true)
-        // A few letters aren't the start of a brand that isn't sold here.
-        #expect(catalog.top("dal", 1).first.map { matches("(?i)^dal\\b", $0) } == true)
+        // A few letters aren't the start of a brand that isn't sold here: dal is the lentil
+        // curry it is, then the labels called dal.
+        #expect(catalog.top("dal", 1) == ["Lentil curry"] && catalog.top("dal", 5).contains { matches("(?i)^dal\\b", $0) })
     }
 
     @Test("a popular product or a chain's item typed by its name comes first")
@@ -2869,6 +2923,27 @@ struct StaplesTests {
         #expect(regionalName(["chips"], in: "gb") == "french fries" && regionalName(["chips"], in: "us") == nil)
         #expect(regionalName(["chips"], in: "au") == nil && regionalName(["hot", "chips"], in: "au") == "french fries")
         #expect(regionalName(["chips"], in: nil) == nil && regionalName(["cider"], in: "us") == "apple cider")
+    }
+
+    @Test("a food typed in Spanish or by its Hindi name is the food its English name finds")
+    func spanishAndHindi() {
+        let same = otherLanguages.filter { catalog.top($0.typed, 1) == catalog.top($0.english, 1) }
+        print("Spanish and Hindi names: \(same.count) of \(otherLanguages.count) first as their English is")
+        let missed = otherLanguages.filter { pair in !same.contains { $0.typed == pair.typed } }.map(\.typed)
+        #expect(Double(same.count) >= 0.95 * Double(otherLanguages.count), "\(missed.joined(separator: " | "))")
+        var wrong: [String] = []
+        for (query, pattern) in keptAsTyped where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            wrong.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Names kept as typed: \(keptAsTyped.count - wrong.count) of \(keptAsTyped.count) first")
+        #expect(Double(wrong.count) <= 0.05 * Double(keptAsTyped.count), "\(wrong.joined(separator: " | "))")
+        // The labels that say the Spanish name follow the plain food.
+        #expect(catalog.top("frijoles negros", 8).contains { matches("(?i)frijoles negros", $0) })
+        // In India curd is yogurt and a lady finger okra; elsewhere they're what they were.
+        let india = FoodCatalog(usda: Catalogs.usdaURL, off: Catalogs.offURL, region: "in")
+        #expect(india.top("curd", 1).first?.hasPrefix("Yogurt, plain") == true && india.top("lady finger", 1).first?.hasPrefix("Okra") == true)
+        #expect(india.top("biscuits", 1) == ["Cookie"] && india.top("cold drink", 1) == ["Soft drink"])
+        #expect(catalog.top("lady finger", 1).first?.hasPrefix("Cookie") == true)
     }
 
     @Test("a food typed with what it's put on or over is the food, then what it's on")

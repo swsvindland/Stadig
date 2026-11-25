@@ -138,6 +138,31 @@ struct QueryTests {
         #expect(EverydayPhrases.apart("fruitsn") == "fruit sn")
     }
 
+    @Test("a search in Spanish, or a food's Hindi name, reads as its English")
+    func otherLanguages() {
+        #expect(inEnglish("pollo") == "chicken" && inEnglish("Frijoles") == "beans" && inEnglish("aloo") == "potato")
+        // Spanish says the food and then its kind; an amount stays first.
+        #expect(inEnglish("pechuga de pollo") == "chicken breast" && inEnglish("frijoles negros") == "black beans")
+        #expect(inEnglish("jugo de naranja") == "orange juice" && inEnglish("pechuga de pollo asada") == "grilled chicken breast")
+        #expect(inEnglish("tortillas de harina") == "flour tortillas" && inEnglish("2 huevos") == "2 egg")
+        // Each food of two, joined as it was.
+        #expect(inEnglish("huevos con chorizo") == "egg with chorizo" && inEnglish("arroz y frijoles") == "rice and beans")
+        // A name that isn't the sum of its words, and with accents.
+        #expect(
+            inEnglish("papas fritas") == "french fries" && inEnglish("jamón") == "ham" && inEnglish("piña y fresas") == "pineapple and strawberries")
+        // Not a word that is English alone, a colour with no food, or a name the catalogs have.
+        #expect(inEnglish("pan") == nil && inEnglish("queso") == nil && inEnglish("sal") == nil && inEnglish("verde") == nil)
+        #expect(inEnglish("carne asada") == nil && inEnglish("arroz con pollo") == nil && inEnglish("pan dulce") == nil)
+        #expect(inEnglish("carne asadas") == nil && inEnglish("cafe con leche") == nil)
+        // Nor the plural of such a word, which may be as far as another is typed: "sals" is salsa begun.
+        #expect(inEnglish("sals") == nil && inEnglish("pans") == nil && inEnglish("papas") == "potato")
+        // Nor English made of words Spanish has too, or a name with a word that isn't Spanish.
+        #expect(inEnglish("pan pizza") == nil && inEnglish("mango salsa") == nil && inEnglish("del taco") == nil)
+        #expect(inEnglish("carne asada fries") == nil && inEnglish("pollo loco") == nil && inEnglish("chicken") == nil)
+        // A Hindi name alone; with another word it's a dish.
+        #expect(inEnglish("dal") == "lentil curry" && inEnglish("moong dal") == "mung beans" && inEnglish("aloo gobi") == nil)
+    }
+
     @Test("typos count a swapped pair as one and read the start of a word")
     func typoDistance() {
         #expect(typos("protien", "protein", limit: 2) == 1)

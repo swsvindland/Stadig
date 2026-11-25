@@ -885,6 +885,23 @@ extension FoodCatalog {
 
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
         let search = searchCatalog(typed, known: known, out: nil)
+        // A search in Spanish, or a food's Hindi name, is searched as it reads in English,
+        // where the catalog doesn't name a food by the words as typed ("Pollo asado") and a
+        // plain food has every word of the English: "pollo" is chicken and "frijoles negros"
+        // black beans. Its first three, then the foods found as typed, which is where the
+        // labels that say "Frijoles Negros" are, then the rest. Whatever brand the words
+        // were taken for: "chuleta de puerco" is a pork chop, not Pavo's.
+        if let english = inEnglish(typed), !isPlainName(searchedWords(words(typed))[...]) {
+            let read = searchCatalog(english, known: known)
+            if let first = read.ranked.first, first.name >= 1, !FoodText(first.food).branded {
+                var both = read
+                let asTyped = Self.joined(Array(read.ranked.prefix(3)), search.ranked.filter { $0.name >= 1 })
+                both.ranked = Self.joined(asTyped, Self.joined(read.ranked, search.ranked))
+                both.elsewhere.formUnion(search.elsewhere)
+                both.typed = read.typed ?? typed
+                return both
+            }
+        }
         // A way of cooking said in two words is searched as the catalogs' one, where no brand
         // is named and a plain food has every word left: "pan seared salmon" is the salmon,
         // "air fried chicken" baked chicken. Its first three, then the foods with every word
