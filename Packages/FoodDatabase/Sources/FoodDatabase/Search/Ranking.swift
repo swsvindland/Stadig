@@ -926,6 +926,12 @@ func wordsWithout(_ text: FoodText) -> [String] {
     return lacked
 }
 
+extension FoodText {
+    /// The words that can say what kind of food it is: all but what it comes with. An egg
+    /// sandwich "on bagel, with bacon" is a sandwich and a bagel, not bacon.
+    var kindWords: [String] { said.indices.filter { !served.contains(runs[$0]) }.map { said[$0] } }
+}
+
 /// Whether a name has a word of each of the foods typed together.
 func hasEach(_ text: FoodText, _ foods: [[String]]) -> Bool {
     foods.allSatisfy { food in

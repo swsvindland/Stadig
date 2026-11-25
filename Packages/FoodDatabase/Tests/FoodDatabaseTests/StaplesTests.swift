@@ -1694,6 +1694,81 @@ let menuNames: [(String, String)] = [
     ("mac and cheese", "^Macaroni or noodles with cheese"), ("ham and cheese", "^Ham"), ("steak and eggs", "^Steak"),
 ]
 
+/// A food that holds others, named with what's in it and an "and": one food, the plain one
+/// or a chain's own with the words. The last few are two foods all the same.
+let heldFoods: [(String, String)] = [
+
+    (
+        "bacon egg and cheese biscuit",
+        "^(Fast foods, biscuit, with egg, cheese, and bacon|Egg sandwich on biscuit, with bacon and cheese|McDONALD'S, Bacon Egg & Cheese Biscuit)"
+    ),
+    (
+        "bacon, egg and cheese biscuit",
+        "^(Fast foods, biscuit, with egg, cheese, and bacon|Egg sandwich on biscuit, with bacon and cheese|McDONALD'S, Bacon Egg & Cheese Biscuit)"
+    ),
+    (
+        "bacon egg & cheese biscuit",
+        "^(Fast foods, biscuit, with egg, cheese, and bacon|Egg sandwich on biscuit, with bacon and cheese|McDONALD'S, Bacon Egg & Cheese Biscuit)"
+    ),
+    ("sausage egg and cheese biscuit", "^(Sausage, egg and cheese breakfast biscuit|Egg sandwich on biscuit, with sausage and cheese)"),
+    ("egg and cheese biscuit", "^Egg sandwich on biscuit$"),
+    ("egg and bacon biscuit", "^(Fast foods, biscuit, with egg and bacon|Egg sandwich on biscuit, with bacon)"),
+    ("egg and sausage biscuit", "^(Fast Foods, biscuit, with egg and sausage|Egg sandwich on biscuit, with sausage)"),
+    ("sausage egg and cheese mcmuffin", "^McDONALD'S, Sausage McMUFFIN with Egg"),
+    ("sausage and egg mcmuffin", "^McDONALD'S, Sausage McMUFFIN with Egg"), ("sausage egg mcmuffin", "^McDONALD'S, Sausage McMUFFIN with Egg"),
+    ("bacon egg and cheese mcgriddle", "^McDONALD'S, Bacon, Egg & Cheese McGRIDDLES"),
+    ("sausage egg and cheese mcgriddle", "^McDONALD'S, Sausage, Egg & Cheese McGRIDDLES"),
+    ("egg and cheese croissanwich", "^BURGER KING, CROISSAN'WICH with Egg and Cheese"),
+    ("sausage egg and cheese croissanwich", "^BURGER KING, CROISSAN'WICH with Sausage, Egg and Cheese"),
+    ("sausage and cheese croissanwich", "^BURGER KING, CROISSAN'WICH with Sausage and Cheese"),
+    ("bacon egg and cheese bagel", "^Egg sandwich on bagel, with bacon"), ("egg and bacon bagel", "^Egg sandwich on bagel, with bacon"),
+    ("sausage egg and cheese bagel", "^(Egg sandwich on bagel, with sausage|Fast foods, bagel, with egg, sausage patty, cheese)"),
+    ("ham egg and cheese bagel", "^Egg sandwich on bagel, with ham"),
+    ("ham egg and cheese croissant", "^Fast foods, croissant, with egg, cheese, and ham"),
+    ("bacon egg and cheese croissant", "^Fast foods, croissant, with egg, cheese, and bacon"),
+    ("sausage egg and cheese croissant", "^Fast foods, croissant, with egg, cheese, and sausage"),
+    ("egg and cheese croissant", "^Egg sandwich on croissant$"), ("ham and egg muffin", "^Egg sandwich on English muffin, with ham"),
+    ("bacon and egg english muffin", "^Egg sandwich on English muffin, with bacon"),
+    (
+        "sausage egg and cheese english muffin",
+        "^(Fast foods, english muffin, with egg, cheese, and sausage|Egg sandwich on English muffin, with sausage)"
+    ),
+    ("egg and cheese sandwich", "^Egg sandwich on white bread, with cheese"), ("bacon egg and cheese sandwich", "^Egg sandwich on .*bacon"),
+    ("ham and cheese sandwich", "^Ham sandwich"), ("turkey and cheese sandwich", "^Turkey sandwich .*with cheese"),
+    ("peanut butter and jelly sandwich", "^Peanut butter and jelly sandwich"), ("peanut butter and banana sandwich", "^Peanut butter sandwich"),
+    ("bean and cheese burrito", "^Burrito, with beans, cheese"), ("egg and cheese burrito", "^Egg burrito$"),
+    ("bacon and egg burrito", "^Egg burrito, with bacon"), ("sausage and egg burrito", "^Egg burrito, with sausage"),
+    ("chicken and cheese quesadilla", "^Quesadilla, chicken"), ("chicken and rice bowl", "^Rice bowl with chicken"),
+    ("ham and cheese croissant", "^(Croissant|Fast foods, croissant|Ham)"), ("apple and peanut butter", "^Apples"),
+    ("chicken and white rice", "^Chicken, cooked"), ("burger and cheese fries", "^Hamburger"), ("coffee and blueberry muffin", "^Coffee"),
+    ("eggs and wheat toast", "^Egg, whole"), ("salmon and brown rice", "^Fish, salmon"), ("soup and grilled cheese sandwich", "^Soup"),
+    ("chips and turkey sandwich", "^Potato chips"), ("fries and chicken sandwich", "^Potato, french fries"), ("coffee and egg sandwich", "^Coffee"),
+    ("orange juice and bagel", "^Orange juice"), ("yogurt and granola", "^Yogurt"), ("salad and pepperoni pizza", "^(Lettuce, salad|Salad)"),
+    ("banana and peanut butter sandwich", "^(Bananas|Peanut butter sandwich)"), ("burger and fries", "^Hamburger"),
+    ("eggs and bacon", "^Egg, whole"), ("steak and eggs", "^Steak"),
+]
+
+/// The same as a model names them.
+let heldNamed: [(String, String)] = [
+
+    (
+        "Bacon, egg and cheese biscuit",
+        "^(Fast foods, biscuit, with egg, cheese, and bacon|Egg sandwich on biscuit, with bacon and cheese|McDONALD'S, Bacon Egg & Cheese Biscuit)"
+    ),
+    (
+        "Bacon, Egg & Cheese Biscuit",
+        "^(Fast foods, biscuit, with egg, cheese, and bacon|Egg sandwich on biscuit, with bacon and cheese|McDONALD'S, Bacon Egg & Cheese Biscuit)"
+    ),
+    ("Sausage and egg McMuffin", "^McDONALD'S, Sausage McMUFFIN with Egg"),
+    ("Sausage, egg and cheese McMuffin", "^McDONALD'S, Sausage McMUFFIN with Egg"),
+    ("Bacon, egg and cheese bagel", "^Egg sandwich on bagel, with bacon"), ("Egg and cheese biscuit", "^Egg sandwich on biscuit$"),
+    ("Ham, egg and cheese croissant", "^Fast foods, croissant, with egg, cheese, and ham"),
+    ("Egg and cheese breakfast burrito", "^(Egg burrito|Fast foods, breakfast burrito)"), ("Chicken and cheese quesadilla", "^Quesadilla, chicken"),
+    ("Ham and cheese sandwich", "^Ham sandwich"), ("Turkey and cheese sandwich", "^Turkey sandwich .*with cheese"),
+    ("Bean and cheese burrito", "^Burrito, with beans, cheese"), ("Eggs and bacon", "^Egg, whole"), ("Coffee and a blueberry muffin", "^Coffee"),
+    ("Chicken and white rice", "^Chicken"), ("Burger and fries", "^Hamburger"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -3376,6 +3451,36 @@ struct StaplesTests {
         // What's said for one food isn't then read as two: a steak and cheese is the sandwich.
         #expect(catalog.top("steak and cheese", 1).first?.hasPrefix("Cheese steak sandwich") == true)
         #expect(catalog.top("steak and eggs", 2).first?.hasPrefix("Steak") == true)
+    }
+
+    @Test("a sandwich named with what's in it and an \"and\" is one food")
+    func foodsThatHoldOthers() {
+        var missed: [String] = []
+        for (query, pattern) in heldFoods where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Foods that hold others, typed: \(heldFoods.count - missed.count) of \(heldFoods.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(heldFoods.count), "\(missed.joined(separator: " | "))")
+        missed = []
+        for (name, pattern) in heldNamed {
+            let first = catalog.candidates(name: name, brand: nil).first?.food.name
+            if first.map({ matches(pattern, $0) }) != true { missed.append("\(name): \(first ?? "nothing")") }
+        }
+        print("Foods that hold others, as a model names them: \(heldNamed.count - missed.count) of \(heldNamed.count) first")
+        #expect(Double(missed.count) <= 0.1 * Double(heldNamed.count), "\(missed.joined(separator: " | "))")
+        // The one with the least in it that wasn't asked for, cheese or no: an egg and cheese
+        // biscuit is the egg sandwich on a biscuit, not the one with bacon too.
+        #expect(catalog.top("egg and cheese biscuit", 1) == ["Egg sandwich on biscuit"])
+        #expect(catalog.top("egg and cheese burrito", 1) == ["Egg burrito"])
+        // A chain's own item is one food too.
+        #expect(catalog.top("sausage and egg mcmuffin", 1) == ["McDONALD'S, Sausage McMUFFIN with Egg"])
+        // Two foods stay two: fries aren't the "fried" of a chicken sandwich, nor is apple
+        // butter an apple and peanut butter.
+        #expect(catalog.top("fries and chicken sandwich", 2).first?.hasPrefix("Potato, french fries") == true)
+        #expect(catalog.top("apple and peanut butter", 2).last?.hasPrefix("Peanut butter") == true)
+        // The words that say a food's kind leave out what it comes with.
+        let bagel = FoodText(name: "Egg sandwich on bagel, with bacon", brand: "", source: .usda)
+        #expect(bagel.kindWords.contains("bagel") && bagel.kindWords.contains("sandwich") && !bagel.kindWords.contains("bacon"))
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")
