@@ -33,7 +33,7 @@ struct RankHints {
 }
 
 /// A ranked food.
-struct Ranked {
+struct Ranked: Sendable {
     var food: Food
     var score: Double
     var index: Int

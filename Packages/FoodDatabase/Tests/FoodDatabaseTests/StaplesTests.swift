@@ -2704,6 +2704,26 @@ struct StaplesTests {
         #expect(catalog.candidates(name: "Sweet potato fries", brand: nil).first?.food.name == "Sweet potato fries")
     }
 
+    @Test("a search just made is found again without searching, for the same foods of the person's own")
+    func recentSearches() throws {
+        // A catalog of its own, so nothing another test searched is kept.
+        let catalog = FoodCatalog(usda: Catalogs.usdaURL, off: Catalogs.offURL, region: "us")
+        let first = catalog.search("grilled chicken and brown rice")
+        // Each of the foods typed together was searched, and is kept with the search as typed.
+        let kept = catalog.recent.withLock { $0.map(\.asked.typed) }
+        #expect(kept.contains("grilled chicken") && kept.contains("brown rice") && kept.contains("grilled chicken and brown rice"))
+        #expect(catalog.search("grilled chicken and brown rice").map(\.food.id) == first.map(\.food.id))
+        #expect(catalog.recent.withLock { $0.map(\.asked.typed) } == kept)
+        // A food of the person's own ranks the catalog's foods, so the search is made anew.
+        let rice = try #require(first.first { $0.food.name.hasPrefix("Rice, brown") })
+        _ = catalog.search("brown rice", personal: [PersonalFood(food: rice.food, score: 3)])
+        #expect(catalog.recent.withLock { $0.filter { $0.asked.typed == "brown rice" }.count } == 2)
+        // No more than a few are kept, the newest first.
+        for word in ["apple", "banana", "bread", "milk", "eggs", "rice", "tea", "salt", "oats", "corn"] { _ = catalog.search(word) }
+        #expect(catalog.recent.withLock { $0.count } == RecentSearch.kept)
+        #expect(catalog.recent.withLock { $0.first?.asked.typed } == "corn")
+    }
+
     @Test("a word that only describes, typed alone or half typed, is the everyday food it starts")
     func describingAlone() {
         var first = 0

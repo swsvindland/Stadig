@@ -24,6 +24,10 @@ public final class FoodCatalog: Sendable {
     let compounds = Mutex<[String: Compound?]>([:])
     /// The chains and brands the generic catalog names, read on the first search that may name one.
     let chainNames = Mutex<[[String]]?>(nil)
+    /// The last few searches of the catalogs and what they found, the newest first. Each
+    /// keystroke of "grilled chicken and brown ri" searches "grilled chicken" again, and going
+    /// back a letter searches what was just searched.
+    let recent = Mutex<[RecentSearch]>([])
 
     /// Opens the catalogs at these URLs. `region` is the phone's ISO region ("us"), which ranks
     /// packaged foods sold here above those sold only elsewhere.

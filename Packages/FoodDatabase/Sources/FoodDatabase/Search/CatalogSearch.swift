@@ -3,7 +3,7 @@ import Synchronization
 
 /// A typed search's ranked catalog foods, the search as it was read (see `Respelt`), the corrections
 /// it searched for, the words that named a brand and the words the catalogs barely know.
-struct CatalogSearch {
+struct CatalogSearch: Sendable {
     var ranked: [Ranked] = []
     var text: String
     var fixes: Fixes = [:]
@@ -43,6 +43,24 @@ struct Respelt {
     var forms: Set<String> = []
     /// What was typed, when `text` has words added to it: "ranch" for "ranch salad dressing".
     var typed: String?
+}
+
+/// A search of the catalogs and what it found, kept while the next few are typed.
+struct RecentSearch: Sendable {
+    struct Asked: Equatable, Sendable {
+        var typed: String
+        var out: String?
+        var sides: [String]
+        var beside: [String]
+    }
+
+    /// How many are kept: the foods typed together, the search as typed and a letter or two back.
+    static let kept = 8
+
+    var asked: Asked
+    /// How often each of the person's own foods was logged, which ranks them.
+    var known: [String: Double]
+    var found: CatalogSearch
 }
 
 /// What the catalogs make of a typed word: whether they barely know it as typed, and what it
@@ -1189,6 +1207,18 @@ extension FoodCatalog {
     private func searchCatalog(
         _ typed: String, known: [String: Double], out: String?, sides: [String] = [], beside: [String] = []
     ) -> CatalogSearch {
+        // One of the last few searches, as it was found: the person's own foods count the same.
+        let asked = RecentSearch.Asked(typed: typed, out: out, sides: sides, beside: beside)
+        if let found = recent.withLock({ list in list.first { $0.asked == asked && $0.known == known }?.found }) { return found }
+        let found = searchCatalogs(typed, known: known, out: out, sides: sides, beside: beside)
+        recent.withLock { list in
+            list.insert(RecentSearch(asked: asked, known: known, found: found), at: 0)
+            if list.count > RecentSearch.kept { list.removeLast() }
+        }
+        return found
+    }
+
+    private func searchCatalogs(_ typed: String, known: [String: Double], out: String?, sides: [String], beside: [String]) -> CatalogSearch {
         guard !catalogs.isEmpty else { return CatalogSearch(text: typed) }
         // A name labels write as one word or as two is searched the usual way, and the other too;
         // a word that can only have been a typo is read by the names of the word it meant.
@@ -1298,13 +1328,28 @@ extension FoodCatalog {
             // Few foods have every word, so also the word that names the food ("pizza slice" names
             // pizza) and, without a brand, foods missing one word ("zesty homestyle banana").
             let head = foods.last { !countWords.contains($0) } ?? foods[foods.count - 1]
-            var more = ways.map { way in jobs(catalogs, way(head), .typed, lead: lead(head)) }
+            // Each expression once: another wording of an earlier word leaves the last as it is.
+            var asked = Set<String>()
+            var more = ways.map { $0(head) }.filter { asked.insert($0).inserted }.map { jobs(catalogs, $0, .typed, lead: lead(head)) }
             if span == nil && foods.count > 2 {
+                // Among labels only where none has every word: it's the slowest thing a search
+                // asks of three million of them, and a label that has them all is the one meant.
+                // Every word but the last whole, and none read as another: "gali" may be Galli
+                // misspelt, whatever Galil sells by the other words.
+                let whole = searched.dropLast().map(stem)
+                let labelled =
+                    fixes.isEmpty
+                    && (found[2] + found[4]).contains { hit in
+                        let text = hit.entry.text
+                        return text.branded && whole.allSatisfy { word in (text.all + text.own).contains { same($0, word) } }
+                    }
+                let from = labelled ? catalogs.filter { $0.kind == .generic } : catalogs
                 for way in ways {
                     let missing = searched.indices.map { i in
                         "(" + searched.indices.filter { $0 != i }.map { way(searched[$0]) }.joined(separator: " AND ") + ")"
                     }
-                    more.append(jobs(catalogs, missing.joined(separator: " OR "), .typed))
+                    let expression = missing.joined(separator: " OR ")
+                    if asked.insert(expression).inserted { more.append(jobs(from, expression, .typed)) }
                 }
             }
             pool += run(more).flatMap { $0 }
