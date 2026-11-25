@@ -485,8 +485,11 @@ extension FoodCatalog {
             if read.typed != nil { read.typed = query }
             return read
         }
-        // What people type for a food instead of its name: "pb&j".
-        if let name = shortNames[tokens.map(\.word).joined(separator: " ")] {
+        // What people type for a food instead of its name: "pb&j". And the one it's on its way
+        // to, where the words begin an everyday name: "mac and chees".
+        let short = tokens.map(\.word)
+        let begun = typing && tokens.last?.end == scalars.count && EverydayPhrases.isBegun(short)
+        if let name = shortNames[short.joined(separator: " ")] ?? (begun ? shortNameBegun(short) : nil) {
             var read = respell(name, typing: false)
             read.typed = read.typed ?? query
             return read
@@ -540,14 +543,25 @@ extension FoodCatalog {
             let alone = tokens[only[0]]
             // A word with a meaning of its own is that, whatever it could be a typo of:
             // "mezcal" isn't Mezcla.
+            // Nor is the start of one, where no everyday food starts the same: "mezca".
+            let begun = typing && likely == nil && alone.end == scalars.count ? aloneBegun(alone.word) : nil
             let word =
-                aloneName(alone.word) != nil ? alone.word : meant[alone.word] ?? likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
-            if let meant = aloneName(word) {
+                aloneName(alone.word) != nil
+                ? alone.word : begun ?? meant[alone.word] ?? likely.flatMap { length(alone.word) >= 4 ? $0 : nil } ?? alone.word
+            // Or it only describes one, and is the everyday food it most often starts: "skim",
+            // and "fren" on its way to french. With nothing else typed, and as typed: a
+            // letter after it may start a brand ("swiss m"), and "snapp" isn't snap misspelt.
+            let described =
+                tokens.count == 1
+                ? describingName(alone.word) ?? likely.flatMap { length(alone.word) >= 4 ? describingName($0) : nil } : nil
+            if let meant = aloneName(word) ?? described {
                 write(meant, over: alone.start..<alone.end)
                 text += scalars[copied...]
-                respelt.text = makeString(text[...])
-                respelt.typed = query
-                return respelt
+                // Read as any search of those words is: a bell pepper is USDA's sweet pepper,
+                // flax seeds its flaxseed.
+                var read = respell(makeString(text[...]), typing: false)
+                read.typed = query
+                return read
             }
             if let filed = aloneFiled[stem(word)] { also(filed, for: [alone.word]) }
         } else {

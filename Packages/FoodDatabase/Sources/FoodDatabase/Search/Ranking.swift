@@ -1008,6 +1008,8 @@ private struct WordForms {
     let respelt: [[String]]
     /// The word is finished and is that word: never the start of a longer one.
     let finished: Bool
+    /// The forms of the whole word it's probably on its way to, which is finished as it is.
+    let likely: [String]
 
     /// `likely` is the whole word a half-typed one is probably on its way to: a food that has it
     /// has the word, not just a longer one that starts the same ("chees" is cheese before a
@@ -1021,6 +1023,7 @@ private struct WordForms {
         var options = prefix ? searchForms(word) : forms(word)
         if let likely { for form in searchForms(likely) where !options.contains(form) { options.append(form) } }
         self.options = options
+        self.likely = likely.map(searchForms) ?? []
         self.fixes = fixes[word] ?? []
         fixParts = self.fixes.map { $0.split(separator: " ").map(String.init) }
         misspelling = doubted ? Misspelling(word) : nil
@@ -1239,6 +1242,9 @@ struct CoverageQuery {
     /// "bull" of "red bull", "pop" and "corn" for "popcorn".
     private func whole(_ word: WordForms, _ found: [String]) -> Bool {
         word.options.contains { form in found.contains { word.finished ? same($0, form) : exact($0, form) } }
+            // The word it's on its way to in another of its endings, as when it's typed whole:
+            // "toas" is toast, and toasted bread is toast.
+            || word.likely.contains { form in found.contains { same($0, form) } }
             || word.respelt.contains { parts in parts.allSatisfy { part in found.contains { same($0, part) } } }
     }
 

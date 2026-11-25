@@ -672,6 +672,7 @@ USDA_OTHER_NAMES = {
     "Cowpeas, common (blackeyes, crowder, southern), mature seeds, cooked, boiled, without salt": ["Black-eyed peas", "Blackeyed peas"],
     "Fish, mahimahi, cooked, dry heat": ["Mahi mahi", "Mahi"],
     "Tofu, fried": ["Crispy tofu"],
+    "Cheese, mozzarella, low moisture, part-skim": ["String cheese"],
     "Onions, yellow, sauteed": ["Caramelized onions"],
     "Corn, sweet, yellow, canned, cream style, regular pack": ["Creamed corn", "Cream style corn"],
     "Sweet potato, cooked, candied, home-prepared": ["Candied yams", "Candied sweet potatoes"],

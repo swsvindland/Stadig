@@ -211,11 +211,48 @@ private let aloneMeanings: [String: (name: String, means: String)] = Dictionary(
         ("agave", "agave syrup"), ("yeast", "leavening yeast active dry"), ("habanero", "hot chili pepper red raw"),
     ].map { (stem($0.0), ($0.0, $0.1)) })
 
+/// A word that only describes, typed with nothing after it, as the everyday food it most often
+/// starts: "skim" is skim milk, "french" french fries, "ground" ground beef. Not a word that is
+/// a food or a brand alone (cream, oat, coconut, kettle, general), and only the word as
+/// written: "french's" is the mustard's maker. Unlike a word with a meaning of its own, it's
+/// still the start of any name once more is typed: "swiss m" is on its way to Swiss Miss.
+private let describingMeanings: [String: String] = Dictionary(
+    uniqueKeysWithValues: [
+        ("flour", "all purpose flour"), ("sesame", "sesame seeds"),
+        ("skim", "skim milk"), ("whole", "whole milk"), ("french", "french fries"), ("ground", "ground beef"),
+        ("whipped", "whipped cream"), ("sour", "sour cream"), ("swiss", "swiss cheese"), ("american", "american cheese"),
+        ("string", "string cheese"), ("bell", "bell pepper"), ("dark", "dark chocolate"), ("sourdough", "sourdough bread"),
+        ("refried", "refried beans"), ("kidney", "kidney beans"), ("pinto", "pinto beans"), ("green", "green beans"),
+        ("black", "black beans"), ("hash", "hash browns"), ("tater", "tater tots"), ("chia", "chia seeds"), ("flax", "flax seeds"),
+        ("hemp", "hemp seeds"), ("alfredo", "alfredo sauce"), ("teriyaki", "teriyaki sauce"), ("bbq", "bbq sauce"),
+        ("sparkling", "sparkling water"), ("root", "root beer"), ("iced", "iced coffee"), ("herbal", "herbal tea"),
+        ("bok", "bok choy"), ("acorn", "acorn squash"), ("navel", "navel orange"), ("snap", "snap peas"), ("snow", "snow peas"),
+        ("yukon", "yukon gold potato"), ("russet", "russet potato"), ("white", "white rice"), ("brown", "brown rice"),
+        ("sweet", "sweet potato"), ("baked", "baked potato"), ("fried", "fried chicken"), ("grilled", "grilled chicken"),
+        ("scrambled", "scrambled eggs"), ("pulled", "pulled pork"), ("powdered", "powdered sugar"), ("cocoa", "cocoa powder"),
+        ("cooking", "cooking spray"), ("veggie", "veggie burger"), ("sloppy", "sloppy joe"), ("chow", "chow mein"),
+        ("kung", "kung pao chicken"), ("cobb", "cobb salad"), ("buffalo", "buffalo wings"), ("glazed", "glazed donut"),
+        ("tikka", "tikka masala"), ("saag", "saag paneer"), ("mapo", "mapo tofu"), ("filet", "filet mignon"),
+        ("graham", "graham crackers"), ("animal", "animal crackers"), ("whey", "whey protein"), ("mac", "mac and cheese"),
+        ("spring", "spring roll"), ("home", "home fries"),
+    ])
+
+/// The everyday food such a word stands for, typed alone.
+func describingName(_ word: String) -> String? { describingMeanings[word] }
+
 /// What a word typed alone means in USDA's words, if it has a meaning of its own, in the
 /// singular or the plural. The word itself, not any that shares its stem: "brand" isn't brandy.
 func aloneName(_ word: String) -> String? {
     guard let meaning = aloneMeanings[stem(word)], word == meaning.name || bare(word) == meaning.name else { return nil }
     return meaning.means
+}
+
+/// The one such word a word still being typed begins, from its fourth letter: "mezca" is on
+/// its way to mezcal, and nothing else people log is.
+func aloneBegun(_ typed: String) -> String? {
+    guard typed.utf8.count >= 4 else { return nil }
+    let begun = aloneMeanings.values.filter { $0.name.hasPrefix(typed) && $0.name != typed }
+    return begun.count == 1 ? begun[0].name : nil
 }
 
 /// What people type for a food instead of its name, as the whole of a search or of what a model
@@ -251,6 +288,16 @@ let shortNames: [String: String] = [
     // Mac and cheese is macaroni and cheese, not the one named "Easy Mac".
     "mac and cheese": "macaroni and cheese", "mac n cheese": "macaroni and cheese", "mac cheese": "macaroni and cheese",
 ]
+
+/// The short name the words begin, the last of them still being typed, where only one does:
+/// "mac and chees" is mac and cheese.
+func shortNameBegun(_ typed: [String]) -> String? {
+    guard typed.count > 1, let last = typed.last, last.utf8.count >= 2 else { return nil }
+    let before = typed.dropLast().joined(separator: " ") + " "
+    let begun = Set(
+        shortNames.filter { $0.key.hasPrefix(before + last) && $0.key != before + last && !$0.key.dropFirst(before.count).contains(" ") }.values)
+    return begun.count == 1 ? begun.first : nil
+}
 
 /// Names that, typed alone, are also the word USDA files them under: "spaghetti" is its "Pasta,
 /// cooked", a "wrap" its tortilla and "meat" its beef. With another word they mean themselves:

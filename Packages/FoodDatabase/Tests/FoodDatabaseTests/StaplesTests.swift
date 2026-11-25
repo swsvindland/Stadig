@@ -1361,6 +1361,35 @@ let cookedPairs: [(typed: String, first: String, second: String)] = [
     ("chicken and brown rice", "^Chicken, cooked", "^Rice, brown.*cooked"),
 ]
 
+/// A word that only describes, typed with nothing after it or not yet whole, and the everyday
+/// food it most often starts: "skim" is skim milk, "fren" french fries begun. With the words
+/// that are foods alone, which stay themselves, and a second word begun, which says which.
+let describing: [(String, String)] = [
+    ("skim", "^Milk, nonfat"), ("whole", "^Milk, whole"), ("french", "^Potato, french fries"), ("ground", "^Beef, ground, cooked"),
+    ("whipped", "^Cream, whipped"), ("sour", "^Cream, sour"), ("swiss", "^Cheese, swiss"), ("american", "^Cheese, pasteurized process, American"),
+    ("string", "^Cheese, mozzarella, low moisture, part-skim"), ("bell", "^Peppers, sweet"), ("dark", "^Dark chocolate"),
+    ("sourdough", "^Bread, french or vienna"), ("refried", "^Refried beans"), ("kidney", "^Beans, kidney.*cooked"),
+    ("pinto", "^Beans, pinto.*cooked"), ("green", "^Beans, snap, green"), ("black", "^Beans, black.*cooked"), ("hash", "^Potato, hash brown"),
+    ("tater", "^Potato tots"), ("chia", "^Seeds, chia"), ("flax", "^Seeds, flaxseed"), ("hemp", "^Seeds, hemp"), ("alfredo", "^Alfredo sauce"),
+    ("teriyaki", "^Sauce, teriyaki"), ("bbq", "^Sauce, barbecue"), ("sparkling", "^Water, carbonated"), ("root", "root beer"),
+    ("iced", "^Iced Coffee"), ("herbal", "^Tea, hot, herbal|tea, herb"), ("bok", "pak-choi"), ("acorn", "^Squash, winter, acorn"),
+    ("navel", "^Oranges, raw, navels"), ("snap", "^Peas, edible-podded"), ("snow", "^Peas, edible-podded"), ("yukon", "^Potatoes, white"),
+    ("russet", "^Potatoes, [Rr]usset"), ("white", "^Rice, white.*cooked"), ("brown", "^Rice, brown.*cooked"),
+    ("sweet", "^Sweet potato"), ("baked", "^Potatoes, baked"), ("fried", "^Chicken, fried"), ("grilled", "^Chicken, grilled"),
+    ("scrambled", "^Egg, whole, cooked, scrambled"), ("pulled", "^Barbecue pork"), ("powdered", "^Sugars, powdered"),
+    ("cocoa", "^Cocoa, dry powder"), ("cooking", "cooking spray"), ("veggie", "^Veggie burgers"), ("sloppy", "^Sloppy joe"),
+    ("chow", "^Chow mein"), ("kung", "^Kung pao chicken"), ("cobb", "^Cobb salad"), ("buffalo", "^Chicken \"wings\" with hot sauce"),
+    ("glazed", "^Doughnut"), ("tikka", "^Chicken curry"), ("saag", "^Palak Paneer"), ("filet", "^Beef, steak, tenderloin"),
+    ("graham", "^Graham crackers"), ("animal", "animal crackers"), ("whey", "(?i)whey protein"), ("mac", "^Macaroni or noodles with cheese"),
+    ("spring", "^Roll with meat"), ("home", "^Potato, home fries"), ("flour", "^Wheat flour, white, all-purpose"),
+    ("sesame", "^Seeds, sesame seeds"), ("fren", "^Potato, french fries"), ("grou", "^Beef, ground, cooked"), ("whit", "^Rice, white.*cooked"),
+    ("brow", "^Rice, brown.*cooked"), ("swee", "^Sweet potato"), ("whip", "^Cream, whipped"), ("toas", "^Bread, .*toasted"), ("mezca", "^Tequila"),
+    ("cogna", "^Brandy"), ("mac and ch", "^Macaroni or noodles with cheese"), ("mac and chees", "^Macaroni or noodles with cheese"),
+    ("white b", "^Bread, white"), ("french t", "^French toast"), ("ground t", "(?i)^Turkey, ground"), ("brown s", "^Sugars, brown"),
+    ("cream", "^Cream, "), ("oat", "^Oats"), ("coconut", "^Nuts, coconut meat"), ("wheat", "^Wheat"), ("fruit", "^Fruit$"),
+    ("pumpkin", "^Pumpkin"), ("vegetable", "^Vegetables"), ("ranch", "^Salad dressing, ranch"), ("protein", "(?i)protein powder"),
+]
+
 let snacks: [(String, String)] = [
     ("oatmeal with milk", "^Oatmeal, regular or quick, made with milk$"), ("protein shake", "^Nutritional drink or shake, high protein"),
     ("yogurt parfait", "^Yogurt parfait"), ("egg and cheese sandwich", "^Egg sandwich on .*with cheese"),
@@ -2673,6 +2702,33 @@ struct StaplesTests {
         // Fries a model names are french fries, whatever else is cut like them.
         #expect(catalog.candidates(name: "Fries", brand: nil).first?.food.name == "Potato, french fries")
         #expect(catalog.candidates(name: "Sweet potato fries", brand: nil).first?.food.name == "Sweet potato fries")
+    }
+
+    @Test("a word that only describes, typed alone or half typed, is the everyday food it starts")
+    func describingAlone() {
+        var first = 0
+        var missed: [String] = []
+        for (query, pattern) in describing {
+            let name = catalog.top(query, 1).first
+            if name.map({ matches(pattern, $0) }) == true { first += 1 } else { missed.append("\(query): \(name ?? "nothing")") }
+        }
+        print("Describing words typed alone: \(first) of \(describing.count) first")
+        #expect(Double(first) >= 0.95 * Double(describing.count), "\(missed.joined(separator: " | "))")
+        // Read as any search of those words is: a bell pepper is USDA's sweet pepper.
+        #expect(catalog.respell("bell").text == "bell pepper" && catalog.respell("bell").also["bell"] == ["sweet"])
+        #expect(catalog.respell("bell").typed == "bell")
+        // The word itself, typed with nothing else: a second word says which food.
+        #expect(describingName("french") == "french fries" && describingName("frenchs") == nil && aloneName("french") == nil)
+        // And once more is typed it's the start of any name: Swiss Miss, romaine.
+        #expect(catalog.respell("swiss m").text != "swiss cheese m")
+        #expect(catalog.respell("french toast").text == "french toast")
+        // A word still being typed is the one it begins, where it has a meaning alone and
+        // nothing else people log starts so; and a short name begun is the name.
+        #expect(aloneBegun("mezca") == "mezcal" && aloneBegun("mez") == nil && aloneBegun("mezcal") == nil)
+        #expect(shortNameBegun(["mac", "and", "chees"]) == "macaroni and cheese" && shortNameBegun(["mac"]) == nil)
+        #expect(catalog.respell("mac and ch").text == "macaroni and cheese")
+        // In another of its endings the word it's on its way to is whole: toasted bread is toast.
+        #expect(catalog.top("toas", 1) == catalog.top("toast", 1))
     }
 
     @Test("a food said with how it was cooked beside another is that food and the other")
