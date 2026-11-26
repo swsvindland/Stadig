@@ -511,7 +511,7 @@ private let saidNames: [String: String] = [
     "english breakfast tea": "black tea", "pink lemonade": "lemonade", "unsweet tea": "unsweetened iced tea",
     "psl": "pumpkin spice latte", "espresso shot": "espresso", "double espresso": "espresso", "decaf americano": "decaf coffee",
     "cortado": "macchiato", "breve": "latte", "cafe au lait": "cafe con leche", "taro milk tea": "bubble tea",
-    "brown sugar milk tea": "bubble tea", "brown sugar boba": "bubble tea",
+    "brown sugar milk tea": "bubble tea", "brown sugar boba": "bubble tea", "cafe latte": "latte", "caffe latte": "latte",
     "crushed pineapple": "canned pineapple", "pineapple tidbits": "canned pineapple", "pineapple rings": "canned pineapple",
     "crushed tomatoes": "canned crushed tomatoes", "peeled tomatoes": "canned tomatoes", "whole peeled tomatoes": "canned tomatoes",
     "shaved ice": "snow cone", "shave ice": "snow cone", "crushed ice": "ice cubes", "shaved turkey": "sliced turkey",

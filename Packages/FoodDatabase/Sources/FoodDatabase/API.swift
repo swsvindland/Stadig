@@ -78,7 +78,8 @@ public final class FoodCatalog: Sendable {
     public func search(_ query: String, personal: [PersonalFood] = [], limit: Int = 50) -> [FoodMatch] {
         guard limit > 0 else { return [] }
         let known = Self.known(personal)
-        let found = searchCatalog(query, known: known)
+        // What's typed in place of words is read as the words first (see `Shorthand`).
+        let found = searchCatalog(Shorthand.spelledOut(query), known: known)
         // The person's own foods come first, ranked like the catalog below them, so rows already on
         // screen don't move when the catalog answers. A typo the catalog corrected finds them too.
         let typed = found.typed ?? found.text
@@ -103,7 +104,7 @@ public final class FoodCatalog: Sendable {
     /// from near-ties worth a second opinion. With a brand, two plain foods follow the brand's six
     /// best, so a misread brand is one tap from the plain food.
     public func candidates(name: String, brand: String?, personal: [PersonalFood] = [], limit: Int = 40) -> [FoodMatch] {
-        matchCandidates(name: name, brand: brand ?? "", personal: personal, limit: limit)
+        matchCandidates(name: brand?.isEmpty == false ? name : Shorthand.spelledOut(name), brand: brand ?? "", personal: personal, limit: limit)
     }
 
     /// The food a name with no brand is for, as `candidates` reads it: apart from what it says
@@ -115,6 +116,7 @@ public final class FoodCatalog: Sendable {
     /// "roasties" are roast potatoes, not something roasted.
     public static func food(in name: String) -> String {
         // Nor from what it's said to be without: "Salad" for "Salad without dressing".
+        let name = Shorthand.spelledOut(name)
         let main = seenName(named(withoutSaid(name)?.main ?? name, in: nil)).main
         let said = tokens(main)
         let whole = said.joined(separator: " ")
