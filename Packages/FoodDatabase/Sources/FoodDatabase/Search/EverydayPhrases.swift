@@ -75,7 +75,7 @@ enum EverydayPhrases {
         // Drinks.
         "light beer", "ipa", "lager", "rose wine", "champagne", "prosecco", "tequila", "rum", "gin", "bourbon", "scotch", "brandy", "sake",
         "pina colada", "hard cider", "herbal tea", "chamomile tea", "sweet tea", "cranberry juice", "grapefruit juice", "tomato juice",
-        "grape juice", "tonic water", "club soda", "ginger ale", "root beer", "eggnog", "buttermilk", "evaporated milk",
+        "grape juice", "tonic water", "club soda", "ginger ale", "root beer", "eggnog", "buttermilk", "evaporated milk", "1% milk",
         // Fruit and vegetables.
         "granny smith apple", "gala apple", "fuji apple", "roma tomato", "russet potato", "yukon gold potato", "red potato", "sweet onion",
         "yellow onion", "green onion", "scallions", "shallot", "serrano pepper", "habanero", "bok choy", "napa cabbage", "acorn squash",
@@ -290,6 +290,29 @@ enum EverydayPhrases {
         }
         return nil
     }
+
+    /// The foods a one-word search may be on its way to after the likeliest, one for each word
+    /// they lead with, in the order they're logged: for "ba", after banana, bacon, a bagel
+    /// and baby carrots. The same foods as `likely` reads: the ones logged less often only
+    /// from four letters. Empty for a word that is whole already.
+    static func begun(_ typed: [String]) -> [(word: String, phrase: String)] {
+        guard typed.count == 1, let last = typed.last, last.utf8.count >= 2, !known.contains(stem(last)), !isAlone(last),
+            !last.utf8.contains(where: { $0 >= 0x30 && $0 <= 0x39 })
+        else { return [] }
+        let often = last.utf8.count >= 4 ? stemmed.count : common
+        var found: [(word: String, phrase: String)] = []
+        for phrase in stemmed.prefix(often) {
+            guard let word = phrase.stems.first, word.hasPrefix(last), !found.contains(where: { $0.word == word }) else { continue }
+            found.append((word, phrase.words.joined(separator: " ")))
+        }
+        return Array(found.dropFirst().prefix(runners))
+    }
+
+    /// Their leading words alone.
+    static func runnersUp(_ typed: [String]) -> [String] { begun(typed).map(\.word) }
+
+    /// How many words count as runners-up.
+    static let runners = 8
 
     /// How many of the phrases are the foods most people log: all but `third`.
     private static let common = top.count + first.count + second.count

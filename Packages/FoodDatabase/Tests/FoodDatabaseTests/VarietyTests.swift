@@ -131,6 +131,43 @@ struct VarietyTests {
         #expect(own.recent.withLock { $0.map(\.asked.typed) } == ["cheese", "chees"])
     }
 
+    @Test func aWordBeingTypedGoesOnToTheOtherFoodsItMayBe() {
+        let starts = { (query: String, firsts: [String]) -> Bool in
+            let found = catalog.top(query, firsts.count)
+            return found.count == firsts.count && zip(found, firsts).allSatisfy { $0.hasPrefix($1) }
+        }
+        // The likeliest food first, then the others the letters begin, in the order they're
+        // logged: one of each, where the first alone filled the screen.
+        #expect(starts("ch", ["Chicken, cooked", "Cheese, cheddar", "Potato chips", "Chocolate candy"]), "\(catalog.top("ch", 4))")
+        #expect(starts("ba", ["Bananas, raw", "Bacon, cooked", "Bagels, plain", "Carrots, baby"]), "\(catalog.top("ba", 4))")
+        #expect(starts("po", ["Potatoes, baked", "Pork, chop", "Popcorn"]), "\(catalog.top("po", 3))")
+        #expect(starts("sa", ["Fish, salmon, cooked", "Sausage, cooked", "Sandwich", "Lettuce, salad"]), "\(catalog.top("sa", 4))")
+        #expect(starts("chi", ["Chicken, cooked", "Potato chips", "Chickpeas"]), "\(catalog.top("chi", 3))")
+        // Only foods whose names show what's typed: "ma" goes on to a mango and mashed
+        // potato, not to the pasta macaroni is.
+        #expect(catalog.top("ma", 4).allSatisfy { name in tokens(name).contains { $0.hasPrefix("ma") } }, "\(catalog.top("ma", 4))")
+        #expect(catalog.top("ma", 4).contains("Mangos, raw") && catalog.top("ma", 4).contains("Potato, mashed"))
+        // The words and the foods they stand for, in order; none for a word that's whole or
+        // for more than one word.
+        #expect(EverydayPhrases.begun(["ba"]).prefix(3).map(\.phrase) == ["bacon", "bagel", "baby carrots"])
+        #expect(EverydayPhrases.begun(["ch"]).prefix(2).map(\.phrase) == ["cheese", "cheddar cheese"])
+        #expect(EverydayPhrases.runnersUp(["ch"]) == EverydayPhrases.begun(["ch"]).map(\.word) && EverydayPhrases.runnersUp(["ch"]).count <= 8)
+        #expect(
+            EverydayPhrases.begun(["cheese"]).isEmpty && EverydayPhrases.begun(["chicken", "br"]).isEmpty && EverydayPhrases.begun(["c"]).isEmpty)
+        // The first result is the search's own, the scores fall and no food is listed twice.
+        for query in ["ch", "ba", "po", "sa", "co", "ma", "wa", "chi"] {
+            let found = catalog.search(query)
+            #expect(found.first?.food.id == catalog.searchCatalog(query, known: [:]).ranked.first?.food.id, "\(query)")
+            #expect(zip(found, found.dropFirst()).allSatisfy { $0.score >= $1.score }, "\(query)")
+            #expect(Set(found.map(\.food.id)).count == found.count, "\(query)")
+        }
+        // Where the search ranks the rest, a food of one of those words comes before the
+        // others the letters begin: bacon and bagels before baklava and baby food.
+        let ranked = catalog.searchCatalog("ba", known: [:]).ranked.map(\.food.name)
+        let place = { (start: String) in ranked.firstIndex { $0.hasPrefix(start) } ?? Int.max }
+        #expect(place("Bacon") < place("Baklava") && place("Bagels") < place("Babyfood"), "\(ranked.prefix(8))")
+    }
+
     @Test func foodsThatDifferComeBeforeTheSameFoodAgain() {
         // Whole milk is one food, bagels differ by their grain, and white rice by its grain's
         // length and whether it's cooked.

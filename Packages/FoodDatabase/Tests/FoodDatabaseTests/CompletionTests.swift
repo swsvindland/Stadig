@@ -291,6 +291,16 @@ struct CompletionTests {
         #expect(FoodCompletions.suggest("chicken and rice and", from: []).allSatisfy { $0.hasPrefix("chicken and rice and") })
     }
 
+    @Test func aPercentStaysOnItsNumber() {
+        // A label's "Cottage Cheese 2%" was offered as "cottage cheese 2".
+        #expect(FoodCompletions.phraseWords("Cottage Cheese 2%") == ["cottage", "cheese", "2%"])
+        #expect(FoodCompletions.phraseWords("Dark Chocolate, 70% Cacao") == ["dark", "chocolate", "70%", "cacao"])
+        // A sign on its own, or after a word, is dropped as other marks are.
+        #expect(FoodCompletions.phraseWords("50 % less sugar!") == ["50", "less", "sugar"] && FoodCompletions.phraseWords("juice%") == ["juice"])
+        #expect(FoodCompletions.suggest("cottage cheese 2", from: [food("Cottage Cheese 2%")]).first == "cottage cheese 2%")
+        #expect(FoodCompletions.suggest("1% m", from: []).first == "1% milk" && FoodCompletions.suggest("2% m", from: []).first == "2% milk")
+    }
+
     @Test func theSurveysFoodsAreOfferedByTheirNames() {
         let first = { (typed: String) in FoodCompletions.suggest(typed, from: []).first }
         #expect(first("coffee cr") == "coffee creamer" && first("raisin b") == "raisin bran" && first("beet j") == "beet juice")

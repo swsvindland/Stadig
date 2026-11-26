@@ -2303,6 +2303,10 @@ func scoreFoods(
     let correctedStems = target.map { word in
         fixes[word].flatMap { $0.count == 1 && !$0[0].contains(" ") && !hints.respelt.contains($0[0]) ? stem($0[0]) : nil } ?? stem(word)
     }.filter { !labelWords.contains($0) }
+    // The words it may be on its way to after that one, in the order their foods are logged:
+    // a food of one of them counts less against than any other longer word's, the earlier the
+    // less, so "ba" goes on from bananas to bacon and a bagel before baklava and baby food.
+    let runnersUp = search ? EverydayPhrases.runnersUp(target) : []
     // And as the word still being typed is most likely on its way to: "choc" is chocolate and
     // "por" pork, so the first result doesn't change when the word is finished.
     let begunStems = likely.map { word in Array(saidStems.dropLast()) + [stem(word)] }
@@ -2525,6 +2529,13 @@ func scoreFoods(
         // A plain food named by nothing but what was said is the usual one, before the kind
         // that usually stands for it: "Soup, tomato" before the canned one. Not where more
         // was said to come with it: mashed potatoes with gravy are the ones that have it.
+        // What a plain food of a runner-up word gets back of what a longer word costs.
+        var runnerUp = 0.0
+        if match.partial == 1, !runnersUp.isEmpty, !row.text.branded,
+            let place = runnersUp.firstIndex(where: { word in row.text.lead.contains { same($0, word) } })
+        {
+            runnerUp = 0.45 - 0.05 * Double(place)
+        }
         let exact = !row.text.branded && match.exact && row.other == nil
         // And one whose name is those words and no more leads the ones that go on to say
         // which: "Snack mix" before "Snacks, trail mix, regular", "Oatmeal" and "Beer" before
@@ -2566,6 +2577,7 @@ func scoreFoods(
             // A longer word than the one being typed is likely on its way to counts a little more
             // against a food: "sal" is salmon before salsify.
             - (likely == nil ? 0.5 : 0.75) * Double(match.partial) - 0.4 * Double(match.fixed) - 0.8 * match.variations
+            + runnerUp
             // A note in brackets says more about the same food, however long it is.
             - 0.25 * Double(match.others - (row.dish ? match.extra.filter(fromWords.contains).count : 0))
             - min(0.1, 0.05 * Double(match.notes)) + filedUnder + match.near

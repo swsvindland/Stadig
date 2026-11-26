@@ -109,8 +109,14 @@ enum Variety {
         return groups
     }()
 
-    /// What a search of a word alone goes on to: the foods it stands for, or its kinds.
-    static func phrases(after word: String) -> [String] { groups[word]?.foods ?? kinds(of: word) }
+    /// What a search of a word alone goes on to: the foods it stands for, or its kinds; and
+    /// for a word still being typed, the other foods it may be on its way to, so "ch" goes on
+    /// from chicken to cheese and chips where it listed chicken six ways.
+    static func phrases(after word: String) -> [String] {
+        if let group = groups[word] { return group.foods }
+        let begun = EverydayPhrases.begun([word]).map(\.phrase)
+        return begun.isEmpty ? kinds(of: word) : begun
+    }
 
     /// The ranked foods in the order they're shown. `named` gives the plain food each phrase
     /// names, where one does, which is how a kind is found whatever the search itself turned
@@ -130,18 +136,25 @@ enum Variety {
         // before it. They're asked for a few at a time: the first few usually do.
         var lifted: [Ranked] = []
         if let word {
+            // A word still being typed goes on only to foods whose names show what's typed:
+            // "ma" to a mango, not to the pasta that macaroni is.
+            let typing = group == nil && !EverydayPhrases.begun([word]).isEmpty
             var phrases = phrases(after: word)[...]
             let wanted = leads ? kinds + 1 : kinds
+            // Fewer at a time while typing, where each keystroke waits for them.
+            let batch = typing ? kinds : asked
             while lifted.count < wanted, !phrases.isEmpty {
-                for case let best? in named(Array(phrases.prefix(asked))) where lifted.count < wanted {
-                    guard best.food.id != ranked.first?.food.id, seen.insert(key(best.food.name)).inserted else { continue }
+                for case let best? in named(Array(phrases.prefix(batch))) where lifted.count < wanted {
+                    guard best.food.id != ranked.first?.food.id, !typing || tokens(best.food.name).contains(where: { $0.hasPrefix(word) }),
+                        seen.insert(key(best.food.name)).inserted
+                    else { continue }
                     // Its score is from its own search; here it sits just ahead of the next,
                     // or of the first where it leads.
                     var best = best
                     if let next = leads ? ranked.first : ranked.dropFirst().first { best.score = next.score }
                     lifted.append(best)
                 }
-                phrases = phrases.dropFirst(asked)
+                phrases = phrases.dropFirst(batch)
             }
         }
         let chosen = Set(lifted.map(\.food.id))

@@ -536,16 +536,18 @@ public enum FoodCompletions {
         return word.count > 3 && word.hasSuffix("s") ? String(word.dropLast()) : word
     }
 
-    /// Lower-case words, up to any note in brackets, without a trademark's sign.
+    /// Lower-case words, up to any note in brackets, without a trademark's sign. A percent
+    /// stays on its number: "Cottage Cheese 2%" isn't "cottage cheese 2".
     static func phraseWords(_ text: String) -> [String] {
         let plain = text.prefix { $0 != "(" }
         return plain.split { $0.isWhitespace || $0 == "," || $0 == "/" }.compactMap { part in
-            let word = part.trimmingCharacters(in: marks).lowercased()
+            var word = part.trimmingCharacters(in: marks).lowercased()
+            if word.hasSuffix("%"), !(word.dropLast().last?.isNumber ?? false) { word = word.trimmingCharacters(in: CharacterSet(charactersIn: "%")) }
             return word.isEmpty ? nil : word
         }
     }
 
-    private static let marks = CharacterSet.punctuationCharacters.subtracting(CharacterSet(charactersIn: "&")).union(
+    private static let marks = CharacterSet.punctuationCharacters.subtracting(CharacterSet(charactersIn: "&%")).union(
         CharacterSet(charactersIn: "®™©"))
 
     /// Phrases by how much weight they've gathered. One said two ways ("banana", "bananas") is one.
