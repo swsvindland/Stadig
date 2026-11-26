@@ -480,6 +480,20 @@ private let saidNames: [String: String] = [
     "whole grain rice": "brown rice", "ice water": "water", "iced water": "water", "rice sticks": "rice noodles",
     // A green banana is a banana not yet ripe, and a spring mix is leaf lettuce.
     "green banana": "banana", "green bananas": "bananas", "ripe plantain": "yellow plantain", "ripe plantains": "yellow plantains",
+    // Nuts and seeds said to be salted are the roasted ones with salt, where the words alone
+    // found the raw nut or a granola with "salted" in its name.
+    "salted almonds": "almonds dry roasted with salt", "salted cashews": "cashews dry roasted with salt",
+    "salted peanuts": "peanuts dry roasted with salt", "salted pecans": "pecans dry roasted with salt",
+    "salted pistachios": "pistachios dry roasted with salt", "salted walnuts": "walnuts dry roasted with salt",
+    "salted mixed nuts": "mixed nuts dry roasted with salt", "salted macadamia nuts": "macadamia nuts dry roasted with salt",
+    "salted macadamias": "macadamia nuts dry roasted with salt", "salted sunflower seeds": "sunflower seeds dry roasted with salt",
+    "salted pumpkin seeds": "pumpkin seeds roasted with salt", "salted nuts": "mixed nuts dry roasted with salt",
+    // Two words for what USDA writes as one or with a hyphen, which labels teach where the
+    // packaged catalog is installed.
+    "flax seeds": "flaxseed", "flax seed": "flaxseed", "ground flax": "flaxseed", "water chestnuts": "waterchestnuts",
+    "water chestnut": "waterchestnuts", "multigrain bread": "multi grain bread",
+    "plant milk": "non dairy milk", "plant based milk": "non dairy milk", "dairy free milk": "non dairy milk",
+    "milk alternative": "non dairy milk", "bear claw": "danish pastry", "bear claws": "danish pastry",
     "spring mix": "green leaf lettuce",
     "salad greens": "green leaf lettuce", "ground black pepper": "black pepper",
     "cracked black pepper": "black pepper",

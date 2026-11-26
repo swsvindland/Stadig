@@ -41,8 +41,8 @@ let staples: [(String, String)] = [
     ("milk", "^Milk, whole"),
     ("skim milk", "^Milk, nonfat, fluid"),
     ("whole milk", "^Milk, whole"),
-    ("almond milk", "^Beverages, almond milk, (unsweetened|sweetened)"),
-    ("soy milk", "^Soymilk, original"),
+    ("almond milk", "^Almond milk"),
+    ("soy milk", "^Soy milk"),
     ("butter", "^Butter, (salted|without salt)"),
     ("cheese", "^Cheese, cheddar"),
     ("cheddar", "^Cheese, cheddar"),
@@ -191,7 +191,7 @@ let staples: [(String, String)] = [
     ("dark chocolate", "^(Chocolate, dark|Dark chocolate candy)"),
     ("brownie", "^Cookies, brownies|^Cookie, brownie$"),
     ("donut", "^Doughnuts|^Doughnut$"),
-    ("muffin", "^Muffins, (blueberry|plain)"),
+    ("muffin", "^Muffin$"),
     ("granola bar", "(?i)granola bars?"),
     // Dishes.
     ("french fries", "[Ff]rench fries"),
@@ -229,7 +229,7 @@ let pantry: [(String, String)] = [
     ("canned tuna", "^Fish, tuna, (light|white), canned|^Fish, tuna, canned"),
     ("anchovies", "^Fish, anchovy, european, canned"),
     ("sourdough bread", "^Bread, french or vienna"),
-    ("cornbread", "^Bread, cornbread, (prepared|dry mix, prepared)"),
+    ("cornbread", "^Cornbread"),
     ("sports drink", "(?i)(gatorade|powerade|sports? drink)"),
     ("american cheese", "^Cheese, pasteurized process, American"),
     ("black coffee", "^Beverages, coffee, brewed|^Coffee, brewed$"),
@@ -273,7 +273,7 @@ let pantry: [(String, String)] = [
     ("waffles", "^Waffles, plain|^Waffle$"),
     ("french toast", "^French toast"),
     ("naan", "^Bread, naan"),
-    ("biscuit", "^Biscuits, plain"),
+    ("biscuit", "^Biscuit$"),
     ("blueberry muffin", "^Muffins, blueberry"),
     ("banana bread", "^Bread, banana"),
     ("blackberries", "^Blackberries, raw"),
@@ -611,7 +611,7 @@ let kitchen: [(String, String)] = [
     ("cranberry juice", "^Cranberry juice"), ("grapefruit juice", "^Grapefruit juice"), ("tomato juice", "^Tomato juice"),
     ("coconut water", "(?i)coconut water|^Coconut water, unsweetened$"), ("tonic water", "^Beverages, carbonated, tonic water|^Water, tonic$"),
     ("club soda", "^Beverages, carbonated, club soda"), ("ginger ale", "^Beverages, carbonated, ginger ale"),
-    ("root beer", "^Beverages, carbonated, root beer"), ("almond milk", "^Beverages, almond milk"),
+    ("root beer", "^Beverages, carbonated, root beer"), ("almond milk", "^Almond milk"),
     ("granny smith apple", "^Apples, raw, granny smith"), ("gala apple", "^Apples, raw, gala"), ("fuji apple", "^Apples, raw, fuji"),
     ("roma tomato", "^Tomatoes, red, ripe, raw"), ("cherry tomatoes", "^Tomatoes, red, ripe, raw"), ("russet potato", "^Potatoes, [Rr]usset"),
     ("yukon gold potato", "^Potatoes, (white|flesh)"), ("red potato", "^Potatoes, red"), ("sweet onion", "^Onions, sweet, raw"),
@@ -1298,7 +1298,7 @@ let ways: [(String, String)] = [
     ("baked chicken", "^Chicken, baked, broiled, or roasted"), ("baked fish", "^Fish, baked or broiled"), ("baked ham", "^(Ham|Pork, cured, ham)"),
     ("baked apple", "^Apples.*cooked"), ("sauteed shrimp", "^Shrimp, cooked"), ("sauteed vegetables", "^Vegetables, mixed.*cooked"),
     ("sauteed peppers", "^Peppers, sweet, red, sauteed"), ("sauteed zucchini", "zucchini.*cooked"), ("sauteed green beans", "^Beans, snap, green"),
-    ("dried mango", "^Mango, dried, sweetened"), ("dried apricots", "^Apricots, dried"), ("dried cranberries", "^Cranberries, dried"),
+    ("dried mango", "^Mango, dried"), ("dried apricots", "^Apricots, dried"), ("dried cranberries", "^Cranberries, dried"),
     ("canned tuna", "^Fish, tuna, canned"), ("canned chicken", "^Chicken, canned, meat only"), ("canned corn", "^Corn.*canned"),
     ("canned peaches", "^Peaches, canned"), ("canned green beans", "^Beans, snap, green, canned"), ("canned beans", "^Beans.*canned"),
     ("frozen peas", "^Peas, green, frozen"), ("frozen spinach", "^Spinach, frozen"), ("frozen broccoli", "^Broccoli, frozen"),
@@ -2057,6 +2057,46 @@ let raisedFoods: [(String, String)] = [
     ("extra large pizza", "^Pizza"),
 ]
 
+/// Everyday foods the survey has and SR Legacy doesn't, or not by the name they're asked for,
+/// and the other names a few are asked by. The last are foods that were right and stay so.
+let surveyFoods: [(String, String)] = [
+    ("oat milk", "^Oat milk$"), ("oatmilk", "^Oat milk$"), ("almond milk", "^Almond milk"),
+    ("unsweetened almond milk", "^Almond milk, unsweetened"), ("chocolate almond milk", "^Almond milk, chocolate"), ("rice milk", "^Rice milk"),
+    ("soy milk", "^Soy milk"), ("coconut milk beverage", "^Coconut milk beverage"), ("plant milk", "^Non-dairy milk"),
+    ("soy yogurt", "^Soy yogurt"), ("coconut yogurt", "^Coconut milk yogurt"), ("almond milk yogurt", "^Almond milk yogurt"),
+    ("scone", "^Scone$"), ("scones", "^Scone$"), ("blueberry scone", "^Scone, with fruit"), ("muffin", "^Muffin$"),
+    ("chocolate chip muffin", "^Muffin, chocolate chip"), ("pumpkin muffin", "^Muffin, pumpkin"), ("banana nut muffin", "^Muffin, fruit"),
+    ("zucchini bread", "^Bread, zucchini"), ("pumpkin bread", "^Bread, pumpkin"), ("banana nut bread", "^Bread, nut"),
+    ("hush puppies", "^Hush pupp"), ("biscuit", "^Biscuit$"), ("coffee creamer", "^Coffee creamer"), ("creamer", "^Coffee creamer"),
+    ("beet juice", "^Beet juice"), ("beetroot juice", "^Beet juice"), ("celery juice", "^Celery juice"),
+    ("watermelon juice", "^Watermelon juice"), ("dried mango", "^Mango, dried"), ("dried pineapple", "^Pineapple, dried"),
+    ("dried papaya", "^Papaya, dried"), ("pickled okra", "^Pickled okra"), ("pickled vegetables", "^Pickled vegetables"),
+    ("chutney", "^Chutney"), ("mango chutney", "^Chutney"), ("buffalo sauce", "^Buffalo sauce"), ("wing sauce", "^Buffalo sauce"),
+    ("fry sauce", "^Fry sauce"), ("simple syrup", "^Simple syrup"), ("caramel dip", "^Caramel dip"), ("honey butter", "^Honey butter"),
+    ("cheese ball", "^Cheese ball"), ("paneer", "^Cheese, paneer"), ("colby jack", "^Cheese, Colby Jack"),
+    ("caramel apple", "^Apple, candied"), ("candy apple", "^Apple, candied"), ("tapenade", "^Olive tapenade"),
+    ("stuffed olives", "^Stuffed olives"), ("vodka sauce", "^Vodka sauce"), ("poppy seed dressing", "^Poppy seed dressing"),
+    ("catalina dressing", "^French or Catalina dressing"), ("creamy italian dressing", "^Creamy Italian dressing"),
+    ("soy nuts", "^Soy nuts"), ("cinnamon sugar", "^Sugar, cinnamon"), ("tvp", "^Textured vegetable protein"),
+    ("honey roasted peanuts", "^Honey roasted peanuts"), ("honey roasted cashews", "^Honey roasted cashews"),
+    // Other names for foods the catalog had.
+    ("turkey gravy", "^Gravy, poultry"), ("chicken gravy", "^Gravy, poultry"), ("latke", "^Potato pancake"),
+    ("latkes", "^Potato pancake"), ("seven layer dip", "^Layer dip"), ("bear claw", "^Danish pastry"),
+    ("flax seeds", "^Seeds, flaxseed"), ("flax", "^Seeds, flaxseed"), ("water chestnuts", "^Waterchestnuts"),
+    ("multigrain bread", "^Bread, multi-grain"), ("salted almonds", "^Nuts, almonds, dry roasted, with salt"),
+    ("salted cashews", "^Nuts, cashew nuts, dry roasted, with salt"), ("salted peanuts", "^Peanuts, all types, dry-roasted, with salt"),
+    ("salted pecans", "^Nuts, pecans, dry roasted, with salt"), ("salted nuts", "^Nuts, mixed nuts, dry roasted"),
+    // As they were.
+    ("yogurt", "^Yogurt, plain"), ("coconut milk", "^Nuts, coconut milk"), ("blueberry muffin", "^Muffins, blueberry"),
+    ("english muffin", "^Muffins, English"), ("corn muffin", "^Muffins, corn"), ("banana bread", "^Bread, banana"),
+    ("beef gravy", "^Gravy, beef"), ("unsalted almonds", "^Nuts, almonds, dry roasted, without salt"), ("almonds", "^Nuts, almonds"),
+    ("dumplings", "^Wonton, dumpling"), ("hot chocolate", "^Hot chocolate"), ("half and half", "^Cream, fluid, half and half"),
+    ("milk", "^Milk, whole"), ("honey mustard", "^Salad dressing, honey mustard"), ("wasabi", "^Wasabi"),
+    ("biscuits and gravy", "^Biscuit with gravy"), ("cashews", "^Nuts, cashew nuts, raw"), ("peanuts", "^Peanuts, all types, raw"),
+    ("olives", "^Olives, ripe"), ("relish", "^Pickle relish"), ("zucchini", "^Squash, summer, zucchini"),
+    ("fresh zucchini", "^Squash, summer, zucchini"), ("okra", "^Okra, raw"), ("corn relish", "^Corn relish"),
+]
+
 /// Drinks as they're ordered: a coffee drink with its milk said after it, a smoothie by its
 /// fruit, a tea by its kind, and a few said short. The last are the drinks that were right.
 let drinkOrders: [(String, String)] = [
@@ -2170,7 +2210,7 @@ let regionalWords: [(region: String, typed: String, first: String)] = [
     ("au", "hot chips", "^Potato, french fries"), ("gb", "cheesy chips", "^Potato, french fries, with cheese"),
     ("gb", "oven chips", "^Potato, french fries, from frozen, baked"), ("gb", "portion of chips", "^Potato, french fries"),
     ("gb", "biscuits", "^Cookie"), ("ie", "biscuit", "^Cookie"), ("au", "biscuits", "^Cookie"), ("nz", "biscuits", "^Cookie"),
-    ("us", "biscuits", "^Biscuits"), ("fr", "biscuits", "^Biscuits"), ("gb", "2 biscuits", "^Cookie"), ("us", "2 biscuits", "^Biscuits"),
+    ("us", "biscuits", "^Biscuit"), ("fr", "biscuits", "^Biscuit"), ("gb", "2 biscuits", "^Cookie"), ("us", "2 biscuits", "^Biscuit"),
     ("gb", "chocolate biscuits", "^Cookie, chocolate"), ("gb", "jelly", "^Gelatin dessert"), ("au", "jelly", "^Gelatin dessert"),
     ("us", "jelly", "^Jellies"), ("gb", "sugar free jelly", "^Gelatin dessert, sugar free"), ("gb", "cider", "^Hard cider"),
     ("au", "cider", "^Hard cider"), ("fr", "cider", "^Hard cider"), ("ca", "cider", "^Hard cider"), ("us", "cider", "^Apple cider"),
@@ -2196,7 +2236,7 @@ let regionalPairs: [(region: String, typed: String, first: String, second: Strin
     ("gb", "chips and salsa", "^Tortilla chips", "^Salsa"), ("us", "chips and salsa", "^Tortilla chips", "^Salsa"),
     ("us", "chips and guac", "^Tortilla chips", "^Guacamole"), ("us", "chips and dip", "^Potato chips", "^Dip"),
     ("gb", "jelly and ice cream", "^Gelatin dessert", "^Ice cream"), ("gb", "tea and biscuits", "(?i)tea", "^Cookie"),
-    ("gb", "cheese and biscuits", "^Cheese, cheddar", "^Crackers"), ("us", "cheese and biscuits", "^Cheese, cheddar", "^Biscuits"),
+    ("gb", "cheese and biscuits", "^Cheese, cheddar", "^Crackers"), ("us", "cheese and biscuits", "^Cheese, cheddar", "^Biscuit"),
 ]
 
 /// A food typed with what it's put on or over, which is the food and then what it's on; the
@@ -4031,6 +4071,39 @@ struct StaplesTests {
         #expect(catalog.top("vitamin d milk", 1).first?.hasPrefix("Milk") == true)
         #expect(catalog.top("magnesium glycinate", 1).first.map { matches("(?i)glycinate", $0) } == true)
         #expect(catalog.names("vitamin water", 1).first.map { matches("(?i)vitamin ?water", $0) } == true)
+    }
+
+    @Test("everyday foods the survey has and SR Legacy lacks are found by their names, and a food typed with what names another isn't that one")
+    func surveyFoodsAndWhatAFoodComesWith() {
+        var missed: [String] = []
+        for (query, pattern) in surveyFoods where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Foods from the survey: \(surveyFoods.count - missed.count) of \(surveyFoods.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(surveyFoods.count), "\(missed.joined(separator: " | "))")
+        // The carton and the can are told apart by name, and the can still leads.
+        #expect(
+            catalog.top("coconut milk", 3).contains("Coconut milk beverage")
+                && catalog.top("coconut milk", 3).contains("Coconut milk, used in cooking"))
+        // With "with" between them, a steak sauce is steak and then sauce, a coffee creamer
+        // coffee and then the creamer, and beef gravy the beef that comes with it.
+        let firsts = { (query: String) in self.catalog.top(query, 2) }
+        #expect(firsts("steak with sauce") == ["Steak, cooked", "Sauce"], "\(firsts("steak with sauce"))")
+        #expect(firsts("coffee with creamer") == ["Coffee", "Coffee creamer"], "\(firsts("coffee with creamer"))")
+        #expect(firsts("beef with gravy").first == "Beef with gravy" && firsts("turkey with gravy").first == "Turkey with gravy")
+        #expect(firsts("ice cream with cone").first == "Ice cream")
+        // Without it they're the sauce, the creamer and the gravy.
+        #expect(firsts("steak sauce").first?.hasPrefix("Steak sauce") == true && firsts("beef gravy").first == "Gravy, beef")
+        // What the food itself names, or says "with" of, is still the whole.
+        #expect(
+            firsts("biscuit with gravy").first == "Biscuit with gravy" && firsts("fries with cheese").first == "Potato, french fries, with cheese")
+        #expect(firsts("sandwich with turkey").first?.hasPrefix("Turkey sandwich") == true)
+        #expect(firsts("pasta with meat sauce").first?.hasPrefix("Pasta with") == true)
+        // A model's name is read the same way.
+        let seen = { (name: String) in self.catalog.candidates(name: name, brand: nil).first?.food.name ?? "" }
+        #expect(
+            seen("Steak with sauce").hasPrefix("Steak") && seen("Coffee with creamer") == "Coffee" && seen("Beef with gravy") == "Beef with gravy")
+        #expect(seen("Oat milk") == "Oat milk" && seen("Scone") == "Scone" && seen("Chocolate chip muffin") == "Muffin, chocolate chip")
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

@@ -1,8 +1,8 @@
 """The food catalogs: every source read into one `Food`, written to a file per licence and shipping.
 Python standard library only. Run by Scripts/build-catalogs.py.
 
-usda.db holds SR Legacy and FNDDS's fast-food and restaurant foods, drinks and dishes, and is bundled from
-Packages/FoodDatabase/Sources/FoodDatabase/Resources (in git). off.db holds Open Food Facts, under
+usda.db holds SR Legacy and FNDDS's fast-food and restaurant foods, drinks, dishes and the everyday
+foods SR Legacy lacks, and is bundled from Packages/FoodDatabase/Sources/FoodDatabase/Resources (in git). off.db holds Open Food Facts, under
 the ODbL, and is bundled from Apps/MacroTrack/Catalogs (not in git). The two stay apart so that the
 app works without off.db and so nothing else takes on its licence. Never processes user data.
 
@@ -788,6 +788,10 @@ FNDDS_DRINKS = {
     # brand, a sports drink, sparkling water, a protein shake, lemonade and the juice drinks.
     "Soft drinks", "Diet soft drinks", "Sport and energy drinks", "Diet sport and energy drinks", "Flavored or carbonated water",
     "Nutritional beverages", "Fruit drinks", "Other diet drinks",
+    # And the milks poured in place of milk, by the names they're asked for: oat milk, which SR
+    # Legacy has none of, and "Almond milk, unsweetened" where it has "Beverages, almond milk,
+    # unsweetened, shelf stable".
+    "Plant-based milk",
 }
 
 
@@ -814,12 +818,52 @@ FNDDS_PREPARED = {
     # "Candy, gummy" and "Popcorn, movie theater, with added butter".
     "Candy containing chocolate", "Candy not containing chocolate", "Nutrition bars", "Cereal bars", "Popcorn", "Potato chips",
     "Tortilla, corn, other chips",
+    # What's baked without yeast, by what it's baked with: a scone, a chocolate chip or a
+    # pumpkin muffin, zucchini bread and a hush puppy, where SR Legacy has blueberry, corn and
+    # bran muffins and no scone. And the yogurts made from soy, coconut and almond milk.
+    "Biscuits, muffins, quick breads", "Plant-based yogurt",
 }
 # The SR Legacy group each of those is read as for how processed it is: a bag of chips is a
 # snack, not a restaurant's dish.
 FNDDS_GROUPS = {
     "Candy containing chocolate": "sweets", "Candy not containing chocolate": "sweets", "Nutrition bars": "snacks", "Cereal bars": "snacks",
     "Popcorn": "snacks", "Potato chips": "snacks", "Tortilla, corn, other chips": "snacks",
+    "Biscuits, muffins, quick breads": "baked products", "Plant-based yogurt": "dairy and egg products",
+}
+# And single foods from the survey's other categories, which otherwise repeat SR Legacy: the
+# everyday ones it has no entry for, or none a search of the usual name finds (a coffee creamer
+# is its "Cream substitute", and it has no beet juice, dried mango, pickled okra, chutney,
+# buffalo sauce or paneer). By the survey's description, with the SR Legacy group each is read
+# as for how processed it is, or its NOVA group where the name alone would mislead: a honey
+# mustard dip isn't honey, and stuffed olives and a relish are cured like the rest.
+FNDDS_SINGLES = {
+    "Coffee creamer, NFS": "beverages", "Coffee creamer, liquid": "beverages", "Coffee creamer, liquid, flavored": "beverages",
+    "Coffee creamer, liquid, fat free": "beverages", "Coffee creamer, liquid, sugar free, flavored": "beverages",
+    "Coffee creamer, powder": "beverages", "Coffee creamer, powder, flavored": "beverages",
+    "Beet juice": "beverages", "Celery juice": "beverages", "Blueberry juice": "beverages", "Watermelon juice, 100%": "beverages",
+    "Papaya juice, 100%": "beverages", "Strawberry juice, 100%": "beverages", "Aloe vera juice drink": "beverages",
+    "Mango, dried": "fruits and fruit juices", "Papaya, dried": "fruits and fruit juices", "Pineapple, dried": "fruits and fruit juices",
+    "Apple, candied": "sweets",
+    "Okra, pickled": "vegetables and vegetable products", "Cauliflower, pickled": "vegetables and vegetable products",
+    "Mushrooms, pickled": "vegetables and vegetable products", "Green beans, pickled": "vegetables and vegetable products",
+    "Turnip, pickled": "vegetables and vegetable products", "Radishes, pickled": "vegetables and vegetable products",
+    "Celery, pickled": "vegetables and vegetable products", "Zucchini, pickled": "vegetables and vegetable products",
+    "Tomato, green, pickled": "vegetables and vegetable products", "Cabbage, red, pickled": "vegetables and vegetable products",
+    "Vegetables, pickled": "vegetables and vegetable products", "Relish, corn": 3,
+    "Olives, stuffed": 3, "Olive tapenade": "soups, sauces, and gravies",
+    "Chutney": "soups, sauces, and gravies", "Buffalo sauce": "soups, sauces, and gravies", "Fry sauce": "soups, sauces, and gravies",
+    "Wasabi paste": "soups, sauces, and gravies", "Honey mustard dip": 4,
+    "Hot Thai sauce": "soups, sauces, and gravies", "Miso sauce": "soups, sauces, and gravies",
+    "Vodka sauce with tomatoes and cream": "soups, sauces, and gravies", "Poppy seed dressing": "soups, sauces, and gravies",
+    "Simple syrup": 2, "Caramel dip, regular": "sweets", "Caramel dip, light": "sweets", "Chocolate dip": "sweets",
+    "Guava paste": "sweets", "Bean paste, sweetened": "sweets", "Sugar, cinnamon": "sweets",
+    "Honey butter": "fats and oils", "Cheese ball": "dairy and egg products", "Cheese, paneer": "dairy and egg products",
+    "Cheese, Colby Jack": "dairy and egg products", "Soy nuts": "legumes and legume products", "Textured vegetable protein, dry": 4,
+    "French or Catalina dressing": "soups, sauces, and gravies", "Creamy Italian dressing": "soups, sauces, and gravies",
+    "Avocado dressing": "soups, sauces, and gravies",
+    # SR Legacy has almonds honey roasted and no other nut.
+    "Cashews, honey roasted": 4, "Peanuts, honey roasted": 4, "Pecans, honey roasted": 4, "Walnuts, honey roasted": 4,
+    "Mixed nuts, honey roasted": 4,
 }
 # And the plain meats, poultry, fish and cereals, which the survey names as they're cooked and
 # eaten where SR Legacy names a cut, a grade and a trim: "Beef, steak", "Pork, chop", "Chicken
@@ -917,6 +961,27 @@ FNDDS_REWORDED = (
     # one roasted in fat.
     (re.compile(r"^Potato, roasted$"), "Roasted potatoes"),
     (re.compile(r"^(Fruit salad), fresh or raw, (?:ex|in)cluding citrus fruits?, no dressing$"), r"\1"),
+    # A juice is all juice unless it says it's a drink or a cocktail.
+    (re.compile(r"^(\w+ juice), 100%$"), r"\1"),
+    (re.compile(r"^(Caramel dip), regular$"), r"\1"),
+    # Named by what they're made from first, as they're sold, so that yogurt with no more said
+    # stays the dairy one.
+    (re.compile(r"^Yogurt, (soy|coconut milk|almond milk)$"), lambda m: m.group(1).capitalize() + " yogurt"),
+    # The carton poured like milk, a seventh of the calories of the can a curry is made with,
+    # which the survey calls "Coconut milk, used in cooking".
+    (re.compile(r"^Coconut milk$"), "Coconut milk beverage"),
+    # The boiled dough of chicken and dumplings, not a pot sticker without meat.
+    (re.compile(r"^Dumpling, no meat$"), "Dumpling, plain dough"),
+    # And the single foods that are a food pickled, stuffed or honey roasted, by that first:
+    # filed under the food, "Olives, stuffed" answered for olives and "Cashews, honey roasted"
+    # for cashews.
+    (re.compile(r"^(Okra|Cauliflower|Mushrooms|Green beans|Turnip|Radishes|Celery|Zucchini|Vegetables), pickled$"),
+     lambda m: "Pickled " + m.group(1).lower()),
+    (re.compile(r"^Tomato, green, pickled$"), "Pickled green tomato"),
+    (re.compile(r"^Cabbage, red, pickled$"), "Pickled red cabbage"),
+    (re.compile(r"^Olives, stuffed$"), "Stuffed olives"),
+    (re.compile(r"^Relish, corn$"), "Corn relish"),
+    (re.compile(r"^(Cashews|Peanuts|Pecans|Walnuts|Mixed nuts), honey roasted$"), lambda m: "Honey roasted " + m.group(1).lower()),
 )
 # The dishes that are whole foods put together or cooked: a salad without its dressing, eggs as
 # an omelet or scrambled, oats and grits as they're cooked; not with what's added or sold made.
@@ -1009,6 +1074,23 @@ FNDDS_DISH_NAMES = {
     "Seaweed, dried": ["Nori", "Dried seaweed"],
     "Roasted potatoes": ["Roast potatoes"],
     "Popover": ["Yorkshire pudding"],
+    # The quick breads and the single foods by the other names they're asked for.
+    "Scone, with fruit": ["Blueberry scone", "Cranberry scone", "Raisin scone", "Fruit scone"],
+    "Muffin, fruit": ["Banana muffin", "Banana nut muffin", "Cranberry muffin", "Apple muffin"],
+    "Bread, nut": ["Banana nut bread", "Nut loaf"],
+    "Apple, candied": ["Caramel apple", "Candy apple", "Toffee apple"],
+    "Chutney": ["Mango chutney"],
+    "Buffalo sauce": ["Wing sauce", "Buffalo wing sauce"],
+    "Simple syrup": ["Sugar syrup"],
+    "Beet juice": ["Beetroot juice"],
+    "Oat milk": ["Oatmilk", "Oat drink"],
+    "Coconut milk beverage": ["Coconut milk drink", "Coconutmilk"],
+    "French or Catalina dressing": ["Catalina dressing"],
+    "Textured vegetable protein, dry": ["TVP"],
+    # The survey's gravy for either bird, where "turkey gravy" found its turkey with gravy.
+    "Gravy, poultry": ["Turkey gravy", "Chicken gravy"],
+    "Potato pancake": ["Latke", "Potato latke"],
+    "Layer dip": ["Seven layer dip", "7 layer dip", "Five layer dip", "5 layer dip"],
     # Rice and beans with nothing else said are the plain ones, not the ones with meat.
     "Beans and white rice": ["Rice and beans", "Beans and rice"],
     # Neither source has an Arctic char: it's the trout, the fish it's closest to.
@@ -1203,9 +1285,11 @@ def fndds_foods(path, stats):
         with archive.open(next(n for n in archive.namelist() if n.endswith(".json"))) as src:
             records = json.load(src)["SurveyFoods"]
     named = set()
+    singles = set()
     for raw in records:
         stats["fnddsRecords"] += 1
         name = fndds_name(raw["description"])
+        single = FNDDS_SINGLES.get(" ".join(raw["description"].split()))
         category = (raw.get("wweiaFoodCategory") or {}).get("wweiaFoodCategoryDescription")
         # Before "cooked" is added after it.
         sourced = FNDDS_SOURCED.search(name)
@@ -1217,7 +1301,7 @@ def fndds_foods(path, stats):
         plated = (category in FNDDS_DISHES or category in FNDDS_PREPARED) and not FNDDS_CODED.search(name) and not FNDDS_PLAIN.search(name)
         plain = (category in FNDDS_PLAIN_FOODS and not sourced and not FNDDS_RARE.search(name)
                  and (FNDDS_PLAIN_FOODS[category] != "fruits and fruit juices" or FNDDS_FRUIT.search(name)))
-        eaten = category in FNDDS_DRINKS or plated or plain
+        eaten = category in FNDDS_DRINKS or plated or plain or single is not None
         if not FNDDS_RESTAURANT.search(name) and not FNDDS_CHAIN.search(name) and not also and not eaten:
             continue
         # Two answers the coders tell apart can be one food once their notes are gone.
@@ -1225,6 +1309,8 @@ def fndds_foods(path, stats):
             stats["fnddsSameName"] += 1
             continue
         named.add(name.lower())
+        if single is not None:
+            singles.add(" ".join(raw["description"].split()))
         nutrients, micros = fdc_nutrients(raw)
         if not valid_nutrients(nutrients):
             stats["fnddsExcludedNutrition"] += 1
@@ -1240,18 +1326,25 @@ def fndds_foods(path, stats):
         stats["fnddsDrinks"] += category in FNDDS_DRINKS
         stats["fnddsDishes"] += category in FNDDS_DISHES or category in FNDDS_PREPARED
         stats["fnddsPlain"] += bool(plain)
+        stats["fnddsSingles"] += single is not None
         stats["fnddsWithChainNames"] += bool(chains)
         stats["fnddsChainNames"] += len(chains)
         stats["fnddsOtherNames"] += len(also) - len(chains)
         if category in FNDDS_DRINKS and not fast and not FNDDS_RESTAURANT.search(name):
             nova = fndds_drink_processing(category, name)
+        elif isinstance(single, int):
+            nova = single
+        elif category == "Plant-based yogurt":
+            # Made from the plant milks, which are read as ultra-processed like the other
+            # poured drinks (see `fndds_drink_processing`).
+            nova = 4
         elif FNDDS_WHOLE.search(name) and not FNDDS_NOT_WHOLE.search(name):
             # A dish is processed as a restaurant's is; a salad of raw vegetables, eggs
             # scrambled or folded into an omelet and oats or grits cooked in water or milk are
             # still whole foods.
             nova = 1
         else:
-            group = FNDDS_GROUPS.get(category) or (FNDDS_PLAIN_FOODS.get(category) if plain and not fast else None)
+            group = FNDDS_GROUPS.get(category) or single or (FNDDS_PLAIN_FOODS.get(category) if plain and not fast else None)
             nova = usda_processing(group or ("fast foods" if fast else "restaurant foods"), dish)
         # Kombucha is the one of them with live cultures.
         fermented = TRAIT_FERMENTED if re.search(r"\bkombucha\b", name, re.I) else 0
@@ -1265,6 +1358,10 @@ def fndds_foods(path, stats):
     unnamed = [name for name in FNDDS_DISH_NAMES if name.lower() not in named]
     if unnamed:
         raise SystemExit(f"FNDDS_DISH_NAMES lists foods the catalog doesn't have: {unnamed}")
+    # And a single food is listed by the survey's description, so one it doesn't have changed too.
+    missing = sorted(set(FNDDS_SINGLES) - singles)
+    if missing:
+        raise SystemExit(f"FNDDS_SINGLES lists foods the survey doesn't have: {missing}")
 
 
 def assess_energy(nutrients, name, kj=None, serving=None):

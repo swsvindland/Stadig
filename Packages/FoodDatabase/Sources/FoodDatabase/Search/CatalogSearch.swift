@@ -841,6 +841,34 @@ extension FoodCatalog {
         return named
     }
 
+    /// A plain food named by a food and what it's said to come with, where the latter is what
+    /// it is: "Steak sauce" is the sauce, "Gravy, beef" the gravy and "Coffee creamer" the
+    /// creamer, none of them steak with sauce, beef with gravy or coffee with creamer. Not a
+    /// food the first names (a "Turkey sandwich" is a sandwich with turkey, cheese fries are
+    /// fries with cheese), nor one that says "with" or "and" itself: a "Biscuit with gravy".
+    private func isNamedBySide(_ words: [String], sides: [String]) -> Bool {
+        let key = "side \(words.joined(separator: " ")) | \(sides.joined(separator: " "))"
+        if let remembered = brandish.withLock({ $0[key] }) { return remembered }
+        let sorted = words.map(stem).sorted()
+        let beside = Set(sides.flatMap { FoodDatabase.words($0) }.map(stem))
+        let each = words.map { "\"\($0)\"" }.joined(separator: " AND ")
+        let named = catalogs.contains { catalog in
+            catalog.kind == .generic
+                && catalog.match("{name}: (\(each))", limit: 40).contains { hit in
+                    let name = hit.entry.food.name
+                    guard FoodDatabase.words(name).map(stem).sorted() == sorted else { return false }
+                    // The part before the first comma says what the food is, its last word most of all.
+                    let lead = tokens(String(name.prefix { $0 != "," }))
+                    return !lead.contains { ["with", "and", "on", "in", "over"].contains($0) } && lead.last.map { beside.contains(stem($0)) } == true
+                }
+        }
+        brandish.withLock { remembered in
+            if remembered.count > 500 { remembered.removeAll() }
+            remembered[key] = named
+        }
+        return named
+    }
+
     /// The words at the start or end of a search that name a brand, the most words first: "trader
     /// joes" in "trader joes mini wheats" or "mini wheats trader joes", and "little caesars" before
     /// "little". A search of two or three words that is a brand as a whole ("trader joes", "great
@@ -917,9 +945,10 @@ extension FoodCatalog {
 
     /// The plain food each everyday kind names: what a search of it finds first, so the almond
     /// milk shown after milk is the one "almond milk" leads with. Nil where that's a brand's
-    /// food, doesn't have every word or is a weak match: with no oat milk in the catalogs,
-    /// "oat milk" finds oatmeal made with one. Each kind is searched once a launch (see
-    /// `kindFoods`), and the ones not yet searched are searched at once.
+    /// food, doesn't have every word or is a weak match: a kind the catalogs have no food for
+    /// finds one that only mentions it, as "oat milk" found oatmeal made with one before the
+    /// catalog had an oat milk. Each kind is searched once a launch (see `kindFoods`), and
+    /// the ones not yet searched are searched at once.
     func plainFoods(named phrases: [String]) -> [Ranked?] {
         var found = kindFoods.withLock { known in phrases.map { known[$0] } }
         let missing = phrases.indices.filter { found[$0] == nil }
@@ -1605,7 +1634,10 @@ extension FoodCatalog {
         let typed = servedWith(search.text) ?? search.text
         guard tokens(typed).contains("with") else { return nil }
         let read = seenName(typed)
-        guard !read.sides.isEmpty, !isPlainName(Self.foodWords(search.text, fixes: search.fixes)[...]) else { return nil }
+        // The whole unless what names it is what the food comes with: steak with sauce isn't
+        // steak sauce.
+        let named = Self.foodWords(search.text, fixes: search.fixes)
+        guard !read.sides.isEmpty, isNamedBySide(named, sides: read.beside) || !isPlainName(named[...]) else { return nil }
         if let first = search.ranked.first, first.called || first.calling { return nil }
         var with = searchCatalog(read.main, known: known, out: chain?.place, sides: read.sides, beside: read.beside)
         // From a chain, its own item for the food first. Not the one without what it was
@@ -1974,7 +2006,8 @@ extension FoodCatalog {
         var (food, sides, beside) = brand.isEmpty ? seenName(said) : (said, [], [])
         // What the catalog names by exactly the words seen is that food, whatever it's said to
         // come with: its "Pasta with meat sauce", its "Biscuit with gravy".
-        if !sides.isEmpty, isPlainName(words(said)[...]) { (food, sides, beside) = (said, [], []) }
+        // Not a steak sauce for steak with sauce, which is named by the sauce.
+        if !sides.isEmpty, isPlainName(words(said)[...]), !isNamedBySide(words(said), sides: beside) { (food, sides, beside) = (said, [], []) }
         // A plain dish is looked up in the catalog's words.
         let dish = brand.isEmpty ? catalogDish(plainlyCooked(food) ?? food) : said
         // Its names are read as a typed search's are: written the way most labels write them

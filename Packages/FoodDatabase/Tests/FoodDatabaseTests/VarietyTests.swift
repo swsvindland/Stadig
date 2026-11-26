@@ -46,7 +46,7 @@ struct VarietyTests {
             return found.count == firsts.count && zip(found, firsts).allSatisfy { $0.hasPrefix($1) }
         }
         #expect(
-            starts("milk", ["Milk, whole", "Beverages, almond milk", "Milk, nonfat", "Milk, reduced fat, fluid, 2%"]), "\(catalog.top("milk", 4))")
+            starts("milk", ["Milk, whole", "Almond milk", "Oat milk", "Milk, nonfat"]), "\(catalog.top("milk", 4))")
         #expect(starts("oil", ["Oil, olive", "Oil, canola", "Oil, coconut", "Oil, vegetable"]), "\(catalog.top("oil", 4))")
         #expect(starts("beans", ["Beans, black", "Beans, snap, green", "Beans, pinto", "Beans, kidney"]), "\(catalog.top("beans", 4))")
         #expect(starts("chicken", ["Chicken, cooked", "Chicken, grilled", "Chicken, rotisserie", "Chicken, fried"]), "\(catalog.top("chicken", 4))")
@@ -66,8 +66,8 @@ struct VarietyTests {
             #expect(zip(found, found.dropFirst()).allSatisfy { $0.score >= $1.score }, "\(query)")
             #expect(Set(found.map(\.food.id)).count == found.count, "\(query)")
         }
-        // A food that isn't a kind of the word, or is a weak match for its own name, isn't
-        // brought up: no ice cream after cream, and no oatmeal after milk for "oat milk".
+        // A food that isn't a kind of the word, or is only named with the kind's words in
+        // passing, isn't brought up: no ice cream after cream, no oatmeal made with oat milk.
         #expect(!catalog.top("cream", 4).contains { $0.hasPrefix("Ice cream") } && !catalog.top("milk", 5).contains { $0.hasPrefix("Oatmeal") })
         #expect(!catalog.top("butter", 4).contains { $0.lowercased().contains("peanut") })
     }

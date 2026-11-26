@@ -5,11 +5,14 @@
 USDA SR Legacy, April 2018, and from FNDDS 2021–2023 (the Food and Nutrient Database for Dietary
 Studies, October 2024) its fast-food and restaurant foods, the foods it files chains' menu items
 under, with FNDDS's names for those items, its drinks (coffee, tea, wine, beer, spirits and
-cocktails, smoothies, shakes, flavored milk, soft, sports, energy and nutritional drinks, juice
-drinks and carbonated water), its dishes (sandwiches, mixed dishes, soups, salads, pizza, egg
-dishes, cooked cereals, baked goods and desserts), its sweets and snacks (candy, chips,
-popcorn, cereal and nutrition bars) and its plain meats, poultry, fish, shellfish, cured meats
-and ready-to-eat cereals, with its berries and fruit of no one kind; both from
+cocktails, smoothies, shakes, flavored milk, plant-based milks, soft, sports, energy and
+nutritional drinks, juice drinks and carbonated water), its dishes (sandwiches, mixed dishes,
+soups, salads, pizza, egg dishes, cooked cereals, baked goods, biscuits, muffins and quick
+breads, desserts and plant-based yogurts), its sweets and snacks (candy, chips, popcorn, cereal
+and nutrition bars), its plain meats, poultry, fish, shellfish, cured meats and ready-to-eat
+cereals, with its berries and fruit of no one kind, and some sixty single foods SR Legacy has
+no entry for (coffee creamer, beet and celery juice, dried mango, pickled vegetables, chutney,
+buffalo sauce, paneer, honey roasted nuts); both from
 [FoodData Central](https://fdc.nal.usda.gov/download-datasets/). USDA describes its data as
 [public domain / CC0](https://fdc.nal.usda.gov/api-guide/).
 

@@ -107,7 +107,7 @@ let firstResults: [(String, String)] = [
     ("bell peppe", "^Peppers, sweet"),
     ("spaghett", "^Pasta, cooked"),
     ("ranc", "^Salad dressing, ranch dressing"),
-    ("soy mil", "^Soymilk"),
+    ("soy mil", "^Soy ?milk"),
     ("milkshak", "^Milk shakes?"),
     // One letter after a food's first words says which, and a name typed as one word is read as two.
     ("chicken b", "^Chicken, broilers or fryers, breast|^Chicken breast"),
@@ -606,7 +606,7 @@ struct CandidateTests {
             ("spaghetti", "^Pasta, cooked", "(?i)spinach|squash"),
             ("macaroni", "^Pasta, cooked", "(?i)vegetable"),
             // A name labels write as one word or as two is found written either way.
-            ("soy milk", "^Soymilk", "(?i)sheep|buttermilk"),
+            ("soy milk", "^Soy ?milk", "(?i)sheep|buttermilk"),
             ("milkshake", "^Milk shakes?", ""),
             ("kiwi", "^Kiwifruit", ""),
             ("mac and cheese", "^Macaroni (and [Cc]heese|or noodles with cheese$)", ""),
