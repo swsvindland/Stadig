@@ -915,6 +915,36 @@ extension FoodCatalog {
         return meant
     }
 
+    /// The plain food each everyday kind names: what a search of it finds first, so the almond
+    /// milk shown after milk is the one "almond milk" leads with. Nil where that's a brand's
+    /// food, doesn't have every word or is a weak match: with no oat milk in the catalogs,
+    /// "oat milk" finds oatmeal made with one. Each kind is searched once a launch (see
+    /// `kindFoods`), and the ones not yet searched are searched at once.
+    func plainFoods(named phrases: [String]) -> [Ranked?] {
+        var found = kindFoods.withLock { known in phrases.map { known[$0] } }
+        let missing = phrases.indices.filter { found[$0] == nil }
+        guard !missing.isEmpty else { return found.map { $0 ?? nil } }
+        let searched = Mutex<[Int: Ranked?]>([:])
+        // These aren't the person's searches: the last few of theirs stay as they were.
+        let recent = self.recent.withLock { $0 }
+        defer { self.recent.withLock { $0 = recent } }
+        DispatchQueue.concurrentPerform(iterations: missing.count) { i in
+            // Whole words, as if a space followed: nothing here is still being typed.
+            let first = searchCatalog(phrases[missing[i]] + " ", known: [:]).ranked.first
+            let plain = first.flatMap { first -> Ranked? in
+                let text = FoodText(first.food)
+                let plain = first.food.source == .usda && !text.branded && text.shouted.isEmpty
+                return plain && first.name >= 1 && first.score >= Variety.sure ? first : nil
+            }
+            searched.withLock { $0[missing[i]] = .some(plain) }
+        }
+        for (i, plain) in searched.withLock({ $0 }) { found[i] = plain }
+        kindFoods.withLock { known in
+            for i in missing { known[phrases[i]] = found[i] ?? nil }
+        }
+        return found.map { $0 ?? nil }
+    }
+
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
         var search = searchCatalog(typed, known: known, out: nil)
         // A vitamin or a mineral typed alone is the supplement, which is a label named by it:

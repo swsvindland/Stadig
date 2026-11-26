@@ -4298,8 +4298,10 @@ struct StaplesTests {
         }
         // The one that only says it's cooked, where no way of cooking is asked for, and the
         // one that says nothing of its skin, or is without it: a chicken breast before the
-        // grilled one and the one with skin.
-        #expect(catalog.top("chicken", 3) == ["Chicken, cooked", "Chicken, cooked, without skin", "Chicken, grilled"])
+        // grilled one and the one with skin. Chicken alone goes on to the ways it's cooked
+        // (see `Variety`), then the one without skin.
+        #expect(catalog.top("chicken", 3) == ["Chicken, cooked", "Chicken, grilled", "Chicken, rotisserie"])
+        #expect(catalog.top("chicken", 5).last == "Chicken, cooked, without skin")
         #expect(catalog.top("chicken breast", 2) == ["Chicken breast, cooked, without skin", "Chicken breast, cooked, with skin"])
         #expect(catalog.top("chicken thigh with skin", 1).first == "Chicken thigh, cooked, with skin")
         #expect(catalog.top("skinless chicken thigh", 1).first == "Chicken thigh, cooked, without skin")

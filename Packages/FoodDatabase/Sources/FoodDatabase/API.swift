@@ -28,6 +28,10 @@ public final class FoodCatalog: Sendable {
     /// keystroke of "grilled chicken and brown ri" searches "grilled chicken" again, and going
     /// back a letter searches what was just searched.
     let recent = Mutex<[RecentSearch]>([])
+    /// The plain food each everyday kind of a food names, nil where none does: what follows
+    /// the first result of a one-word search (see `Variety`). Remembered for the launch, so a
+    /// kind's own search runs once however often "milk" is typed.
+    let kindFoods = Mutex<[String: Ranked?]>([:])
 
     /// Opens the catalogs at these URLs. `region` is the phone's ISO region ("us"), which ranks
     /// packaged foods sold here above those sold only elsewhere.
@@ -79,7 +83,8 @@ public final class FoodCatalog: Sendable {
         guard limit > 0 else { return [] }
         let known = Self.known(personal)
         // What's typed in place of words is read as the words first (see `Shorthand`).
-        let found = searchCatalog(Shorthand.spelledOut(query), known: known)
+        let asked = Shorthand.spelledOut(query)
+        let found = searchCatalog(asked, known: known)
         // The person's own foods come first, ranked like the catalog below them, so rows already on
         // screen don't move when the catalog answers. A typo the catalog corrected finds them too.
         let typed = found.typed ?? found.text
@@ -90,7 +95,11 @@ public final class FoodCatalog: Sendable {
                 fixes: found.readings, brand: found.brand, doubted: found.doubted, respelt: found.respelt))
         var results = own.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: true) }
         var listed = Set(results.map(\.food.id))
-        for row in found.ranked where results.count < limit && listed.insert(row.food.id).inserted {
+        // After the first result, the kinds of the food people log and the foods that differ
+        // from it, before the ones that only differ in a note (see `Variety`). A brand's
+        // search is in the order its products were found.
+        let ranked = found.brand.isEmpty ? Variety.varied(found.ranked, typed: asked) { plainFoods(named: $0) } : found.ranked
+        for row in ranked where results.count < limit && listed.insert(row.food.id).inserted {
             results.append(
                 FoodMatch(
                     food: row.food, score: row.score, personal: known[row.food.id] != nil, away: found.elsewhere.contains(row.food.id),
