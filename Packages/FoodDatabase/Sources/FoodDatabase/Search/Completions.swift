@@ -114,6 +114,25 @@ public enum FoodCompletions {
                 .map { "\(typed.joined(separator: " ")) \($0)" }
             return Array((offered + whole.filter { !offered.contains($0) }).prefix(limit))
         }
+        // What only says the state a food is in or how it was cut stays as typed, and the
+        // food after it is completed, where no phrase found starts as typed: "warm mi" goes on
+        // to warm milk, "cold pi" to cold pizza and "chopped on" to chopped onion, where the
+        // foods found offered nothing, a cold pressed pineapple juice and chopped beef.
+        if let kept = idleLead(typed), !whole.contains(where: { startsAs($0, typed) }) {
+            var onward = suggest(typed[kept...].joined(separator: " "), from: matches, limit: limit, label: label)
+            // Hot only before what it says the temperature of.
+            if typed[kept - 1] == "hot" { onward.removeAll { !hotFoods.contains($0) } }
+            var different: [String] = []
+            for phrase in onward where !different.contains(where: { phrase.hasPrefix($0 + " ") }) { different.append(phrase) }
+            // Only the food the search itself found first, which is what the search will show:
+            // "cold pi" is cold pizza, not what else "pi" most often is. The pairs said most
+            // are in the everyday ways ("grated parmesan", "ripe mango").
+            let first = Set(matches.first.map { (phraseWords(label($0.food)) + phraseWords($0.food.name)).map(same) } ?? [])
+            let named = different.filter { $0.split(separator: " ").allSatisfy { first.contains(same(String($0))) } }
+            let before = typed[..<kept].joined(separator: " ")
+            let offered = named.prefix(afterLead).map { "\(before) \($0)" }
+            if !offered.isEmpty { return Array((offered + whole.filter { goesOn($0, from: typed) && !offered.contains($0) }).prefix(limit)) }
+        }
         guard let kept = lead(of: typed, in: query), !goes else {
             // One letter after other words is too little to go on, as it is to search by:
             // "sugar free j" offers what "sugar free" does, the ones with a word that starts so
@@ -257,6 +276,37 @@ public enum FoodCompletions {
         return nil
     }
 
+    /// How many words at the start of what's typed only say the state the food is in, how it
+    /// was bought or how it was cut, with the food begun after them: the "store bought" of
+    /// "store bought co", the "chopped" of "chopped on". Nil where there are none, or nothing
+    /// is typed after them.
+    private static func idleLead(_ typed: [String]) -> Int? {
+        var at = 0
+        while at < typed.count - 1 {
+            let phrase = stateWays.first { way in
+                way.means.isEmpty && at + way.said.count < typed.count && way.said.indices.allSatisfy { typed[at + $0] == way.said[$0] }
+            }
+            if let phrase {
+                at += phrase.said.count
+            } else if (isEasable(typed[at], seen: true) && !isEasable(typed[at])) || isIdle(typed[at], before: typed[at + 1])
+                || typed[at] == "frozen" || typed[at] == "peeled"
+            {
+                at += 1
+            } else {
+                break
+            }
+        }
+        return at > 0 ? at : nil
+    }
+
+    /// Whether a phrase starts as what's typed does, word for word, the last as far as it's typed.
+    private static func startsAs(_ phrase: String, _ typed: [String]) -> Bool {
+        let words = phrase.split(separator: " ").map { same(String($0)) }
+        guard words.count >= typed.count, let last = typed.last else { return false }
+        return typed.indices.dropLast().allSatisfy { words[$0] == same(typed[$0]) }
+            && (words[typed.count - 1].hasPrefix(same(last)) || words[typed.count - 1].hasPrefix(plain(last)))
+    }
+
     /// Whether a phrase goes on from what's typed: it has every word typed, the last as far as
     /// it's typed. "And" is "&", and a plural its singular.
     private static func goesOn(_ phrase: String, from typed: [String]) -> Bool {
@@ -284,6 +334,10 @@ public enum FoodCompletions {
                 // One that starts with a food's own name, from its second word: "sugar" is
                 // on its way to sugar cookies before sugar free jello.
                 guard phrase.way == nil || (found.ordered && (wanted.count > 1 || !everyday.contains(Tally.key([phrase.words[0]])))) else { continue }
+                // And a way said seldom, only once it's typed whole: "sto" isn't store bought yet.
+                if phrase.way != nil, let how = EverydayPhrases.waitingWords.first(where: { phrase.words.starts(with: $0) })?.count {
+                    guard wanted.count > how || (wanted.count == how && wanted[how - 1] == phrase.compared[how - 1]) else { continue }
+                }
                 let reach = found.fit == 1 ? 1 : phrase.brand ? found.fit * laterBrand : phrase.way != nil ? laterWay : found.fit
                 tally.add(listed: phrase.words, weight: phrase.weight * reach, way: phrase.way)
             } else if wanted.count == 1, phrase.compared.count > 1, wanted[0].count > phrase.compared[0].count,

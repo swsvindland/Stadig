@@ -495,10 +495,22 @@ func howWords(_ words: [String]) -> Set<Int> {
     var how = Set(words.indices.filter { isEasable(words[$0], seen: true) })
     for i in words.indices.dropFirst() where shapeWords.contains(words[i]) && !how.contains(i - 1) && !isNumber(words[i - 1]) { how.insert(i) }
     // "Whole" by the word after it, which may be one still being typed: "whole mi" is milk.
-    for i in words.indices.dropLast() where words[i] == "whole" && !wholeNames.contains(where: { $0.hasPrefix(words[i + 1]) }) { how.insert(i) }
+    for i in words.indices.dropLast() where words[i] == "whole" && isIdle("whole", before: words[i + 1]) { how.insert(i) }
     // Frozen is a kind of the food where the catalog has one (see `scoreFoods`).
     for i in words.indices.dropLast() where words[i] == "frozen" { how.insert(i) }
     return how
+}
+
+/// Whether "whole", "cold" or "hot" only says how the food named after it was eaten, by the
+/// word after it, which may be one still being typed: "whole mi" is whole milk, "cold br" cold
+/// brew and "hot do" a hot dog begun.
+func isIdle(_ word: String, before next: String) -> Bool {
+    switch word {
+    case "whole": !wholeNames.contains { $0.hasPrefix(next) }
+    case "cold": !coldNames.contains { $0.hasPrefix(next) }
+    case "hot": hotFoods.contains { $0.hasPrefix(next) }
+    default: false
+    }
 }
 
 /// Whether the word at a place among those said is a shape the food before it is cut into.

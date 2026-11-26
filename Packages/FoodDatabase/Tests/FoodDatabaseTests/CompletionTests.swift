@@ -291,6 +291,34 @@ struct CompletionTests {
         #expect(FoodCompletions.suggest("chicken and rice and", from: []).allSatisfy { $0.hasPrefix("chicken and rice and") })
     }
 
+    @Test func wordsThatSayNothingOfTheFoodStayAndTheFoodGoesOn() {
+        let first = { (typed: String) in FoodCompletions.suggest(typed, from: []).first }
+        // The pairs said most are everyday ways: what was cut, prepared or in what state.
+        #expect(first("chopped on") == "chopped onion" && first("grated pa") == "grated parmesan" && first("mashed ba") == "mashed banana")
+        #expect(first("ripe ma") == "ripe mango" && first("leftover pi") == "leftover pizza" && first("warm mi") == "warm milk")
+        #expect(first("store bought co") == "store bought cookies" && first("medium rare st") == "medium rare steak")
+        // The ones said seldom wait for the word to be typed whole: three letters are a brand
+        // or another food first.
+        let offered = { (typed: String) in FoodCompletions.suggest(typed, from: []) }
+        #expect(!offered("sto").contains("store bought cookies") && offered("store bought").first == "store bought cookies")
+        #expect(!offered("me").contains("medium rare steak") && !offered("mel").contains("melted butter"))
+        #expect(offered("melted").first == "melted butter" && offered("leftover").first == "leftover pizza")
+        #expect(!offered("she").contains("shelled pistachios") && offered("shelled pi") == ["shelled pistachios"])
+        // The cuts said often are offered from their first letters, after the foods.
+        #expect(offered("di").contains("diced tomatoes") && offered("di").first == "diet coke")
+        // Where no way is listed, the food the search found first goes on after the words.
+        let cold = Catalogs.usda.search("cold pi", limit: 60)
+        #expect(FoodCompletions.suggest("cold pi", from: cold).first == "cold pizza")
+        let whole = Catalogs.usda.search("whole av", limit: 60)
+        #expect(FoodCompletions.suggest("whole av", from: whole).first == "whole avocado")
+        // Cold, hot and whole by the word after them: cold brew and a hot dog are foods.
+        #expect(first("hot do") == "hot dog" && first("whole mi") == "whole milk")
+        let brew = FoodCompletions.suggest("cold br", from: Catalogs.usda.search("cold br", limit: 60))
+        #expect(!brew.contains("cold bread") && !brew.contains("cold broccoli"))
+        let hot = Catalogs.usda.search("hot cof", limit: 60)
+        #expect(FoodCompletions.suggest("hot cof", from: hot).first == "hot coffee")
+    }
+
     @Test func theCatalogsResultsComplete() {
         let found = Catalogs.usda.search("chick", limit: 60)
         #expect(FoodCompletions.suggest("chick", from: found).contains("chicken"))

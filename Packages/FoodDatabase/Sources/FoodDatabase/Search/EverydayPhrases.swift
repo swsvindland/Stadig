@@ -169,7 +169,13 @@ enum EverydayPhrases {
         ("smoked", ["salmon", "sausage", "ham"]),
         ("raw", ["almonds", "spinach", "broccoli", "carrots", "honey", "salmon", "cashews", "tuna", "onion", "kale"]),
         ("fresh", ["strawberries", "spinach", "blueberries", "mozzarella", "salsa", "pineapple", "tomato"]),
-        ("frozen", ["blueberries", "broccoli", "strawberries", "peas", "vegetables", "spinach", "yogurt", "corn", "pizza"]),
+        (
+            "frozen",
+            [
+                "blueberries", "broccoli", "strawberries", "peas", "vegetables", "spinach", "yogurt", "corn", "pizza", "fruit", "berries", "banana",
+                "mango",
+            ]
+        ),
         ("canned", ["tuna", "chicken", "corn", "black beans", "salmon", "green beans", "pumpkin", "peaches"]),
         ("dried", ["mango", "cranberries", "apricots", "figs"]),
         ("cooked", ["rice", "chicken", "pasta", "quinoa", "chicken breast", "white rice", "oatmeal", "lentils", "spinach", "ground beef"]),
@@ -185,8 +191,39 @@ enum EverydayPhrases {
         ("skinless", ["chicken breast", "chicken thigh", "salmon"]),
         ("baby", ["spinach", "potatoes", "kale", "back ribs", "bella mushrooms"]),
         ("whole wheat", ["bread", "pasta", "tortilla", "bagel", "english muffin"]),
-        ("shredded", ["cheese", "chicken", "mozzarella", "lettuce", "wheat"]),
-        ("sliced", ["turkey", "almonds", "ham", "cheese"]),
+        ("shredded", ["cheese", "chicken", "mozzarella", "lettuce", "wheat", "carrots", "cabbage", "coconut"]),
+        ("sliced", ["turkey", "almonds", "ham", "cheese", "apple", "banana", "tomato", "cucumber", "mushrooms", "avocado", "strawberries"]),
+        // How a food was cut, what else was done to it and the state it's in, which the
+        // ranking reads as the food.
+        ("chopped", ["onion", "walnuts", "tomatoes", "spinach", "lettuce", "nuts", "garlic", "pecans", "cilantro"]),
+        ("diced", ["tomatoes", "onion", "chicken", "ham", "potatoes", "avocado", "peppers", "celery"]),
+        ("minced", ["garlic", "onion", "ginger"]),
+        ("grated", ["parmesan", "cheese", "carrot", "ginger"]),
+        ("crumbled", ["feta", "bacon", "blue cheese", "goat cheese"]),
+        ("cubed", ["cheese", "chicken", "ham", "tofu"]),
+        ("mashed", ["potatoes", "avocado", "banana", "sweet potato", "cauliflower"]),
+        ("melted", ["butter", "cheese", "chocolate"]),
+        ("crushed", ["tomatoes", "pineapple", "garlic", "red pepper", "peanuts"]),
+        ("shelled", ["pistachios", "edamame", "peanuts", "walnuts"]),
+        ("pitted", ["dates", "olives", "cherries", "prunes"]),
+        ("peeled", ["shrimp", "garlic", "apple", "potatoes", "carrots"]),
+        ("seedless", ["grapes", "watermelon", "raisins"]),
+        ("shaved", ["parmesan", "ham", "turkey", "steak", "ice"]),
+        ("slivered", ["almonds"]),
+        ("ripe", ["banana", "avocado", "mango", "tomato"]),
+        ("leftover", ["pizza", "chicken", "pasta", "rice", "turkey"]),
+        ("warm", ["milk", "water", "bread"]),
+        ("stale", ["bread"]),
+        ("day old", ["rice", "bread"]),
+        ("store bought", ["cookies", "hummus", "bread", "pizza"]),
+        ("takeout", ["pizza"]),
+        ("thick cut", ["bacon", "fries"]),
+        ("rare", ["steak"]),
+        ("medium rare", ["steak"]),
+        ("well done", ["steak"]),
+        ("fresh squeezed", ["orange juice", "lemonade"]),
+        ("freshly squeezed", ["orange juice"]),
+        ("buttered", ["toast", "noodles", "popcorn", "corn"]),
         ("plain", ["greek yogurt", "yogurt", "bagel"]),
         ("vanilla", ["greek yogurt", "ice cream", "yogurt", "protein powder", "almond milk"]),
         ("unsweetened", ["almond milk", "applesauce", "iced tea", "coconut milk"]),
@@ -202,8 +239,20 @@ enum EverydayPhrases {
         ("low carb", ["tortilla", "bread", "wrap"]),
     ]
 
-    /// Those as phrases. They count less than any everyday food, the first a word goes on to
-    /// the most, so "gr" is still Greek yogurt and "grilled s" is grilled salmon.
+    /// The ways that are said too seldom to be offered from their first letters: "sto" is
+    /// Stouffer's and Stonyfield before anything store bought, "she" a shepherd's pie before
+    /// shelled pistachios and "me" meatballs before a medium rare steak. They wait for the
+    /// way to be typed whole.
+    static let waiting: Set<String> = [
+        "crumbled", "cubed", "melted", "crushed", "shelled", "peeled", "seedless", "shaved", "ripe", "leftover", "warm", "stale", "day old",
+        "store bought", "takeout", "thick cut", "rare", "medium rare", "well done", "fresh squeezed", "freshly squeezed", "buttered",
+    ]
+
+    /// Those by their words, the longest first.
+    static let waitingWords: [[String]] = waiting.map { $0.split(separator: " ").map(String.init) }.sorted { $0.count > $1.count }
+
+    /// The ways as phrases. They count less than any everyday food, the first a word goes on
+    /// to the most, so "gr" is still Greek yogurt and "grilled s" is grilled salmon.
     static let said: [Phrase] = ways.flatMap { way in
         way.foods.enumerated().map { place, food in
             Phrase(words: "\(way.how) \(food)".split(separator: " ").map(String.init), weight: max(2.5, 4.5 - 0.2 * Double(place)))
