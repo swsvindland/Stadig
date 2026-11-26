@@ -917,6 +917,19 @@ extension FoodCatalog {
 
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
         var search = searchCatalog(typed, known: known, out: nil)
+        // A vitamin or a mineral typed alone is the supplement, which is a label named by it:
+        // the foods that only say it's added, or name a compound of it, come after those.
+        let said = tokens(typed)
+        let nutrients = said.filter(nutrientWords.contains)
+        if !nutrients.isEmpty, said.allSatisfy({ nutrientWords.contains($0) || length($0) < 2 }) {
+            let named = { (found: Ranked) -> Bool in
+                let text = FoodText(found.food)
+                let words = text.branded ? text.said : text.lead
+                return nutrients.allSatisfy { nutrient in words.contains { same($0, stem(nutrient)) } }
+            }
+            search.ranked = Self.joined(search.ranked.filter(named), search.ranked)
+            return search
+        }
         // A search in Spanish, or a food's Hindi name, is searched as it reads in English,
         // where the catalog doesn't name a food by the words as typed ("Pollo asado") and a
         // plain food has every word of the English: "pollo" is chicken and "frijoles negros"

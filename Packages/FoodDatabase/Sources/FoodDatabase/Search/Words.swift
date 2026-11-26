@@ -1235,6 +1235,14 @@ func readQuery(_ query: String) -> QueryReading {
     return QueryReading(words: Array(names.prefix(8)), counts: counts, sizes: sizes, letter: letter)
 }
 
+/// What a food is fortified with, which typed alone is the supplement: "vitamin d" isn't the
+/// milk "with added vitamin A and vitamin D", nor "magnesium" the tofu set with magnesium
+/// chloride, nor "calcium" a bagel "without calcium propionate".
+let nutrientWords: Set<String> = [
+    "vitamin", "vitamins", "b12", "b6", "b2", "d3", "k2", "calcium", "magnesium", "potassium", "caffeine", "folate", "biotin", "niacin",
+    "selenium", "iodine", "chromium",
+]
+
 /// The foods named with "of": cream of wheat and of mushroom, hearts of palm, a rack or a leg
 /// of lamb.
 private let ofFoods: Set<String> = ["cream", "hearts", "heart", "rack", "leg"]

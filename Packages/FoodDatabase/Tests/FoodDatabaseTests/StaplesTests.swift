@@ -4019,6 +4019,20 @@ struct StaplesTests {
         #expect(seen("Earl Grey tea").hasPrefix("Beverages, tea, black"))
     }
 
+    @Test("a vitamin or a mineral typed alone is the supplement, not a food that says it's added")
+    func nutrientsTypedAlone() {
+        // The labels named by it lead, not the milk "with added vitamin A and vitamin D", the
+        // tofu set with magnesium chloride or the bagel "without calcium propionate".
+        for query in ["vitamin d", "vitamin c", "vitamin b12", "magnesium", "calcium", "potassium"] {
+            let first = catalog.top(query, 1).first ?? ""
+            #expect(matches("(?i)^(liquid )?(vitamin|magnesium|calcium|potassium)", first), "\(query): \(first)")
+        }
+        // With a food it's the food so fortified, and a compound's name is its own.
+        #expect(catalog.top("vitamin d milk", 1).first?.hasPrefix("Milk") == true)
+        #expect(catalog.top("magnesium glycinate", 1).first.map { matches("(?i)glycinate", $0) } == true)
+        #expect(catalog.names("vitamin water", 1).first.map { matches("(?i)vitamin ?water", $0) } == true)
+    }
+
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")
     func oddsAndEnds() {
         // Curry with no more said is chicken curry; the kinds asked for are themselves.
