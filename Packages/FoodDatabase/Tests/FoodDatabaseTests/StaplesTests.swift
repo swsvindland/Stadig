@@ -2063,10 +2063,10 @@ let raisedFoods: [(String, String)] = [
 let plainFirsts: [(String, String)] = [
     ("pork", "^Pork, cooked$"), ("green beans", "^Beans, snap, green, cooked, boiled"), ("chocolate", "^Chocolate candy$"),
     ("stir fry", "^Chicken or turkey and vegetables, with soy-based sauce"), ("tahini", "^Tahini$"), ("tzatziki", "^Tzatziki dip"),
-    ("gnocchi", "^Gnocchi, potato"), ("arepa", "^Restaurant, Latino, arepa"), ("cookie dough", "^Cookie, batter or dough"),
+    ("gnocchi", "^Gnocchi, potato"), ("arepa", "^Restaurant, Latino, arepa"), ("cookie dough", "^Cookie dough, raw"),
     ("coffee cake", "^Coffee cake, crumb"), ("snack mix", "^Snack mix$"), ("caramel sauce", "^Topping, butterscotch or caramel"),
     ("yellow onion", "^Onions, raw"), ("oatmeal", "^Oatmeal$"), ("ham", "^Ham$"), ("beer", "^Beer$"), ("grits", "^Grits$"),
-    ("chocolate milk", "^Chocolate milk$"), ("oatmeal cookie", "^Cookie, oatmeal"),
+    ("chocolate milk", "^Chocolate milk$"), ("oatmeal cookie", "^Cookie, oatmeal"), ("bran", "^Wheat bran"), ("brand", "^Brandy"),
     // As they were.
     ("microwaved green beans", "^Beans, snap, green, microwaved"), ("sauteed yellow onion", "^Onions, yellow, sauteed"),
     ("dark chocolate", "^Dark chocolate candy"), ("chocolate chip cookie dough", "^Cookies, chocolate chip, refrigerated dough"),

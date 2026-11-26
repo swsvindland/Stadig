@@ -1,11 +1,11 @@
 {
   "schemaVersion": 3,
   "usda": {
-    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-84473e39",
+    "version": "usda-v3-0fe8ae486a2c-dfb06ae7-c2ab79e6",
     "sourceUrl": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip",
-    "recipeSha256": "84473e39044f265705a0190856286e5c773a8837cd7d10a916821d7af6f41c25",
+    "recipeSha256": "c2ab79e602b8fcfed50ffc2b0e7b0217e8daf0ce81861f5b4c8af39fa63586b9",
     "sourceSha256": "0fe8ae486a2c8eb42cb96413f058deb51863a46c8fb8eeb4b1fb45006dd338ef",
-    "sha256": "1d0cd4f8230f475c35e5b1b9194d2f1631fccdc2f37920beefc312ff76bfbccc",
+    "sha256": "8ded6c8fd7db070d0e83842f6b851d66f89c22b50c7ad5f281ac7e29d0f4a9be",
     "bytes": 4489216,
     "license": "CC0-1.0",
     "developmentSample": false,

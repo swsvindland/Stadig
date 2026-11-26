@@ -137,7 +137,7 @@ public enum FoodLabel {
     /// Heads that only file a food: "Nuts, almonds" is almonds.
     private static let filing: Set<String> = [
         "fish", "nuts", "cereals", "beverage", "beverages", "alcoholic beverage", "alcoholic beverages", "spices", "crustaceans", "mollusks",
-        "snacks", "candies",
+        "snacks", "candies", "seeds",
     ]
     /// Words that go in front of the head: "Rice, white" is white rice.
     private static let describing: Set<String> = [
@@ -158,6 +158,14 @@ public enum FoodLabel {
         "lollipop": ["candy"], "licorice": ["candy"], "marshmallow": ["candy"], "taffy": ["candy"], "fruit snacks": ["candy"],
         "fruit leather": ["candy"], "peanut brittle": ["candy"], "sprinkles": ["candy"],
     ]
+    /// A part that is the food's own name under the head it's filed by: "Milk, buttermilk" is
+    /// buttermilk, "Cream, fluid, half and half" half and half, "Salad dressing, mayonnaise"
+    /// mayonnaise. By the head, so buttermilk pancakes stay pancakes.
+    private static let ownNames: [String: Set<String>] = [
+        "milk": ["buttermilk"], "cream": ["half and half"], "salad dressing": ["mayonnaise"], "bread": ["cornbread", "pan dulce"],
+        "sauce": ["salsa"],
+        "cheese": ["paneer", "queso fresco", "queso blanco", "queso anejo", "queso asadero", "queso chihuahua", "queso cotija"],
+    ]
     /// Dishes a catalog files with their kind after them, which is said before them: "Soup,
     /// tomato" is tomato soup, "Pie, apple" apple pie, "Taco, fish" a fish taco. The value is
     /// how the dish is said after its kind, where that isn't the head itself.
@@ -167,6 +175,11 @@ public enum FoodLabel {
         "cobbler": "cobbler", "crisp": "crisp", "taco": "taco", "burrito": "burrito", "quesadilla": "quesadilla", "enchilada": "enchilada",
         "tamale": "tamale", "fajita": "fajita", "nachos": "nachos", "lasagna": "lasagna", "gravy": "gravy", "frozen yogurt": "frozen yogurt",
         "ice cream": "ice cream", "ice creams": "ice cream", "sushi roll": "roll", "candy": "candy", "cereal": "cereal",
+        // And the staples filed the same way: "Cheese, cheddar" is cheddar cheese, "Bread,
+        // zucchini" zucchini bread, "Sauce, barbecue" barbecue sauce, "Sugars, brown" brown sugar.
+        "cheese": "cheese", "bread": "bread", "sauce": "sauce", "syrup": "syrup", "syrups": "syrup", "sugars": "sugar", "milk": "milk",
+        "yogurt": "yogurt", "butter": "butter", "oil": "oil", "cream": "cream", "dip": "dip", "bagels": "bagels", "rolls": "rolls",
+        "gnocchi": "gnocchi", "biscuit": "biscuit", "topping": "topping", "toppings": "topping",
     ]
     /// Words that say how a dish comes, is made or is sold, not which kind it is: "Pizza, no
     /// cheese" and "Soup, canned" stay as they're filed.
@@ -175,13 +188,16 @@ public enum FoodLabel {
         "reduced", "low", "nonfat", "lowfat", "fat", "free", "sugar", "frozen", "canned", "cooked", "raw", "dry", "instant", "commercially",
         "home", "homemade", "prepared", "ready", "restaurant", "fast", "food", "school", "bakery", "type", "style", "topping", "crust",
         "tortilla", "only", "other", "flavors", "mix", "recipe", "nfs", "thin", "thick", "medium", "small", "large", "unsweetened", "sweetened",
-        "condensed", "dehydrated",
+        "condensed", "dehydrated", "fluid", "crumbs", "sticks", "stuffing", "liquid", "powder", "imitation", "filled", "producer", "table",
+        "industrial", "salad", "spread", "product", "substitute", "beverage", "roll",
     ]
     /// Soups that are named without the word: "Soup, New England clam chowder" is the chowder.
     private static let soups: Set<String> = ["chowder", "bisque", "pho", "minestrone", "gazpacho", "borscht", "pozole", "menudo", "broth"]
 
     /// A dish's kind as it's said before it, when the part is one: a few plain words.
     private static func kind(_ part: String) -> [String]? {
+        // A maker's name in capitals isn't a kind: "Oil, PAM cooking spray".
+        guard !part.split(separator: " ").contains(where: { $0.count > 1 && $0 == $0.uppercased() && $0 != $0.lowercased() }) else { return nil }
         let words = part.lowercased().split(separator: " ").map(String.init)
         guard (1...4).contains(words.count), words.allSatisfy({ word in word.allSatisfy(\.isLetter) && !notKinds.contains(word) }) else {
             return nil
@@ -216,8 +232,23 @@ public enum FoodLabel {
         } else if head == "egg", parts.first?.lowercased() == "whole" {
             // An egg is whole unless it's said to be the white or the yolk.
             parts.removeFirst()
-        } else if let said = dishes[head], let first = parts.first, let words = kind(first) {
-            title = head == "soup" && soups.contains(words[words.count - 1]) ? first : "\(first) \(said)"
+        } else if let own = ownNames[head], let index = parts.firstIndex(where: { own.contains($0.lowercased()) }) {
+            title = parts.remove(at: index)
+        } else if head == "salad dressing", let first = parts.first, let words = kind(first) {
+            // A dressing by its kind, which the catalog may say with the word again: "Salad
+            // dressing, ranch dressing" is ranch dressing, and "…, honey mustard" the same way.
+            title = words.last == "dressing" ? first : "\(first) dressing"
+            parts.removeFirst()
+        } else if head == "cheese", parts.count > 1, parts[0].lowercased() == "pasteurized process", kind(parts[1]) != nil {
+            // American cheese is filed by how it's made first.
+            title = "\(parts.remove(at: 1)) cheese"
+        } else if let said = dishes[head], let first = parts.first, let words = kind(first),
+            // An oil's butter or lecithin is that, not a kind of oil.
+            !(head == "oil" && ["butter", "lecithin"].contains(words[words.count - 1]))
+        {
+            // The part may say the dish itself: "Sauce, tomato chili sauce".
+            let whole = words[words.count - 1] == said || (head == "soup" && soups.contains(words[words.count - 1]))
+            title = whole ? first : "\(first) \(said)"
             parts.removeFirst()
         } else if let first = parts.first, describing.contains(first.lowercased()) {
             title = "\(first) \(head)"

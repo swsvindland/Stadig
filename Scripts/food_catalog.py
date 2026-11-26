@@ -986,6 +986,8 @@ FNDDS_REWORDED = (
     (re.compile(r"^Cabbage, red, pickled$"), "Pickled red cabbage"),
     (re.compile(r"^Olives, stuffed$"), "Stuffed olives"),
     (re.compile(r"^(Cashews|Peanuts|Pecans|Walnuts|Mixed nuts), honey roasted$"), lambda m: "Honey roasted " + m.group(1).lower()),
+    # As it's asked for and read in a list: the survey's "Cookie, batter or dough, raw".
+    (re.compile(r"^Cookie, batter or dough, raw$"), "Cookie dough, raw"),
 )
 # The dishes that are whole foods put together or cooked: a salad without its dressing, eggs as
 # an omelet or scrambled, oats and grits as they're cooked; not with what's added or sold made.
@@ -1101,7 +1103,7 @@ FNDDS_DISH_NAMES = {
     "Pork, cooked": ["Pork"],
     "Gnocchi, potato": ["Gnocchi"],
     "Coffee cake, crumb or quick-bread type": ["Coffee cake", "Crumb cake"],
-    "Cookie, batter or dough, raw": ["Cookie dough"],
+    "Cookie dough, raw": ["Cookie dough"],
     "Tzatziki dip": ["Tzatziki", "Tzatziki sauce"],
     "Topping, butterscotch or caramel": ["Caramel sauce", "Caramel topping", "Butterscotch sauce"],
     # Rice and beans with nothing else said are the plain ones, not the ones with meat.

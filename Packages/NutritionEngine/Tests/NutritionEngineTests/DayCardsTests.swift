@@ -169,6 +169,59 @@ struct LogHoursTests {
 struct FoodLabelTests {
     @Test(
         arguments: [
+            // The staples a catalog files by their head: a cheese, a bread, a sauce, a dressing.
+            ("Cheese, cheddar", "Cheddar cheese", nil),
+            ("Cheese, cottage, lowfat, 2% milkfat", "Cottage cheese", "lowfat, 2% milkfat"),
+            (
+                "Cheese, pasteurized process, American, without added vitamin D", "American cheese",
+                "pasteurized process, without added vitamin D"
+            ),
+            ("Bread, zucchini", "Zucchini bread", nil),
+            ("Bread, banana, prepared from recipe, made with margarine", "Banana bread", "prepared from recipe, made with margarine"),
+            ("Sauce, barbecue", "Barbecue sauce", nil),
+            ("Sauce, tomato chili sauce, bottled, with salt", "Tomato chili sauce", "bottled, with salt"),
+            ("Salad dressing, ranch dressing, regular", "Ranch dressing", "regular"),
+            ("Salad dressing, honey mustard, regular", "Honey mustard dressing", "regular"),
+            ("Milk, chocolate, lowfat, with added vitamin A and vitamin D", "Chocolate milk", "lowfat, with added vitamin A and vitamin D"),
+            ("Cream, sour, cultured", "Sour cream", "cultured"),
+            ("Butter, salted", "Salted butter", nil),
+            ("Oil, avocado", "Avocado oil", nil),
+            ("Sugars, brown", "Brown sugar", nil),
+            ("Syrups, maple", "Maple syrup", nil),
+            ("Seeds, chia seeds, dried", "Chia seeds", "dried"),
+            ("Rolls, dinner, plain", "Dinner rolls", "plain"),
+            ("Bagels, egg", "Egg bagels", nil),
+            ("Topping, butterscotch or caramel", "Butterscotch or caramel topping", nil),
+            ("Gnocchi, potato", "Potato gnocchi", nil),
+            ("Yogurt, vanilla, low fat", "Vanilla yogurt", "low fat"),
+            // A part that is the food's own name under that head.
+            ("Cheese, paneer", "Paneer", nil),
+            ("Cheese, fresh, queso fresco", "Queso fresco", "fresh"),
+            ("Bread, cornbread, prepared from recipe, made with low fat (2%) milk", "Cornbread", "prepared from recipe, made with low fat (2%) milk"),
+            ("Sauce, salsa, ready-to-serve", "Salsa", "ready-to-serve"),
+            ("Salad dressing, mayonnaise, regular", "Mayonnaise", "regular"),
+            ("Milk, buttermilk, fluid, whole", "Buttermilk", "fluid, whole"),
+            ("Cream, fluid, half and half", "Half and half", "fluid"),
+            // Not under another head, nor by how it comes or who makes it.
+            ("Pancakes, buttermilk, prepared from recipe", "Pancakes", "buttermilk, prepared from recipe"),
+            ("Bread, crumbs, dry, grated, plain", "Bread", "crumbs, dry, grated, plain"),
+            ("Oil, PAM cooking spray, original", "Oil", "PAM cooking spray, original"),
+            ("Oil, cocoa butter", "Oil", "cocoa butter"),
+            ("Cream, fluid, heavy whipping", "Cream", "fluid, heavy whipping"),
+            ("Milk, reduced fat, fluid, 2% milkfat", "Milk", "reduced fat, fluid, 2% milkfat"),
+            // As before.
+            ("Milk, whole, 3.25% milkfat, with added vitamin D", "Whole milk", "3.25% milkfat, with added vitamin D"),
+            ("Oil, olive, salad or cooking", "Olive oil", "salad or cooking"),
+            ("Cookie dough, raw", "Cookie dough", "raw"),
+        ] as [(String, String, String?)])
+    func aStapleFiledByItsHeadIsSaidTheOtherWayRound(name: String, title: String, detail: String?) {
+        let parts = FoodLabel.parts(of: name)
+        #expect(parts.title == title)
+        #expect(parts.detail == detail)
+    }
+
+    @Test(
+        arguments: [
             ("Cereals, oats, regular and quick, unenriched", "Oats", "regular and quick, unenriched"),
             ("Nuts, almonds", "Almonds", nil),
             ("Fish, salmon, Atlantic, farmed", "Salmon", "Atlantic, farmed"),
