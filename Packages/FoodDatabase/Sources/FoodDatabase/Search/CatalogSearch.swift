@@ -975,18 +975,25 @@ extension FoodCatalog {
         return found.map { $0 ?? nil }
     }
 
-    /// Looks up, off the search's thread, the foods a search of `word` alone goes on to,
-    /// where they aren't known yet. Called with the word a search's last word is on its way
-    /// to, so the first search of the whole word doesn't wait for them.
-    func warmKinds(of word: String) {
-        let phrases = Array(Variety.phrases(after: word).prefix(Variety.asked))
-        guard !phrases.isEmpty, kindFoods.withLock({ known in phrases.contains { known[$0] == nil } }),
-            warming.withLock({ $0.insert(word).inserted })
-        else { return }
+    /// The kinds to look up ahead of a search: the ones the word being typed will go on to
+    /// once it's whole, where they aren't known yet. None for more than one word, for a word
+    /// that's whole already (its own search looks them up) or one on its way to a word with
+    /// no kinds.
+    func kindsAhead(of typed: String) -> [String] {
+        let words = typed.split(whereSeparator: \.isWhitespace)
+        guard words.count == 1, let likely = EverydayPhrases.likely([words[0].lowercased()]) else { return [] }
+        let phrases = Array(Variety.phrases(after: likely).prefix(Variety.asked))
+        return kindFoods.withLock { known in phrases.contains { known[$0] == nil } } ? phrases : []
+    }
+
+    /// Looks those up off the search's thread, so the first search of the whole word doesn't
+    /// wait for them. Once at a time for the same kinds.
+    func warmKinds(_ phrases: [String]) {
+        guard let first = phrases.first, warming.withLock({ $0.insert(first).inserted }) else { return }
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
             _ = plainFoods(named: phrases)
-            warming.withLock { _ = $0.remove(word) }
+            warming.withLock { _ = $0.remove(first) }
         }
     }
 

@@ -110,23 +110,25 @@ struct VarietyTests {
         }
     }
 
-    @Test func theKindsOfAWordBeingTypedAreLookedUpAhead() async throws {
+    @Test func theKindsOfAWordBeingTypedAreLookedUpAhead() {
         // On a catalog of its own: the shared one may know cheese's kinds already.
         let own = FoodCatalog(usda: Catalogs.usdaURL, off: nil, region: "us")
-        #expect(own.kindFoods.withLock { $0.isEmpty })
-        _ = own.search("chees")
-        // They're looked up off the search's thread, so this waits for them, a few seconds
-        // at most.
-        for _ in 0..<400 where own.kindFoods.withLock({ $0["cheddar cheese"] == nil }) { try await Task.sleep(for: .milliseconds(25)) }
+        // The word "chees" is on its way to has kinds, which aren't known yet.
+        let ahead = own.kindsAhead(of: "chees")
+        #expect(ahead.prefix(2) == ["cheddar cheese", "cottage cheese"] && ahead.count <= Variety.asked, "\(ahead)")
+        // None for a word that's whole (its own search looks them up), one on its way to a
+        // word with no kinds, or more than one word.
+        #expect(own.kindsAhead(of: "cheese").isEmpty && own.kindsAhead(of: "quino").isEmpty && own.kindsAhead(of: "almond mil").isEmpty)
+        // Looked up, they're kept, and there's nothing left to look up ahead. The search
+        // does this off its own thread; here it's done in place, so nothing waits on a clock.
+        _ = own.plainFoods(named: ahead)
         #expect(own.kindFoods.withLock { $0["cheddar cheese"] ?? nil }?.food.name.hasPrefix("Cheese, cheddar") == true)
+        #expect(own.kindsAhead(of: "chees").isEmpty)
         // Neither those searches nor the ones "cheese" itself makes are kept as the person's.
+        #expect(own.recent.withLock { $0.isEmpty })
+        _ = own.search("chees")
         _ = own.search("cheese")
         #expect(own.recent.withLock { $0.map(\.asked.typed) } == ["cheese", "chees"])
-        // A word that's whole, or on its way to one with no kinds, looks nothing up.
-        let other = FoodCatalog(usda: Catalogs.usdaURL, off: nil, region: "us")
-        _ = other.search("quino")
-        _ = other.search("almond milk")
-        #expect(other.warming.withLock { $0.isEmpty } && other.kindFoods.withLock { $0.isEmpty })
     }
 
     @Test func foodsThatDifferComeBeforeTheSameFoodAgain() {
