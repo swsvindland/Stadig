@@ -1973,6 +1973,64 @@ let preparedFoods: [(String, String)] = [
     ("whole wheat pizza", "^Pizza, cheese, whole wheat"),
 ]
 
+/// A food typed with the state it's in, how it was bought or how finely it was cut (ripe,
+/// warm, cold, store bought, thick cut, medium rare, frozen), which is the food, with what
+/// comes second where the search is two foods ("buttered toast"). The last are the foods
+/// those words name: frozen yogurt, cold brew, a hot dog.
+let stateFoods: [(typed: String, first: String, second: String)] = [
+    ("ripe banana", "^Bananas, raw", ""), ("ripe avocado", "^Avocados, raw", ""), ("ripe mango", "^Mangos, raw", ""),
+    ("ripe tomato", "^Tomatoes, red, ripe, raw", ""), ("ripe plantain", "^Plantains, yellow", ""), ("ripe pear", "^Pears, raw", ""),
+    ("ripe peach", "^Peaches", ""), ("ripe strawberries", "^Strawberries, raw", ""), ("very ripe banana", "^Bananas, raw", ""),
+    ("overripe banana", "^Bananas, raw", ""), ("unripe banana", "^Bananas, raw", ""), ("green banana", "^Bananas, raw", ""),
+    ("warm milk", "^Milk, whole", ""), ("warm bread", "^Bread", ""), ("warm water", "^Water", ""), ("warm cookie", "^Cookie", ""),
+    ("hot coffee", "^Coffee", ""), ("hot water", "^Water", ""), ("hot milk", "^Milk, whole", ""), ("hot oatmeal", "^Cereals, oats|^Oatmeal", ""),
+    ("hot soup", "^Soup", ""), ("hot latte", "^Coffee, Latte", ""), ("cold water", "^Water", ""), ("cold milk", "^Milk, whole", ""),
+    ("cold chicken", "^Chicken, cooked", ""), ("cold pasta", "^Pasta, cooked", ""), ("cold rice", "^Rice, white", ""), ("cold pizza", "^Pizza", ""),
+    ("cold coffee", "^Coffee", ""), ("cold beer", "^Alcoholic beverage, beer|^Beer", ""), ("cold turkey sandwich", "^Turkey sandwich", ""),
+    ("room temperature water", "^Water", ""), ("stale bread", "^Bread", ""), ("stale chips", "^Potato chips", ""),
+    ("day old rice", "^Rice, white", ""), ("day old bread", "^Bread", ""), ("classic burger", "^Hamburger", ""), ("classic hummus", "^Hummus", ""),
+    ("classic cheesecake", "(?i)cheesecake", ""), ("traditional hummus", "^Hummus", ""), ("traditional lasagna", "^Lasagna", ""),
+    ("normal milk", "^Milk, whole", ""), ("normal yogurt", "^Yogurt, plain", ""), ("generic cola", "^Beverages, carbonated, cola", ""),
+    ("store brand cola", "^Beverages, carbonated, cola", ""), ("store bought cookies", "^Cookie", ""), ("store bought hummus", "^Hummus", ""),
+    ("store bought bread", "^Bread", ""), ("store bought rotisserie chicken", "^Chicken, rotisserie", ""), ("takeout pizza", "^Pizza", ""),
+    ("takeout burger", "^Hamburger", ""), ("delivery pizza", "^Pizza", ""), ("carryout pizza", "^Pizza", ""),
+    ("takeaway curry", "^Chicken curry", ""), ("gourmet burger", "^Hamburger", ""), ("gourmet popcorn", "^Popcorn", ""),
+    ("artisan bread", "^Bread", ""), ("premium ice cream", "^Ice cream", ""), ("freshly squeezed orange juice", "^Orange juice, raw", ""),
+    ("fresh squeezed orange juice", "^Orange juice, raw", ""), ("freshly squeezed lemon juice", "^Lemon juice, raw", ""),
+    ("squeezed lemon", "^Lemons, raw", ""), ("freshly ground pepper", "^Spices, pepper, black", ""),
+    ("fresh ground pepper", "^Spices, pepper, black", ""), ("freshly ground black pepper", "^Spices, pepper, black", ""),
+    ("coarsely ground pepper", "^Spices, pepper, black", ""), ("freshly grated parmesan", "^Cheese, parmesan, grated", ""),
+    ("freshly brewed coffee", "^Coffee, brewed|^Beverages, coffee, brewed", ""),
+    ("fresh brewed coffee", "^Coffee, brewed|^Beverages, coffee, brewed", ""), ("freshly baked bread", "^Bread", ""),
+    ("fresh baked cookies", "^Cookie", ""), ("freshly made guacamole", "^Guacamole", ""), ("finely chopped onion", "^Onions, raw", ""),
+    ("roughly chopped cilantro", "^Coriander \\(cilantro\\) leaves, raw", ""), ("thinly sliced turkey", "^Turkey, prepackaged or deli", ""),
+    ("thin sliced turkey", "^Turkey, prepackaged or deli", ""), ("thinly sliced ham", "^Ham, sliced", ""),
+    ("thinly sliced onion", "^Onions, raw", ""), ("thick cut bacon", "^Bacon, cooked", ""), ("thick sliced bacon", "^Bacon, cooked", ""),
+    ("thick sliced bread", "^Bread", ""), ("thick cut fries", "^Potato, french fries", ""), ("thin cut pork chop", "^Pork, chop", ""),
+    ("well done steak", "^Steak, cooked|^Beef, steak", ""), ("medium rare steak", "^Steak, cooked|^Beef, steak", ""),
+    ("medium well steak", "^Steak, cooked|^Beef, steak", ""), ("rare steak", "^Steak, cooked|^Beef, steak", ""),
+    ("rare roast beef", "^Beef, roast", ""), ("buttered toast", "^Bread, wheat, toasted", "^Butter"), ("buttered noodles", "^Noodles", "^Butter"),
+    ("buttered corn", "^Corn", "^Butter"), ("buttered bread", "^Bread", "^Butter"), ("buttered roll", "^Rolls", "^Butter"),
+    ("lightly buttered toast", "^Bread, wheat, toasted", "^Butter"), ("buttered popcorn", "^Popcorn.*butter", ""),
+    ("assorted nuts", "^Nuts, mixed nuts", ""), ("assorted fruit", "^Fruit", ""),
+    ("spring mix", "^Lettuce, green leaf", ""), ("salad greens", "^Lettuce, green leaf", ""), ("frozen banana", "^Bananas, raw", ""),
+    ("frozen bananas", "^Bananas, raw", ""), ("frozen grapes", "^Grapes", ""), ("frozen mango", "^Mangos, raw", ""),
+    ("frozen avocado", "^Avocados, raw", ""), ("frozen chicken breast", "^Chicken breast, cooked", ""), ("frozen salmon", "^Fish, salmon", ""),
+    ("frozen tilapia", "^Fish, tilapia", ""), ("frozen cod", "^Fish, cod", ""), ("frozen yogurt", "^Frozen yogurt", ""),
+    ("frozen pizza", "^Pizza, .*frozen", ""), ("frozen peas", "^Peas, green, frozen", ""), ("frozen strawberries", "^Strawberries, frozen", ""),
+    ("frozen blueberries", "^Blueberries, frozen", ""), ("frozen spinach", "^Spinach, frozen", ""),
+    ("frozen waffles", "^Waffle, plain, frozen", ""), ("frozen fruit", "^Fruit mixture, frozen", ""),
+    ("frozen vegetables", "^Vegetables, mixed, frozen", ""), ("frozen berries", "^Berries, frozen", ""),
+    ("frozen custard", "(?i)^frozen custard", ""), ("frozen lemonade", "^Lemonade, frozen", ""),
+    ("frozen fries", "^Potato, french fries, from frozen", ""), ("cold brew", "(?i)^iced coffee|cold brew", ""),
+    ("cold cuts", "(?i)^turkey, prepackaged or deli|cold cuts", ""), ("cold cut sandwich", "(?i)cold cut", ""),
+    ("cold pressed juice", "(?i)cold.pressed", ""), ("hot dog", "^Hot dog", ""), ("hot chocolate", "^Hot chocolate", ""),
+    ("hot sauce", "^Sauce, .*hot", ""), ("hot tea", "^Tea, hot", ""), ("hot cereal", "^Cereals, .*hot", ""), ("hot wings", "(?i)wings", ""),
+    ("hot peppers", "^Peppers, hot", ""), ("hot and sour soup", "^Soup, hot and sour", ""), ("hot fudge sundae", "(?i)hot fudge", ""),
+    ("original glazed donut", "(?i)original glazed", ""), ("original recipe chicken", "ORIGINAL RECIPE", ""),
+    ("simple syrup", "(?i)^simple syrup", ""), ("ripe olives", "^Olives, ripe", ""), ("whole milk", "^Milk, whole", ""),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -3818,6 +3876,38 @@ struct StaplesTests {
         #expect(catalog.names("whole foods almond milk", 1).first.map { matches("(?i)whole foods", $0) } == true)
         // A word for how a food was prepared isn't a brand misspelt.
         #expect(catalog.searchCatalog("leftover pizza", known: [:]).fixes.isEmpty)
+    }
+
+    @Test("a food typed with the state it's in, or how it was bought, is the food")
+    func foodsTypedWithTheirState() {
+        var missed: [String] = []
+        for (query, pattern, _) in stateFoods where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Foods typed with their state: \(stateFoods.count - missed.count) of \(stateFoods.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(stateFoods.count), "\(missed.joined(separator: " | "))")
+        // What's buttered is the food and then butter.
+        let pairs = stateFoods.filter { !$0.second.isEmpty }
+        #expect(pairs.allSatisfy { pair in catalog.top(pair.typed, 2).dropFirst().first.map { matches(pair.second, $0) } == true })
+        #expect(FoodCatalog.buttered("buttered toast") == "toast with butter" && FoodCatalog.buttered("buttered toast with jam") == nil)
+        // The words are left out as a two-word way of cooking is, and the labels named so follow.
+        #expect(catalog.plainlyCooked("ripe banana") == "banana" && catalog.plainlyCooked("store bought cookies") == "cookies")
+        #expect(catalog.plainlyCooked("medium rare steak") == "steak" && catalog.plainlyCooked("thinly sliced turkey") == "sliced turkey")
+        #expect(catalog.names("ripe banana", 8).contains { matches("(?i)ripe banana", $0) })
+        // Cold and hot by the word after them, which may be one still being typed.
+        #expect(
+            catalog.plainlyCooked("cold pizza") == "pizza" && catalog.plainlyCooked("cold brew") == nil && catalog.plainlyCooked("cold br") == nil)
+        #expect(catalog.plainlyCooked("hot coffee") == "coffee" && catalog.plainlyCooked("hot dog") == nil && catalog.plainlyCooked("hot co") == nil)
+        // A brand's word stays one, and a search that is another name for a food is left alone.
+        #expect(catalog.top("original glazed donut", 1).first.map { matches("(?i)original glazed", $0) } == true)
+        #expect(catalog.top("store bought cookies", 1).first?.hasPrefix("Cookie") == true)
+        // Frozen is a kind of the food where the catalog has one, and the food where it doesn't.
+        #expect(howWords(["frozen", "banana"]) == [0] && howWords(["banana", "frozen"]).isEmpty)
+        #expect(catalog.top("frozen yogurt", 1) == ["Frozen yogurt"] && catalog.top("frozen banana", 1) == ["Bananas, raw"])
+        // A model's name is read the same way.
+        let seen = { (name: String) in self.catalog.candidates(name: name, brand: nil).first?.food.name ?? "" }
+        #expect(seen("Warm milk").hasPrefix("Milk, whole") && seen("Ripe banana") == "Bananas, raw" && seen("Hot coffee") == "Coffee")
+        #expect(seen("Ground black pepper") == "Spices, pepper, black" && seen("Frozen banana") == "Bananas, raw")
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

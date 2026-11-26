@@ -475,6 +475,10 @@ private let shapedFoods: Set<String> = [
     "mango strip", "meatless crumble", "soy crumble", "veggie crumble",
 ]
 
+/// What "frozen" makes another food of, though no plain food of that name says frozen: a frozen
+/// custard is an ice cream, not a custard.
+private let frozenFoods = stems("custard dessert treat novelty")
+
 /// Whether a word says how a food is cooked or cut, not what it is. `seen` with the ways a
 /// food on a plate is cut or prepared, which the ranking eases and the words that name a food
 /// keep.
@@ -490,7 +494,10 @@ func isEasable(_ word: String, seen: Bool = false) -> Bool {
 func howWords(_ words: [String]) -> Set<Int> {
     var how = Set(words.indices.filter { isEasable(words[$0], seen: true) })
     for i in words.indices.dropFirst() where shapeWords.contains(words[i]) && !how.contains(i - 1) && !isNumber(words[i - 1]) { how.insert(i) }
-    for i in words.indices.dropLast() where words[i] == "whole" && !wholeNames.contains(words[i + 1]) { how.insert(i) }
+    // "Whole" by the word after it, which may be one still being typed: "whole mi" is milk.
+    for i in words.indices.dropLast() where words[i] == "whole" && !wholeNames.contains(where: { $0.hasPrefix(words[i + 1]) }) { how.insert(i) }
+    // Frozen is a kind of the food where the catalog has one (see `scoreFoods`).
+    for i in words.indices.dropLast() where words[i] == "frozen" { how.insert(i) }
     return how
 }
 
@@ -1946,6 +1953,27 @@ func scoreFoods(
         let foods = how.isEmpty || names.isEmpty ? [] : plainFoods(names)
         let naming = how.filter { i in
             let word = target[i]
+            // Frozen names the food where a plain food with the other words says so: frozen
+            // peas, a frozen pizza, frozen yogurt. A frozen banana is a banana.
+            // Or names it with frozen beside its word, whichever word the entry is named
+            // after: the coffee of a "Frozen coffee drink". Not one that only lists frozen far
+            // off: salmon nuggets "breaded, frozen" leave frozen salmon the salmon.
+            if word == "frozen" {
+                let said = names.map(stem)
+                // The last word may be one still being typed: "frozen cof".
+                let begun = search && names.last == target.last ? said.last : nil
+                let isName = { (other: String) in
+                    said.contains { same(other, $0) || same($0, other) } || begun.map { starts(other, $0) } == true
+                }
+                return foods.isEmpty || said.contains(where: frozenFoods.contains) || foods.contains { $0.text.said.contains("frozen") }
+                    || unique.values.contains { entry in
+                        let words = entry.text.said
+                        return !entry.text.branded
+                            && words.indices.contains { i in
+                                words[i] == "frozen" && ((i > 0 && isName(words[i - 1])) || (i + 1 < words.count && isName(words[i + 1])))
+                            }
+                    }
+            }
             if isEasable(word, seen: true) || word == "whole" {
                 return (preparedWords.contains(stem(word)) || word == "whole") && lists(word, foods)
             }
@@ -1963,11 +1991,11 @@ func scoreFoods(
                 // says it was grown or made: organic chicken breast is chicken breast. Typed,
                 // a plain food that lists the cut and nothing else is still the one meant:
                 // sliced ham is "Ham, sliced", shredded cheese a cheese that says so.
-                let prepared = preparedWords.contains(said) || word == "whole"
+                let prepared = preparedWords.contains(said) || word == "whole" || word == "frozen"
                 if labelWords.contains(said) || prepared || (plateCuts.contains(said) && !(search && lists(word, plain))) {
                     ease.plate = true
                     ease.label = labelWords.contains(said)
-                    ease.level = word == "whole"
+                    ease.level = word == "whole" || word == "frozen"
                     eases[word] = ease
                     continue
                 }

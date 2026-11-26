@@ -436,11 +436,23 @@ extension FoodCatalog {
     /// false), so its last word is whole too.
     /// A search with a way of cooking said in two words as the one the catalogs use, and without
     /// where the food was cooked: "pan seared salmon" is "seared salmon" and "slow cooker
-    /// chicken" "chicken". Nil where it says neither, or names nothing beside it.
+    /// chicken" "chicken". Also without what only says the state the food is in (see
+    /// `stateWays`): "ripe banana" is "banana", and "cold pizza" "pizza" where cold brew stays.
+    /// Nil where it says none of these, or names nothing beside it.
     func plainlyCooked(_ query: String) -> String? {
         let scalars = plainScalars(query)
         let tokens = scanTokens(scalars)
-        for way in cookingWays where tokens.count > way.said.count {
+        // Cold and hot by the word after them, which may be one still being typed: "cold br"
+        // is on its way to cold brew.
+        let idle = tokens.indices.dropLast().first { i in
+            let next = tokens[i + 1].word
+            return tokens[i].word == "cold" ? !coldNames.contains { $0.hasPrefix(next) } : tokens[i].word == "hot" && hotFoods.contains(next)
+        }
+        if let idle {
+            let text = (makeString(scalars[..<tokens[idle].start]) + makeString(scalars[tokens[idle].end...])).trimmingCharacters(in: .whitespaces)
+            return plainlyCooked(text) ?? text
+        }
+        for way in cookingWays + stateWays where tokens.count > way.said.count {
             guard
                 let at = tokens.indices.first(where: { i in
                     i + way.said.count <= tokens.count && way.said.indices.allSatisfy { tokens[i + $0].word == way.said[$0] }
@@ -452,6 +464,14 @@ extension FoodCatalog {
             return plainlyCooked(text) ?? text
         }
         return nil
+    }
+
+    /// "Buttered toast" as "toast with butter"; nil where the search doesn't start so, or
+    /// already says what the food comes with.
+    static func buttered(_ typed: String) -> String? {
+        let said = tokens(typed)
+        guard said.count > 1, said[0] == "buttered", !said.contains("with"), !said.contains("and") else { return nil }
+        return said.dropFirst().joined(separator: " ") + " with butter"
     }
 
     /// Whether the whole of a search is what's said for something else, here or anywhere.
@@ -933,7 +953,11 @@ extension FoodCatalog {
         // "air fried chicken" baked chicken. Its first three, then the foods with every word
         // as typed, which is where a label called "Air Fried Chicken" is, then the rest of
         // each. A brand's search is left as typed.
-        if search.brand.isEmpty, let plainly = plainlyCooked(typed) {
+        // What's buttered is the food with butter, which is how the two are found. And a
+        // brand read from words that only say the food's state is none (see `stateBrands`).
+        if !shortened(typed), let plainly = Self.buttered(plainlyCooked(typed) ?? typed) ?? plainlyCooked(typed),
+            search.brand.allSatisfy({ stateBrands.contains($0) && !tokens(plainly).contains($0) })
+        {
             let plain = searchCatalog(plainly, known: known)
             if let first = plain.ranked.first, first.name >= 1, !FoodText(first.food).branded {
                 var both = plain

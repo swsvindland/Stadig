@@ -46,6 +46,8 @@ let alternatives: [String: [String]] = [
     "omelette": ["omelette", "omelet"], "omelettes": ["omelette", "omelet"], "yoghurt": ["yoghurt", "yogurt"], "yoghurts": ["yoghurt", "yogurt"],
     "chilli": ["chilli", "chili"], "barbeque": ["barbeque", "barbecue"], "whisky": ["whisky", "whiskey"], "houmous": ["houmous", "hummus"],
     "chile": ["chile", "chili"], "chiles": ["chile", "chili"],
+    // Assorted nuts are its mixed nuts.
+    "assorted": ["assorted", "mixed"],
     "soya": ["soya", "soy"], "skimmed": ["skimmed", "skim", "nonfat"], "prawn": ["prawn", "shrimp"], "prawns": ["prawn", "shrimp"],
     "courgette": ["courgette", "zucchini"], "courgettes": ["courgette", "zucchini"], "aubergine": ["aubergine", "eggplant"],
     "aubergines": ["aubergine", "eggplant"], "beetroot": ["beetroot", "beet"], "sweetcorn": ["sweetcorn", "corn"],
@@ -150,6 +152,40 @@ let cookingWays: [(said: [String], means: [String])] = [
     // What's stir fried is the catalogs' stir fry.
     (["stir", "fried"], ["stir", "fry"]),
 ]
+
+/// What's said of the state a food is in, how it was bought or how finely it was cut, which
+/// says nothing of which food it is and which no catalog writes: a ripe banana is a banana,
+/// warm milk milk, store bought cookies cookies, thick cut bacon bacon and a medium rare
+/// steak a steak, where the words found labels, or a Welsh rarebit for "rare". Read as the
+/// two-word ways of cooking are: the food leads and the labels named so follow. Longest first.
+let stateWays: [(said: [String], means: [String])] = [
+    (["store", "bought"], []), (["shop", "bought"], []), (["store", "brand"], []), (["day", "old"], []), (["room", "temperature"], []),
+    (["room", "temp"], []), (["well", "done"], []), (["medium", "rare"], []), (["medium", "well"], []), (["thick", "cut"], []),
+    (["thin", "cut"], []), (["thinly", "sliced"], ["sliced"]), (["thin", "sliced"], ["sliced"]), (["thick", "sliced"], ["sliced"]),
+    (["thickly", "sliced"], ["sliced"]), (["freshly", "squeezed"], ["fresh"]), (["fresh", "squeezed"], ["fresh"]),
+    (["freshly", "ground"], ["ground"]), (["fresh", "ground"], ["ground"]), (["freshly", "brewed"], ["brewed"]),
+    (["fresh", "brewed"], ["brewed"]), (["freshly", "baked"], []), (["freshly", "made"], []),
+    (["lightly", "buttered"], ["buttered"]), (["take", "out"], []), (["take", "away"], []), (["carry", "out"], []),
+    (["ripe"], []), (["overripe"], []), (["unripe"], []), (["warm"], []), (["lukewarm"], []), (["stale"], []), (["rare"], []), (["normal"], []),
+    (["generic"], []), (["freshly"], []), (["thinly"], []), (["thickly"], []), (["finely"], []), (["coarsely"], []), (["roughly"], []),
+    (["squeezed"], []), (["takeout"], []), (["takeaway"], []), (["delivery"], []), (["carryout"], []), (["classic"], []),
+    (["traditional"], []), (["premium"], []), (["gourmet"], []), (["artisan"], []), (["artisanal"], []),
+]
+
+/// Words of those that are no brand's in a search, though labels list foods under them: "store
+/// bought cookies" aren't Target Stores', nor a "well done steak" Well Done's. The rest may
+/// be: Premium is Nabisco's saltines.
+let stateBrands: Set<String> = [
+    "store", "shop", "bought", "brand", "well", "done", "delivery", "generic", "takeout", "takeaway", "carryout", "normal",
+]
+
+/// What "cold" is part of the name of, said right after it: cold brew, cold cuts, a cold
+/// pressed juice. Before anything else it's how the food was eaten: cold pizza is pizza.
+let coldNames: Set<String> = ["brew", "brewed", "cut", "cuts", "cereal", "cereals", "foam", "pressed", "press", "stone", "smoked", "pack"]
+
+/// What "hot" only says the temperature of. Before most words it names a food: a hot dog, hot
+/// sauce, hot chocolate, hot wings.
+let hotFoods: Set<String> = ["coffee", "water", "milk", "oatmeal", "soup", "latte", "americano", "espresso", "cappuccino", "porridge", "broth"]
 
 /// Everyday names of two words that the catalogs file under another: a hot dog is USDA's
 /// frankfurter and a bell pepper its sweet pepper. For each, the words as typed, and the
@@ -415,6 +451,11 @@ let shortNames: [String: String] = [
     "shelled pumpkin seeds": "pumpkin seed kernels", "whole cloves": "cloves",
     "peppercorns": "black pepper", "whole peppercorns": "black pepper", "black peppercorns": "black pepper",
     "whole grain rice": "brown rice", "ice water": "water", "iced water": "water", "rice sticks": "rice noodles",
+    // A green banana is a banana not yet ripe, and a spring mix is leaf lettuce.
+    "green banana": "banana", "green bananas": "bananas", "ripe plantain": "yellow plantain", "ripe plantains": "yellow plantains",
+    "spring mix": "green leaf lettuce",
+    "salad greens": "green leaf lettuce", "ground black pepper": "black pepper",
+    "cracked black pepper": "black pepper",
     "crushed pineapple": "canned pineapple", "pineapple tidbits": "canned pineapple", "pineapple rings": "canned pineapple",
     "crushed tomatoes": "canned crushed tomatoes", "peeled tomatoes": "canned tomatoes", "whole peeled tomatoes": "canned tomatoes",
     "shaved ice": "snow cone", "shave ice": "snow cone", "crushed ice": "ice cubes", "shaved turkey": "sliced turkey",
@@ -511,7 +552,7 @@ let typedAlternatives: Set<String> = [
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
     "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",
     "beetroots", "catsup", "lasagne", "decaf", "mince", "minced", "rocket", "sultana", "sultanas", "crisps", "swede", "swedes", "tinned", "chile",
-    "chiles",
+    "chiles", "assorted",
     "wholemeal", "gammon", "mangetout", "capsicum", "capsicums", "rockmelon", "cornflour", "sweets", "goujons", "veggies", "taters", "spuds",
     "spud", "cuke", "cukes", "slaw", "silverbeet", "rapeseed", "groundnut", "butty", "sarnie", "sanga", "sando", "snags", "bangers", "rashers",
     "rasher", "bikkies", "bikkie", "chook", "liquorice", "chamoy", "esquites", "sope", "sopes", "tlayuda",
