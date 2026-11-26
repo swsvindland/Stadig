@@ -120,6 +120,9 @@ private let fatWords = stems("fat milkfat lowfat low reduced nonfat lean")
 /// average", "Soymilk, original and vanilla".
 private let typicalWords = stems("average varieties regular ripe original composite")
 
+/// How a name says a food was cooked in a microwave.
+private let microwaved = stem("microwaved")
+
 /// Words in a name's first part that say nothing of another food.
 private let leadFillers = stems("made from ready eat")
 
@@ -2300,6 +2303,9 @@ func scoreFoods(
     let correctedStems = target.map { word in
         fixes[word].flatMap { $0.count == 1 && !$0[0].contains(" ") && !hints.respelt.contains($0[0]) ? stem($0[0]) : nil } ?? stem(word)
     }.filter { !labelWords.contains($0) }
+    // And as the word still being typed is most likely on its way to: "choc" is chocolate and
+    // "por" pork, so the first result doesn't change when the word is finished.
+    let begunStems = likely.map { word in Array(saidStems.dropLast()) + [stem(word)] }
     let saidJoins = joining(seen.name)
     var rows: [Row] = []
     rows.reserveCapacity(keys.count)
@@ -2336,9 +2342,11 @@ func scoreFoods(
             // too: "manicotti" is the one the catalog also calls "Manicotti", among the four
             // it lists.
             for name in entry.also
-            where (name.text.titled == saidStems || name.text.titled == correctedStems) && saidJoins.isSubset(of: name.joins) {
+            where (name.text.titled == saidStems || name.text.titled == correctedStems || name.text.titled == begunStems)
+                && saidJoins.isSubset(of: name.joins)
+            {
                 var named = query.cover(name.text)
-                if named.exact {
+                if named.exact || (name.text.titled == begunStems && named.missing == 0) {
                     named.cooked = max(named.cooked, match.cooked)
                     match = named
                     other = name.text
@@ -2518,6 +2526,11 @@ func scoreFoods(
         // that usually stands for it: "Soup, tomato" before the canned one. Not where more
         // was said to come with it: mashed potatoes with gravy are the ones that have it.
         let exact = !row.text.branded && match.exact && row.other == nil
+        // And one whose name is those words and no more leads the ones that go on to say
+        // which: "Snack mix" before "Snacks, trail mix, regular", "Oatmeal" and "Beer" before
+        // the kinds of them. By less than the usual one, and not a name that goes on to its
+        // skin, what it comes with or another food it may be.
+        let whole = exact && tokens(row.food.name).count == target.count
         var score =
             3 * row.name + (leads ? 0.75 : 0)
             // A generic food USDA names by exactly the words said, inverted, ranks above a blend or
@@ -2541,7 +2554,8 @@ func scoreFoods(
             // KRAFT, original".
             + (match.missing > 0
                 ? 0
-                : (match.usual || (row.said && query.asksUsual) ? 0.6 : exact && query.asksUsual && hints.sides.isEmpty ? 0.65 : 0)
+                : (match.usual || (row.said && query.asksUsual)
+                    ? 0.6 : exact && hints.sides.isEmpty ? (query.asksUsual ? 0.65 : whole ? 0.35 : 0) : 0)
                     + (match.typical && !row.text.branded && row.text.shouted.isEmpty ? 0.3 : 0))
             // A longer word than the one being typed is likely on its way to counts a little more
             // against a food: "sal" is salmon before salsify.
@@ -2558,6 +2572,9 @@ func scoreFoods(
             + (match.missing == 0 ? 0.5 * Double(match.sides) + (match.comes ? 0.5 : 0) : 0) - (match.served ? 1.5 : 0)
             // And between two that match as well, not the one with none of it.
             - (hints.sides.isEmpty || match.sides > 0 ? 0 : 0.05)
+            // Nor the one cooked in a microwave, where that wasn't said: green beans are the
+            // boiled ones.
+            - (row.text.said.contains(microwaved) && !target.contains { stem($0) == microwaved } ? 0.05 : 0)
             // A food found by another name ranks a little below one its own name matches as
             // well, unless the other name is all that was said.
             - (row.other == nil || row.called ? 0 : 0.5)

@@ -1831,8 +1831,8 @@ let sizesSaid: [(String, String)] = [
     ("large blizzard", "^Soft serve, blended with candy or cookies"), ("small baconator", "^WENDY'S, CLASSIC DOUBLE, with cheese"),
     ("large oj", "^Orange juice"), ("glass of oj", "^Orange juice"), ("2 pbj", "^Peanut butter and jelly sandwich"),
     ("large double double", "^Double cheeseburger, from fast food"), ("small pot pie", "^Pot pie, chicken"),
-    ("2 footlong", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"), ("tallboy", "^Alcoholic beverage, beer"),
-    ("tall boy beer", "^Alcoholic beverage, beer"), ("foot long hot dog", "^Hot dog"), ("footlong hot dog", "^Hot dog"),
+    ("2 footlong", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"), ("tallboy", "^Beer$"),
+    ("tall boy beer", "^Beer$"), ("foot long hot dog", "^Hot dog"), ("footlong hot dog", "^Hot dog"),
     ("half rack ribs", "^Ribs, cooked"), ("full rack ribs", "^Ribs, cooked"), ("sub", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"),
     ("6 inch sub", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"),
     ("six inch sub", "^(Turkey sandwich or sub|Fast foods, submarine sandwich)"), ("cup of joe", "^Coffee"), ("grande latte", "^Coffee, Latte"),
@@ -2057,6 +2057,24 @@ let raisedFoods: [(String, String)] = [
     ("extra large pizza", "^Pizza"),
 ]
 
+/// First results that an earlier list's pattern accepted and a person wouldn't: SR Legacy's
+/// composite of pork cuts for "pork", microwaved green beans, 45% dark chocolate for
+/// "chocolate", a label for "tahini". The last are searches that say more and stay as they were.
+let plainFirsts: [(String, String)] = [
+    ("pork", "^Pork, cooked$"), ("green beans", "^Beans, snap, green, cooked, boiled"), ("chocolate", "^Chocolate candy$"),
+    ("stir fry", "^Chicken or turkey and vegetables, with soy-based sauce"), ("tahini", "^Tahini$"), ("tzatziki", "^Tzatziki dip"),
+    ("gnocchi", "^Gnocchi, potato"), ("arepa", "^Restaurant, Latino, arepa"), ("cookie dough", "^Cookie, batter or dough"),
+    ("coffee cake", "^Coffee cake, crumb"), ("snack mix", "^Snack mix$"), ("caramel sauce", "^Topping, butterscotch or caramel"),
+    ("yellow onion", "^Onions, raw"), ("oatmeal", "^Oatmeal$"), ("ham", "^Ham$"), ("beer", "^Beer$"), ("grits", "^Grits$"),
+    ("chocolate milk", "^Chocolate milk$"), ("oatmeal cookie", "^Cookie, oatmeal"),
+    // As they were.
+    ("microwaved green beans", "^Beans, snap, green, microwaved"), ("sauteed yellow onion", "^Onions, yellow, sauteed"),
+    ("dark chocolate", "^Dark chocolate candy"), ("chocolate chip cookie dough", "^Cookies, chocolate chip, refrigerated dough"),
+    ("grilled chicken breast", "^Chicken breast, grilled, without skin"), ("peanut butter cup", "^Chocolate candy, peanut butter filled"),
+    ("trail mix", "^Snacks, trail mix"), ("pulled pork", "^Barbecue pork"), ("veggie stir fry", "^Tofu and vegetables"),
+    ("light beer", "^Beer, light"), ("instant oatmeal", "(?i)oatmeal, instant|oats, instant"), ("honey ham", "(?i)ham, honey|honey ham"),
+]
+
 /// Everyday foods the survey has and SR Legacy doesn't, or not by the name they're asked for,
 /// and the other names a few are asked by. The last are foods that were right and stay so.
 let surveyFoods: [(String, String)] = [
@@ -2076,7 +2094,7 @@ let surveyFoods: [(String, String)] = [
     ("cheese ball", "^Cheese ball"), ("paneer", "^Cheese, paneer"), ("colby jack", "^Cheese, Colby Jack"),
     ("caramel apple", "^Apple, candied"), ("candy apple", "^Apple, candied"), ("tapenade", "^Olive tapenade"),
     ("stuffed olives", "^Stuffed olives"), ("vodka sauce", "^Vodka sauce"), ("poppy seed dressing", "^Poppy seed dressing"),
-    ("catalina dressing", "^French or Catalina dressing"), ("creamy italian dressing", "^Creamy Italian dressing"),
+    ("catalina dressing", "^French or Catalina dressing"), ("italian dressing", "^Salad dressing, italian dressing"),
     ("soy nuts", "^Soy nuts"), ("cinnamon sugar", "^Sugar, cinnamon"), ("tvp", "^Textured vegetable protein"),
     ("honey roasted peanuts", "^Honey roasted peanuts"), ("honey roasted cashews", "^Honey roasted cashews"),
     // Other names for foods the catalog had.
@@ -2094,7 +2112,7 @@ let surveyFoods: [(String, String)] = [
     ("milk", "^Milk, whole"), ("honey mustard", "^Salad dressing, honey mustard"), ("wasabi", "^Wasabi"),
     ("biscuits and gravy", "^Biscuit with gravy"), ("cashews", "^Nuts, cashew nuts, raw"), ("peanuts", "^Peanuts, all types, raw"),
     ("olives", "^Olives, ripe"), ("relish", "^Pickle relish"), ("zucchini", "^Squash, summer, zucchini"),
-    ("fresh zucchini", "^Squash, summer, zucchini"), ("okra", "^Okra, raw"), ("corn relish", "^Corn relish"),
+    ("fresh zucchini", "^Squash, summer, zucchini"), ("okra", "^Okra, raw"), ("fresh relish", "^Pickle relish"),
 ]
 
 /// Drinks as they're ordered: a coffee drink with its milk said after it, a smoothie by its
@@ -3400,7 +3418,8 @@ struct StaplesTests {
             rankSearch("pork", pork).first?.food.name
                 == "Pork, fresh, composite of trimmed retail cuts (leg, loin, and shoulder), separable lean only, cooked")
         #expect(rankSearch("pork", pork).last?.food.name == "Pork, fresh, separable fat, cooked")
-        #expect(catalog.top("pork", 1).first.map { matches("^Pork, fresh, composite of trimmed retail cuts", $0) } == true)
+        // Typed alone, pork is the survey's "Pork, cooked", which the catalog keeps "Pork" for.
+        #expect(catalog.top("pork", 1) == ["Pork, cooked"])
         // A plain food from a restaurant is cooked their way, which wasn't asked for.
         let beans = [
             OwnWordsTests.food("Green beans, cooked, from restaurant"),
@@ -4104,6 +4123,26 @@ struct StaplesTests {
         #expect(
             seen("Steak with sauce").hasPrefix("Steak") && seen("Coffee with creamer") == "Coffee" && seen("Beef with gravy") == "Beef with gravy")
         #expect(seen("Oat milk") == "Oat milk" && seen("Scone") == "Scone" && seen("Chocolate chip muffin") == "Muffin, chocolate chip")
+    }
+
+    @Test("a word alone is the plain food a person means by it, and a food named by just the words typed leads")
+    func plainFirstResults() {
+        var missed: [String] = []
+        for (query, pattern) in plainFirsts where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Plain first results: \(plainFirsts.count - missed.count) of \(plainFirsts.count) first")
+        #expect(missed.count <= 1, "\(missed.joined(separator: " | "))")
+        // The name that is the words typed and no more leads the ones that go on to say
+        // which; not a name that goes on to its skin or to another food it may be.
+        #expect(catalog.top("snack mix", 2) == ["Snack mix", "Snacks, trail mix, regular"], "\(catalog.top("snack mix", 2))")
+        #expect(catalog.top("grilled chicken breast", 1) == ["Chicken breast, grilled, without skin"])
+        // Of two cooked as usual and in a microwave, the usual one.
+        #expect(catalog.top("green beans", 2).last == "Beans, snap, green, microwaved")
+        // A model's name finds the same.
+        let seen = { (name: String) in self.catalog.candidates(name: name, brand: nil).first?.food.name ?? "" }
+        #expect(seen("Pork") == "Pork, cooked" && seen("Tahini") == "Tahini" && seen("Gnocchi") == "Gnocchi, potato")
+        #expect(seen("Green beans").hasPrefix("Beans, snap, green, cooked, boiled") || seen("Green beans").hasPrefix("Green beans, cooked"))
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

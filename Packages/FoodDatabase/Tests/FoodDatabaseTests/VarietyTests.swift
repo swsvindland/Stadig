@@ -95,9 +95,12 @@ struct VarietyTests {
         #expect(!catalog.top("almond milk", 4).contains { $0.hasPrefix("Milk, nonfat") })
         let ranked = { (query: String) in catalog.searchCatalog(query, known: [:]).ranked.prefix(3).map(\.food.name) }
         #expect(catalog.top("2 eggs", 3) == ranked("2 eggs") && catalog.top("eggs on toast", 3) == ranked("eggs on toast"))
-        // The kinds' own searches aren't kept as the person's.
-        _ = catalog.search("yogurt")
-        #expect(catalog.recent.withLock { $0.first?.asked.typed } == "yogurt")
+        // The kinds' own searches aren't kept as the person's. On a catalog of its own:
+        // the shared one is searched by other tests meanwhile.
+        let own = FoodCatalog(usda: Catalogs.usdaURL, off: nil, region: "us")
+        _ = own.search("yogurt")
+        #expect(own.recent.withLock { $0.map(\.asked.typed) } == ["yogurt"])
+        #expect(own.kindFoods.withLock { $0["greek yogurt"] } != nil)
         // A food and what it comes with stay as they were found.
         let plate = catalog.searchCatalog("chicken and rice", known: [:]).ranked.prefix(2).map(\.food.name)
         #expect(Array(catalog.top("chicken and rice", 2)) == plate)

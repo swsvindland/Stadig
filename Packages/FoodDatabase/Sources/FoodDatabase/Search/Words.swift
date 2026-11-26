@@ -494,6 +494,8 @@ private let saidNames: [String: String] = [
     "water chestnut": "waterchestnuts", "multigrain bread": "multi grain bread",
     "plant milk": "non dairy milk", "plant based milk": "non dairy milk", "dairy free milk": "non dairy milk",
     "milk alternative": "non dairy milk", "bear claw": "danish pastry", "bear claws": "danish pastry",
+    // USDA's only yellow onion is the sauteed one, at three times the calories of the raw.
+    "yellow onion": "onion", "yellow onions": "onions",
     "spring mix": "green leaf lettuce",
     "salad greens": "green leaf lettuce", "ground black pepper": "black pepper",
     "cracked black pepper": "black pepper",

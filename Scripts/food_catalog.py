@@ -849,7 +849,7 @@ FNDDS_SINGLES = {
     "Turnip, pickled": "vegetables and vegetable products", "Radishes, pickled": "vegetables and vegetable products",
     "Celery, pickled": "vegetables and vegetable products", "Zucchini, pickled": "vegetables and vegetable products",
     "Tomato, green, pickled": "vegetables and vegetable products", "Cabbage, red, pickled": "vegetables and vegetable products",
-    "Vegetables, pickled": "vegetables and vegetable products", "Relish, corn": 3,
+    "Vegetables, pickled": "vegetables and vegetable products",
     "Olives, stuffed": 3, "Olive tapenade": "soups, sauces, and gravies",
     "Chutney": "soups, sauces, and gravies", "Buffalo sauce": "soups, sauces, and gravies", "Fry sauce": "soups, sauces, and gravies",
     "Wasabi paste": "soups, sauces, and gravies", "Honey mustard dip": 4,
@@ -859,12 +859,19 @@ FNDDS_SINGLES = {
     "Guava paste": "sweets", "Bean paste, sweetened": "sweets", "Sugar, cinnamon": "sweets",
     "Honey butter": "fats and oils", "Cheese ball": "dairy and egg products", "Cheese, paneer": "dairy and egg products",
     "Cheese, Colby Jack": "dairy and egg products", "Soy nuts": "legumes and legume products", "Textured vegetable protein, dry": 4,
-    "French or Catalina dressing": "soups, sauces, and gravies", "Creamy Italian dressing": "soups, sauces, and gravies",
-    "Avocado dressing": "soups, sauces, and gravies",
+    "French or Catalina dressing": "soups, sauces, and gravies", "Avocado dressing": "soups, sauces, and gravies",
     # SR Legacy has almonds honey roasted and no other nut.
     "Cashews, honey roasted": 4, "Peanuts, honey roasted": 4, "Pecans, honey roasted": 4, "Walnuts, honey roasted": 4,
     "Mixed nuts, honey roasted": 4,
+    # By the one word they're asked for: SR Legacy's tahini is "Seeds, sesame butter, tahini",
+    # its snack mix an "oriental mix" and its caramel sauce a topping.
+    "Tahini": "nut and seed products", "Snack mix": "snacks", "Snack mix, plain (Chex Mix)": "snacks",
+    "Topping, butterscotch or caramel": "sweets",
 }
+# A dish whose short name answers for another's: the Dominican cornmeal cake isn't the arepa,
+# which SR Legacy has from a restaurant, and the boiled dough of chicken and dumplings, "no
+# meat", isn't a pot sticker without it.
+FNDDS_NAMESAKES = re.compile(r"^(Arepa Dominicana|Dumpling, no meat)$")
 # And the plain meats, poultry, fish and cereals, which the survey names as they're cooked and
 # eaten where SR Legacy names a cut, a grade and a trim: "Beef, steak", "Pork, chop", "Chicken
 # breast, grilled, without skin", "Fish, cod, fried", "Bratwurst" and "Cereal, corn flakes",
@@ -970,8 +977,6 @@ FNDDS_REWORDED = (
     # The carton poured like milk, a seventh of the calories of the can a curry is made with,
     # which the survey calls "Coconut milk, used in cooking".
     (re.compile(r"^Coconut milk$"), "Coconut milk beverage"),
-    # The boiled dough of chicken and dumplings, not a pot sticker without meat.
-    (re.compile(r"^Dumpling, no meat$"), "Dumpling, plain dough"),
     # And the single foods that are a food pickled, stuffed or honey roasted, by that first:
     # filed under the food, "Olives, stuffed" answered for olives and "Cashews, honey roasted"
     # for cashews.
@@ -980,7 +985,6 @@ FNDDS_REWORDED = (
     (re.compile(r"^Tomato, green, pickled$"), "Pickled green tomato"),
     (re.compile(r"^Cabbage, red, pickled$"), "Pickled red cabbage"),
     (re.compile(r"^Olives, stuffed$"), "Stuffed olives"),
-    (re.compile(r"^Relish, corn$"), "Corn relish"),
     (re.compile(r"^(Cashews|Peanuts|Pecans|Walnuts|Mixed nuts), honey roasted$"), lambda m: "Honey roasted " + m.group(1).lower()),
 )
 # The dishes that are whole foods put together or cooked: a salad without its dressing, eggs as
@@ -1091,6 +1095,15 @@ FNDDS_DISH_NAMES = {
     "Gravy, poultry": ["Turkey gravy", "Chicken gravy"],
     "Potato pancake": ["Latke", "Potato latke"],
     "Layer dip": ["Seven layer dip", "7 layer dip", "Five layer dip", "5 layer dip"],
+    # The one of several a word alone asks for, where the first found was another: SR Legacy's
+    # composite of pork cuts, a gnocchi of cheese, a coffee cake filled with it, oatmeal cookie
+    # dough.
+    "Pork, cooked": ["Pork"],
+    "Gnocchi, potato": ["Gnocchi"],
+    "Coffee cake, crumb or quick-bread type": ["Coffee cake", "Crumb cake"],
+    "Cookie, batter or dough, raw": ["Cookie dough"],
+    "Tzatziki dip": ["Tzatziki", "Tzatziki sauce"],
+    "Topping, butterscotch or caramel": ["Caramel sauce", "Caramel topping", "Butterscotch sauce"],
     # Rice and beans with nothing else said are the plain ones, not the ones with meat.
     "Beans and white rice": ["Rice and beans", "Beans and rice"],
     # Neither source has an Arctic char: it's the trout, the fish it's closest to.
@@ -1102,7 +1115,7 @@ FNDDS_DISH_NAMES = {
     "Fruit": ["Mixed fruit"],
     # Sweets and snacks, which the survey files by kind: milk chocolate is its "Chocolate
     # candy", gummy bears its "Candy, gummy" and a protein bar its nutrition bar.
-    "Chocolate candy": ["Milk chocolate", "Chocolate bar", "Milk chocolate bar", "Candy bar"],
+    "Chocolate candy": ["Milk chocolate", "Chocolate bar", "Milk chocolate bar", "Candy bar", "Chocolate"],
     "Dark chocolate candy": ["Dark chocolate", "Dark chocolate bar"],
     "White chocolate candy": ["White chocolate"],
     "Chocolate candy, peanut butter filled": ["Peanut butter cup", "Peanut butter cups"],
@@ -1194,7 +1207,8 @@ FNDDS_DISH_NAMES = {
     "Roll, sweet, cinnamon bun, frosted": ["Cinnamon roll"],
     "Cake or cupcake, chocolate with chocolate icing, bakery": ["Chocolate cake", "Chocolate cupcake"],
     "Cake or cupcake, white with white icing, bakery": ["Vanilla cake", "Vanilla cupcake", "Birthday cake", "White cake"],
-    "Chicken or turkey and vegetables, with soy-based sauce": ["Chicken stir fry", "Chicken and vegetable stir fry", "Stir fry chicken"],
+    "Chicken or turkey and vegetables, with soy-based sauce": ["Chicken stir fry", "Chicken and vegetable stir fry", "Stir fry chicken",
+                                                               "Stir fry"],
     "Beef and vegetables, with soy-based sauce": ["Beef stir fry", "Beef and vegetable stir fry", "Stir fry beef"],
     "Pork and vegetables, with soy-based sauce": ["Pork stir fry", "Stir fry pork"],
     "Shrimp and vegetables, with soy-based sauce": ["Shrimp stir fry", "Stir fry shrimp"],
@@ -1298,7 +1312,8 @@ def fndds_foods(path, stats):
         chains = fndds_also(raw)
         others = fndds_other_names(" ".join(raw["description"].split()), name)
         also = chains + [other for other in others if other not in chains]
-        plated = (category in FNDDS_DISHES or category in FNDDS_PREPARED) and not FNDDS_CODED.search(name) and not FNDDS_PLAIN.search(name)
+        plated = ((category in FNDDS_DISHES or category in FNDDS_PREPARED) and not FNDDS_CODED.search(name)
+                  and not FNDDS_PLAIN.search(name) and not FNDDS_NAMESAKES.search(name))
         plain = (category in FNDDS_PLAIN_FOODS and not sourced and not FNDDS_RARE.search(name)
                  and (FNDDS_PLAIN_FOODS[category] != "fruits and fruit juices" or FNDDS_FRUIT.search(name)))
         eaten = category in FNDDS_DRINKS or plated or plain or single is not None

@@ -573,7 +573,7 @@ struct CandidateTests {
         "a plain seen food is the form it's usually eaten in",
         arguments: [
             ("salmon", "^Fish, salmon, .*cooked", "(?i)smoked|lox|raw"),
-            ("oatmeal", "^Cereals, oats, .*cooked with water", "(?i)dry|cookie|bread|bran"),
+            ("oatmeal", "^Oatmeal$", "(?i)dry|cookie|bread|bran"),
             ("beans", "^Beans, (black|pinto), mature seeds, cooked", "(?i)snap|baked|raw"),
             ("lentils", "^Lentils, .*cooked", "(?i)raw"),
             ("chicken", "^Chicken, .*cooked", "(?i)raw|feet|frankfurter"),
