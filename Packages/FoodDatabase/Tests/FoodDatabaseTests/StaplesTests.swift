@@ -2057,6 +2057,32 @@ let raisedFoods: [(String, String)] = [
     ("extra large pizza", "^Pizza"),
 ]
 
+/// Drinks as they're ordered: a coffee drink with its milk said after it, a smoothie by its
+/// fruit, a tea by its kind, and a few said short. The last are the drinks that were right.
+let drinkOrders: [(String, String)] = [
+    ("latte with oat milk", "^Coffee, Latte, with non-dairy milk"), ("latte with almond milk", "^Coffee, Latte, with non-dairy milk"),
+    ("latte with soy milk", "^Coffee, Latte, with non-dairy milk"), ("latte with whole milk", "^Coffee, Latte$"),
+    ("latte with milk", "^Coffee, Latte$"), ("latte with skim milk", "^Coffee, Latte, nonfat"),
+    ("cappuccino with oat milk", "^Coffee, Cappuccino, with non-dairy milk"),
+    ("mocha with almond milk", "^Coffee, Cafe Mocha, with non-dairy milk"),
+    ("iced latte with oat milk", "^Coffee, Iced Latte, with non-dairy milk"), ("flat white with oat milk", "^Coffee, Latte, with non-dairy milk"),
+    ("oat milk flat white", "^Coffee, Latte, with non-dairy milk"), ("oat milk latte", "^Coffee, Latte, with non-dairy milk"),
+    ("flat white", "^Coffee, Latte$"), ("strawberry banana smoothie", "^Fruit smoothie"), ("banana smoothie", "^Fruit smoothie"),
+    ("berry smoothie", "^Fruit smoothie"), ("mango smoothie", "^Fruit smoothie"), ("kale smoothie", "^Fruit and vegetable smoothie"),
+    ("protein smoothie", "^Fruit smoothie, .*added protein"), ("green smoothie", "^Vegetable smoothie"), ("smoothie", "^Fruit smoothie"),
+    ("mint tea", "^Beverages, tea, herb|^Tea, hot, herbal"), ("peppermint tea", "^Beverages, tea, herb|^Tea, hot, herbal"),
+    ("rooibos tea", "^Beverages, tea, herb|^Tea, hot, herbal"), ("jasmine tea", "^Beverages, tea, green"), ("white tea", "^Beverages, tea, green"),
+    ("earl grey", "^Beverages, tea, black"), ("english breakfast tea", "^Beverages, tea, black"), ("pink lemonade", "^Lemonade, fruit juice drink"),
+    ("unsweet tea", "^Tea, iced, brewed, black, unsweetened"), ("psl", "^Coffee, Latte, flavored"), ("espresso shot", "^Coffee, espresso"),
+    ("double espresso", "^Coffee, espresso"), ("decaf americano", "^Coffee, decaffeinated"), ("cortado", "^Coffee, macchiato"),
+    ("breve", "^Coffee, Latte"), ("cafe au lait", "^Coffee, cafe con leche"), ("taro milk tea", "^Tea, bubble"),
+    ("brown sugar boba", "^Tea, bubble"), ("latte", "^Coffee, Latte$"), ("iced latte", "^Coffee, Iced Latte"),
+    ("cappuccino", "^Coffee, Cappuccino"), ("mocha", "^Coffee, Cafe Mocha"), ("americano", "^Coffee, brewed"), ("cold brew", "^Iced Coffee"),
+    ("chamomile tea", "^Tea, hot, chamomile"), ("green tea", "^Beverages, tea, green"), ("bubble tea", "^Tea, bubble"), ("lemonade", "^Lemonade"),
+    ("iced tea", "^Tea, iced, brewed, black, unsweetened"), ("sweet tea", "^Tea, iced, brewed, black, pre-sweetened"),
+    ("hot chocolate", "^Hot chocolate"), ("milkshake", "^Milk shake"), ("kombucha", "^Tea, kombucha"), ("sparkling water", "^Water, carbonated"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -3973,6 +3999,24 @@ struct StaplesTests {
         #expect(catalog.top("vegan burger", 1).first?.hasPrefix("Veggie burger") == true && catalog.top("veggie dog", 1) == ["Frankfurter, meatless"])
         #expect(catalog.candidates(name: "Vegan sausage", brand: nil).first?.food.name == "Sausage, meatless")
         #expect(catalog.candidates(name: "Free-range eggs", brand: nil).first?.food.name.hasPrefix("Egg, whole") == true)
+    }
+
+    @Test("a drink ordered another way is the catalog's drink")
+    func drinksAsOrdered() {
+        var missed: [String] = []
+        for (query, pattern) in drinkOrders where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Drinks as ordered: \(drinkOrders.count - missed.count) of \(drinkOrders.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(drinkOrders.count), "\(missed.joined(separator: " | "))")
+        // The milk said after the drink is the drink the catalog names by it; the milk it's
+        // made with anyway is the drink.
+        #expect(shortNames["latte with oat milk"] == "oat milk latte" && shortNames["flat white with soy milk"] == "soy milk latte")
+        #expect(shortNames["cappuccino with whole milk"] == "cappuccino" && shortNames["latte with skim milk"] == nil)
+        // A model's name is read the same way.
+        let seen = { (name: String) in self.catalog.candidates(name: name, brand: nil).first?.food.name ?? "" }
+        #expect(seen("Latte with oat milk") == "Coffee, Latte, with non-dairy milk" && seen("Strawberry banana smoothie").hasPrefix("Fruit smoothie"))
+        #expect(seen("Earl Grey tea").hasPrefix("Beverages, tea, black"))
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

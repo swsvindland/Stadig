@@ -346,7 +346,27 @@ func aloneBegun(_ typed: String) -> String? {
 
 /// What people type for a food instead of its name, as the whole of a search or of what a model
 /// said, by its words: "pb&j" is "pb j".
-let shortNames: [String: String] = [
+let shortNames: [String: String] = saidNames.merging(milkOrders) { said, _ in said }
+
+/// A coffee drink ordered with its milk said after it is the one the catalog names by the
+/// milk: a "latte with oat milk" is its "Latte, with non-dairy milk", as an oat milk latte is.
+/// With the milk it's made with anyway, it's the drink.
+private let milkOrders: [String: String] = {
+    var orders: [String: String] = [:]
+    for drink in ["latte", "iced latte", "cappuccino", "mocha", "iced mocha", "macchiato", "flat white"] {
+        // A flat white is the catalog's latte.
+        let named = drink == "flat white" ? "latte" : drink
+        for milk in ["oat", "almond", "soy", "coconut"] {
+            orders["\(drink) with \(milk) milk"] = "\(milk) milk \(named)"
+            if drink == "flat white" { orders["\(milk) milk flat white"] = "\(milk) milk latte" }
+        }
+        for milk in ["whole", "regular", "2"] { orders["\(drink) with \(milk) milk"] = named }
+        orders["\(drink) with milk"] = named
+    }
+    return orders
+}()
+
+private let saidNames: [String: String] = [
     "pb j": "peanut butter and jelly", "pbj": "peanut butter and jelly", "pb and j": "peanut butter and jelly",
     "pb j sandwich": "peanut butter and jelly sandwich", "pbj sandwich": "peanut butter and jelly sandwich", "pb": "peanut butter",
     "oj": "orange juice", "evoo": "extra virgin olive oil",
@@ -479,6 +499,19 @@ let shortNames: [String: String] = [
     // Eggs by their shell, butter and milk by what the cow ate, and a few said short.
     "brown eggs": "eggs", "brown egg": "egg", "large brown eggs": "eggs", "grass fed butter": "butter", "grass fed milk": "milk",
     "shrooms": "mushrooms", "shroom": "mushroom", "sammy": "sandwich", "sammie": "sandwich",
+    // Drinks as they're ordered: a smoothie by its fruit is the catalog's fruit smoothie, a
+    // tea by its kind its black, green or herbal one.
+    "strawberry banana smoothie": "fruit smoothie", "strawberry smoothie": "fruit smoothie", "banana smoothie": "fruit smoothie",
+    "berry smoothie": "fruit smoothie", "mixed berry smoothie": "fruit smoothie", "mango smoothie": "fruit smoothie",
+    "blueberry smoothie": "fruit smoothie", "peach smoothie": "fruit smoothie", "pineapple smoothie": "fruit smoothie",
+    "tropical smoothie": "fruit smoothie", "raspberry smoothie": "fruit smoothie", "kale smoothie": "fruit and vegetable smoothie",
+    "spinach smoothie": "fruit and vegetable smoothie", "protein smoothie": "fruit smoothie added protein",
+    "mint tea": "herbal tea", "peppermint tea": "herbal tea", "rooibos tea": "herbal tea", "rooibos": "herbal tea",
+    "jasmine tea": "green tea", "white tea": "green tea", "earl grey": "black tea", "earl grey tea": "black tea",
+    "english breakfast tea": "black tea", "pink lemonade": "lemonade", "unsweet tea": "unsweetened iced tea",
+    "psl": "pumpkin spice latte", "espresso shot": "espresso", "double espresso": "espresso", "decaf americano": "decaf coffee",
+    "cortado": "macchiato", "breve": "latte", "cafe au lait": "cafe con leche", "taro milk tea": "bubble tea",
+    "brown sugar milk tea": "bubble tea", "brown sugar boba": "bubble tea",
     "crushed pineapple": "canned pineapple", "pineapple tidbits": "canned pineapple", "pineapple rings": "canned pineapple",
     "crushed tomatoes": "canned crushed tomatoes", "peeled tomatoes": "canned tomatoes", "whole peeled tomatoes": "canned tomatoes",
     "shaved ice": "snow cone", "shave ice": "snow cone", "crushed ice": "ice cubes", "shaved turkey": "sliced turkey",
