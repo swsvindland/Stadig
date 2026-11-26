@@ -2031,6 +2031,32 @@ let stateFoods: [(typed: String, first: String, second: String)] = [
     ("simple syrup", "(?i)^simple syrup", ""), ("ripe olives", "^Olives, ripe", ""), ("whole milk", "^Milk, whole", ""),
 ]
 
+/// A food typed with how it was raised, caught or sold (free range, cage free, wild caught,
+/// local, halal), which is the food, and what's made without meat by the name of what it
+/// stands in for, which is the catalog's meatless one. The last are the foods those words do
+/// name: grass-fed beef, wild salmon, wild rice, and the brands.
+let raisedFoods: [(String, String)] = [
+    ("free range eggs", "^Egg, whole"), ("cage free eggs", "^Egg, whole"), ("pasture raised eggs", "^Egg, whole"), ("pastured eggs", "^Egg, whole"),
+    ("farm fresh eggs", "^Egg, whole"), ("brown eggs", "^Egg, whole"), ("large brown eggs", "^Egg, whole"), ("extra large eggs", "^Egg, whole"),
+    ("extra large egg", "^Egg, whole"), ("free range chicken", "^Chicken, cooked"), ("free range chicken breast", "^Chicken breast, cooked"),
+    ("halal chicken", "^Chicken, cooked"), ("antibiotic free chicken", "^Chicken, cooked"), ("wild caught salmon", "^Fish, salmon"),
+    ("farm raised salmon", "^Fish, salmon"), ("wild caught shrimp", "^Shrimp, cooked"), ("wild caught tuna", "^Fish, tuna"),
+    ("line caught tuna", "^Fish, tuna"), ("local honey", "^Honey"), ("local milk", "^Milk, whole"), ("hormone free milk", "^Milk, whole"),
+    ("grass fed milk", "^Milk, whole"), ("grass fed butter", "^Butter, salted"), ("non gmo tofu", "^Tofu"),
+    ("homegrown tomatoes", "^Tomatoes, red, ripe, raw"), ("vegan burger", "^Veggie burger"), ("vegetarian burger", "^Veggie burger"),
+    ("plant based burger", "^Veggie burger"), ("meatless burger", "^Veggie burger"), ("soy burger", "^Veggie burger"),
+    ("vegan sausage", "^Sausage, meatless"), ("vegetarian sausage", "^Sausage, meatless"), ("veggie sausage", "^Sausage, meatless"),
+    ("veggie dog", "^Frankfurter, meatless"), ("vegan hot dog", "^Frankfurter, meatless"), ("vegan bacon", "^Bacon, meatless"),
+    ("veggie bacon", "^Bacon, meatless"), ("vegan meatballs", "^Meatballs, meatless"), ("vegan chicken", "^Chicken, meatless"),
+    ("plant based chicken", "^Chicken, meatless"), ("vegan nuggets", "^Chicken, meatless, breaded"),
+    ("vegan chicken nuggets", "^Chicken, meatless, breaded"), ("shrooms", "^Mushrooms"), ("sammy", "^Sandwich"),
+    ("grass fed beef", "^Beef, grass-fed"), ("grass fed steak", "^Beef, grass-fed"), ("wild salmon", "^Fish, salmon, .*wild"),
+    ("farmed salmon", "^Fish, salmon, .*farmed"), ("wild rice", "^Wild rice"), ("veggie burger", "^Veggie burger"),
+    ("meatless meatballs", "^Meatballs, meatless"), ("impossible burger", "(?i)impossible"), ("beyond burger", "(?i)beyond"),
+    ("vegan cheese", "(?i)vegan cheese"), ("vegan butter", "(?i)vegan butter"), ("organic milk", "^Milk, whole"), ("jumbo eggs", "^Egg, whole"),
+    ("extra large pizza", "^Pizza"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -3925,6 +3951,28 @@ struct StaplesTests {
         #expect(
             catalog.top("cream of", 1).first?.hasPrefix("Cream of") == true && catalog.top("hearts of", 1).first?.hasPrefix("Hearts of palm") == true)
         #expect(catalog.top("eggs on", 1).first?.hasPrefix("Egg, whole") == true)
+    }
+
+    @Test("a food typed with how it was raised or sold is the food, and a meatless one the catalog's")
+    func foodsTypedWithHowTheyWereRaised() {
+        var missed: [String] = []
+        for (query, pattern) in raisedFoods where catalog.names(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Foods typed with how they were raised: \(raisedFoods.count - missed.count) of \(raisedFoods.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(raisedFoods.count), "\(missed.joined(separator: " | "))")
+        // The words are left out as the state a food is in is, and a brand read from them is none.
+        #expect(catalog.plainlyCooked("free range eggs") == "eggs" && catalog.plainlyCooked("wild caught salmon") == "salmon")
+        #expect(catalog.plainlyCooked("extra large eggs") == "large eggs" && catalog.top("farm fresh eggs", 1).first?.hasPrefix("Egg, whole") == true)
+        // Where the catalog has the food so raised, that's the one: grass-fed beef, wild salmon.
+        #expect(catalog.top("grass fed beef", 1).first?.hasPrefix("Beef, grass-fed") == true)
+        #expect(
+            catalog.top("wild salmon", 1).first.map { matches("wild", $0) } == true
+                && catalog.top("wild rice", 1).first?.hasPrefix("Wild rice") == true)
+        // A meatless food by the name of what it stands in for.
+        #expect(catalog.top("vegan burger", 1).first?.hasPrefix("Veggie burger") == true && catalog.top("veggie dog", 1) == ["Frankfurter, meatless"])
+        #expect(catalog.candidates(name: "Vegan sausage", brand: nil).first?.food.name == "Sausage, meatless")
+        #expect(catalog.candidates(name: "Free-range eggs", brand: nil).first?.food.name.hasPrefix("Egg, whole") == true)
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")

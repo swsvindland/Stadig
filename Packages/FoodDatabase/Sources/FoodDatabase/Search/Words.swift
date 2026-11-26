@@ -166,17 +166,24 @@ let stateWays: [(said: [String], means: [String])] = [
     (["freshly", "ground"], ["ground"]), (["fresh", "ground"], ["ground"]), (["freshly", "brewed"], ["brewed"]),
     (["fresh", "brewed"], ["brewed"]), (["freshly", "baked"], []), (["freshly", "made"], []),
     (["lightly", "buttered"], ["buttered"]), (["take", "out"], []), (["take", "away"], []), (["carry", "out"], []),
+    // How it was raised, caught or sold, which a label says and a plain food doesn't.
+    (["free", "range"], []), (["cage", "free"], []), (["pasture", "raised"], []), (["farm", "fresh"], []), (["farm", "raised"], []),
+    (["wild", "caught"], []), (["line", "caught"], []), (["hormone", "free"], []), (["antibiotic", "free"], []), (["non", "gmo"], []),
+    (["locally", "grown"], []), (["home", "grown"], []), (["extra", "large"], ["large"]),
     (["ripe"], []), (["overripe"], []), (["unripe"], []), (["warm"], []), (["lukewarm"], []), (["stale"], []), (["rare"], []), (["normal"], []),
     (["generic"], []), (["freshly"], []), (["thinly"], []), (["thickly"], []), (["finely"], []), (["coarsely"], []), (["roughly"], []),
     (["squeezed"], []), (["takeout"], []), (["takeaway"], []), (["delivery"], []), (["carryout"], []), (["classic"], []),
     (["traditional"], []), (["premium"], []), (["gourmet"], []), (["artisan"], []), (["artisanal"], []),
+    (["pastured"], []), (["homegrown"], []), (["local"], []), (["halal"], []),
 ]
 
 /// Words of those that are no brand's in a search, though labels list foods under them: "store
 /// bought cookies" aren't Target Stores', nor a "well done steak" Well Done's. The rest may
 /// be: Premium is Nabisco's saltines.
 let stateBrands: Set<String> = [
-    "store", "shop", "bought", "brand", "well", "done", "delivery", "generic", "takeout", "takeaway", "carryout", "normal",
+    "store", "shop", "bought", "brand", "well", "done", "delivery", "generic", "takeout", "takeaway", "carryout", "normal", "free", "range",
+    "cage", "pasture", "raised", "pastured", "farm", "fresh", "caught", "wild", "line", "hormone", "antibiotic", "non", "gmo", "local", "locally",
+    "grown", "homegrown", "halal",
 ]
 
 /// What "cold" is part of the name of, said right after it: cold brew, cold cuts, a cold
@@ -456,6 +463,22 @@ let shortNames: [String: String] = [
     "spring mix": "green leaf lettuce",
     "salad greens": "green leaf lettuce", "ground black pepper": "black pepper",
     "cracked black pepper": "black pepper",
+    // What's made without meat by the name of what it stands in for is the catalog's meatless
+    // one, before the labels: a vegan burger is its veggie burger.
+    "vegan burger": "veggie burger", "vegetarian burger": "veggie burger", "plant based burger": "veggie burger",
+    "meatless burger": "veggie burger", "soy burger": "veggie burger", "vegan sausage": "meatless sausage",
+    "vegetarian sausage": "meatless sausage", "veggie sausage": "meatless sausage", "plant based sausage": "meatless sausage",
+    "vegan hot dog": "meatless frankfurter", "vegetarian hot dog": "meatless frankfurter", "veggie dog": "meatless frankfurter",
+    "veggie dogs": "meatless frankfurter", "veggie hot dog": "meatless frankfurter", "plant based hot dog": "meatless frankfurter",
+    "vegan bacon": "meatless bacon", "veggie bacon": "meatless bacon", "vegetarian bacon": "meatless bacon",
+    "plant based bacon": "meatless bacon", "vegan meatballs": "meatless meatballs", "vegetarian meatballs": "meatless meatballs",
+    "veggie meatballs": "meatless meatballs", "plant based meatballs": "meatless meatballs", "vegan chicken": "meatless chicken",
+    "vegetarian chicken": "meatless chicken", "plant based chicken": "meatless chicken", "veggie chicken": "meatless chicken",
+    "vegan nuggets": "meatless chicken breaded", "veggie nuggets": "meatless chicken breaded",
+    "vegan chicken nuggets": "meatless chicken breaded", "plant based nuggets": "meatless chicken breaded",
+    // Eggs by their shell, butter and milk by what the cow ate, and a few said short.
+    "brown eggs": "eggs", "brown egg": "egg", "large brown eggs": "eggs", "grass fed butter": "butter", "grass fed milk": "milk",
+    "shrooms": "mushrooms", "shroom": "mushroom", "sammy": "sandwich", "sammie": "sandwich",
     "crushed pineapple": "canned pineapple", "pineapple tidbits": "canned pineapple", "pineapple rings": "canned pineapple",
     "crushed tomatoes": "canned crushed tomatoes", "peeled tomatoes": "canned tomatoes", "whole peeled tomatoes": "canned tomatoes",
     "shaved ice": "snow cone", "shave ice": "snow cone", "crushed ice": "ice cubes", "shaved turkey": "sliced turkey",
