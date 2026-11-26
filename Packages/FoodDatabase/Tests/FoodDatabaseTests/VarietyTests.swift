@@ -36,8 +36,9 @@ struct VarietyTests {
         #expect(!Variety.kinds(of: "butter").contains("peanut butter") && !Variety.kinds(of: "cream").contains("ice cream"))
         #expect(!Variety.kinds(of: "water").contains("coconut water") && !Variety.kinds(of: "beer").contains("root beer"))
         #expect(!Variety.kinds(of: "beans").contains("rice and beans") && !Variety.kinds(of: "cheese").contains("mac and cheese"))
-        // A word still being typed has none, nor has one nothing is named with.
-        #expect(Variety.kinds(of: "mil").isEmpty && Variety.kinds(of: "quinoa").isEmpty)
+        // A word still being typed has none, nor has one nothing is named with, nor "green",
+        // which stems to the greens it isn't.
+        #expect(Variety.kinds(of: "mil").isEmpty && Variety.kinds(of: "quinoa").isEmpty && Variety.kinds(of: "green").isEmpty)
     }
 
     @Test func aOneWordSearchGoesOnToItsKinds() {
@@ -70,6 +71,43 @@ struct VarietyTests {
         // passing, isn't brought up: no ice cream after cream, no oatmeal made with oat milk.
         #expect(!catalog.top("cream", 4).contains { $0.hasPrefix("Ice cream") } && !catalog.top("milk", 5).contains { $0.hasPrefix("Oatmeal") })
         #expect(!catalog.top("butter", 4).contains { $0.lowercased().contains("peanut") })
+    }
+
+    @Test func aWordForAKindOfFoodGoesOnToTheFoodsItStandsFor() {
+        let starts = { (query: String, firsts: [String]) -> Bool in
+            let found = catalog.top(query, firsts.count)
+            return found.count == firsts.count && zip(found, firsts).allSatisfy { $0.hasPrefix($1) }
+        }
+        // After the catalogs' own food of no one kind, the ones people mean by the word.
+        #expect(starts("nuts", ["Nuts, mixed nuts", "Nuts, almonds", "Peanuts, all types", "Nuts, cashew nuts"]), "\(catalog.top("nuts", 4))")
+        #expect(starts("berries", ["Berries", "Strawberries, raw", "Blueberries, raw", "Raspberries, raw"]), "\(catalog.top("berries", 4))")
+        #expect(starts("fruit", ["Fruit", "Apples, raw", "Bananas, raw", "Oranges, raw"]), "\(catalog.top("fruit", 4))")
+        #expect(starts("vegetables", ["Vegetables, mixed", "Broccoli, raw", "Carrots, raw", "Spinach, raw"]), "\(catalog.top("vegetables", 4))")
+        #expect(starts("fish", ["Fish, cooked", "Fish, salmon", "Fish, tuna", "Fish, cod"]), "\(catalog.top("fish", 4))")
+        #expect(starts("cereal", ["Cereal, ready-to-eat", "Cereal, corn flakes", "Cereal, granola", "Oatmeal"]), "\(catalog.top("cereal", 4))")
+        // Before it, where the catalogs' first is no food anyone means by the word: a
+        // lotus's seeds, green tea, a non-dairy milk, mechanically deboned poultry.
+        #expect(
+            starts("seeds", ["Seeds, sunflower", "Seeds, chia", "Seeds, flaxseed", "Seeds, pumpkin", "Seeds, lotus"]), "\(catalog.top("seeds", 5))")
+        #expect(starts("greens", ["Lettuce, green leaf", "Spinach, raw", "Kale, raw", "Collards, raw"]), "\(catalog.top("greens", 4))")
+        #expect(
+            starts("dairy", ["Milk, whole", "Cheese, cheddar", "Yogurt, plain", "Butter, salted", "Non-dairy milk"]), "\(catalog.top("dairy", 5))")
+        #expect(starts("poultry", ["Chicken, cooked", "Turkey, cooked", "Duck, cooked", "Poultry, mechanically"]), "\(catalog.top("poultry", 4))")
+        #expect(starts("seafood", ["Shrimp, cooked", "Fish, salmon", "Crab, cooked", "Fish, tuna"]), "\(catalog.top("seafood", 4))")
+        // And where they name nothing by it.
+        #expect(starts("legumes", ["Beans, black", "Lentils", "Chickpeas"]), "\(catalog.top("legumes", 3))")
+        #expect(starts("spirits", ["Vodka", "Whiskey", "Rum", "Tequila"]), "\(catalog.top("spirits", 4))")
+        // The word whole: "green" is on its way to green beans, and a seed isn't seeds.
+        #expect(catalog.top("green", 2).allSatisfy { $0.hasPrefix("Beans, snap, green") }, "\(catalog.top("green", 2))")
+        #expect(catalog.top("seed", 1) == catalog.searchCatalog("seed", known: [:]).ranked.prefix(1).map(\.food.name))
+        #expect(Variety.groups["green"] == nil && Variety.groups["seed"] == nil && Variety.groups["veggies"]?.leads == false)
+        // Each is the food its own search leads with, the scores still fall and no food is listed twice.
+        #expect(catalog.top("almonds", 1) == [catalog.top("nuts", 2)[1]] && catalog.top("sunflower seeds", 1) == catalog.top("seeds", 1))
+        for query in ["nuts", "seeds", "dairy", "greens", "legumes", "cereal"] {
+            let found = catalog.search(query)
+            #expect(zip(found, found.dropFirst()).allSatisfy { $0.score >= $1.score }, "\(query)")
+            #expect(Set(found.map(\.food.id)).count == found.count, "\(query)")
+        }
     }
 
     @Test func foodsThatDifferComeBeforeTheSameFoodAgain() {
