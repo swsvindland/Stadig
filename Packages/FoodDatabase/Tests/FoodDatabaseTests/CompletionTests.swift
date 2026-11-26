@@ -291,6 +291,24 @@ struct CompletionTests {
         #expect(FoodCompletions.suggest("chicken and rice and", from: []).allSatisfy { $0.hasPrefix("chicken and rice and") })
     }
 
+    @Test func theSurveysFoodsAreOfferedByTheirNames() {
+        let first = { (typed: String) in FoodCompletions.suggest(typed, from: []).first }
+        #expect(first("coffee cr") == "coffee creamer" && first("raisin b") == "raisin bran" && first("beet j") == "beet juice")
+        #expect(first("chocolate chip m") == "chocolate chip muffin" && first("pumpkin br") == "pumpkin bread")
+        #expect(first("buffalo s") == "buffalo sauce" && first("dried m") == "dried mango" && first("corn fl") == "corn flakes")
+        // After the ones logged more: a muffin and a blueberry one come first.
+        let muffins = FoodCompletions.suggest("muff", from: [])
+        let place = { (phrase: String) in muffins.firstIndex(of: phrase) ?? Int.max }
+        #expect(muffins.first == "muffin" && place("blueberry muffin") < place("chocolate chip muffin"), "\(muffins)")
+        #expect(muffins.contains("chocolate chip muffin"), "\(muffins)")
+        // And they're kinds of their word, which an English muffin isn't: a muffin goes on to them.
+        #expect(Variety.kinds(of: "muffin").first == "blueberry muffin" && Variety.kinds(of: "muffin").contains("chocolate chip muffin"))
+        #expect(!Variety.kinds(of: "muffin").contains("english muffin"))
+        // Read whole, "raisin bran" is the cereal where the catalogs' labels aren't there.
+        #expect(shortNames["raisin bran"] == "raisin bran cereal")
+        #expect(Catalogs.usda.top("raisin bran", 1).first?.contains("Raisin Bran") == true)
+    }
+
     @Test func wordsThatSayNothingOfTheFoodStayAndTheFoodGoesOn() {
         let first = { (typed: String) in FoodCompletions.suggest(typed, from: []).first }
         // The pairs said most are everyday ways: what was cut, prepared or in what state.

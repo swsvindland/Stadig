@@ -943,6 +943,10 @@ extension FoodCatalog {
         return meant
     }
 
+    /// Set while the catalog searches on its own account, for the food a kind names: such a
+    /// search isn't one of the person's last few (see `recent`).
+    @TaskLocal static var ownSearch = false
+
     /// The plain food each everyday kind names: what a search of it finds first, so the almond
     /// milk shown after milk is the one "almond milk" leads with. Nil where that's a brand's
     /// food, doesn't have every word or is a weak match: a kind the catalogs have no food for
@@ -954,12 +958,9 @@ extension FoodCatalog {
         let missing = phrases.indices.filter { found[$0] == nil }
         guard !missing.isEmpty else { return found.map { $0 ?? nil } }
         let searched = Mutex<[Int: Ranked?]>([:])
-        // These aren't the person's searches: the last few of theirs stay as they were.
-        let recent = self.recent.withLock { $0 }
-        defer { self.recent.withLock { $0 = recent } }
         DispatchQueue.concurrentPerform(iterations: missing.count) { i in
             // Whole words, as if a space followed: nothing here is still being typed.
-            let first = searchCatalog(phrases[missing[i]] + " ", known: [:]).ranked.first
+            let first = Self.$ownSearch.withValue(true) { searchCatalog(phrases[missing[i]] + " ", known: [:]).ranked.first }
             let plain = first.flatMap { first -> Ranked? in
                 let text = FoodText(first.food)
                 let plain = first.food.source == .usda && !text.branded && text.shouted.isEmpty
@@ -972,6 +973,21 @@ extension FoodCatalog {
             for i in missing { known[phrases[i]] = found[i] ?? nil }
         }
         return found.map { $0 ?? nil }
+    }
+
+    /// Looks up, off the search's thread, the foods a search of `word` alone goes on to,
+    /// where they aren't known yet. Called with the word a search's last word is on its way
+    /// to, so the first search of the whole word doesn't wait for them.
+    func warmKinds(of word: String) {
+        let phrases = Array(Variety.phrases(after: word).prefix(Variety.asked))
+        guard !phrases.isEmpty, kindFoods.withLock({ known in phrases.contains { known[$0] == nil } }),
+            warming.withLock({ $0.insert(word).inserted })
+        else { return }
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            _ = plainFoods(named: phrases)
+            warming.withLock { _ = $0.remove(word) }
+        }
     }
 
     func searchCatalog(_ typed: String, known: [String: Double]) -> CatalogSearch {
@@ -1751,6 +1767,8 @@ extension FoodCatalog {
         let asked = RecentSearch.Asked(typed: typed, out: out, sides: sides, beside: beside)
         if let found = recent.withLock({ list in list.first { $0.asked == asked && $0.known == known }?.found }) { return found }
         let found = searchCatalogs(typed, known: known, out: out, sides: sides, beside: beside)
+        // Not the catalog's own searches, which would push the person's out.
+        guard !Self.ownSearch else { return found }
         recent.withLock { list in
             list.insert(RecentSearch(asked: asked, known: known, found: found), at: 0)
             if list.count > RecentSearch.kept { list.removeLast() }

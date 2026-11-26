@@ -109,6 +109,9 @@ enum Variety {
         return groups
     }()
 
+    /// What a search of a word alone goes on to: the foods it stands for, or its kinds.
+    static func phrases(after word: String) -> [String] { groups[word]?.foods ?? kinds(of: word) }
+
     /// The ranked foods in the order they're shown. `named` gives the plain food each phrase
     /// names, where one does, which is how a kind is found whatever the search itself turned
     /// up.
@@ -127,7 +130,7 @@ enum Variety {
         // before it. They're asked for a few at a time: the first few usually do.
         var lifted: [Ranked] = []
         if let word {
-            var phrases = (group?.foods ?? kinds(of: word))[...]
+            var phrases = phrases(after: word)[...]
             let wanted = leads ? kinds + 1 : kinds
             while lifted.count < wanted, !phrases.isEmpty {
                 for case let best? in named(Array(phrases.prefix(asked))) where lifted.count < wanted {

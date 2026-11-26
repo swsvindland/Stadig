@@ -137,6 +137,10 @@ enum EverydayPhrases {
         "macaron", "macarons", "macaroon", "smores", "donut holes",
         "scone", "danish", "eclair", "cream puff", "funnel cake", "cobbler", "creme brulee", "tapioca pudding", "popsicle", "sorbet", "jello",
         "cookie dough", "lemon bar", "peanut brittle", "soft pretzel", "snack mix",
+        // Foods the survey has by these names and SR Legacy doesn't, and a few by another name.
+        "coffee creamer", "beet juice", "celery juice", "watermelon juice", "chocolate chip muffin", "banana nut muffin", "corn muffin",
+        "bran muffin", "pumpkin bread", "zucchini bread", "hush puppies", "latkes", "corn flakes", "raisin bran", "bran flakes",
+        "buffalo sauce", "chutney", "simple syrup", "honey butter", "caramel dip", "paneer", "dried mango", "caramel apple",
         // Supplements.
         "whey protein", "fish oil",
     ]

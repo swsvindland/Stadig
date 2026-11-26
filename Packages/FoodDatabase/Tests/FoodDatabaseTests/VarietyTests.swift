@@ -110,6 +110,25 @@ struct VarietyTests {
         }
     }
 
+    @Test func theKindsOfAWordBeingTypedAreLookedUpAhead() async throws {
+        // On a catalog of its own: the shared one may know cheese's kinds already.
+        let own = FoodCatalog(usda: Catalogs.usdaURL, off: nil, region: "us")
+        #expect(own.kindFoods.withLock { $0.isEmpty })
+        _ = own.search("chees")
+        // They're looked up off the search's thread, so this waits for them, a few seconds
+        // at most.
+        for _ in 0..<400 where own.kindFoods.withLock({ $0["cheddar cheese"] == nil }) { try await Task.sleep(for: .milliseconds(25)) }
+        #expect(own.kindFoods.withLock { $0["cheddar cheese"] ?? nil }?.food.name.hasPrefix("Cheese, cheddar") == true)
+        // Neither those searches nor the ones "cheese" itself makes are kept as the person's.
+        _ = own.search("cheese")
+        #expect(own.recent.withLock { $0.map(\.asked.typed) } == ["cheese", "chees"])
+        // A word that's whole, or on its way to one with no kinds, looks nothing up.
+        let other = FoodCatalog(usda: Catalogs.usdaURL, off: nil, region: "us")
+        _ = other.search("quino")
+        _ = other.search("almond milk")
+        #expect(other.warming.withLock { $0.isEmpty } && other.kindFoods.withLock { $0.isEmpty })
+    }
+
     @Test func foodsThatDifferComeBeforeTheSameFoodAgain() {
         // Whole milk is one food, bagels differ by their grain, and white rice by its grain's
         // length and whether it's cooked.

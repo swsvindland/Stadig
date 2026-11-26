@@ -496,6 +496,8 @@ private let saidNames: [String: String] = [
     "milk alternative": "non dairy milk", "bear claw": "danish pastry", "bear claws": "danish pastry",
     // USDA's only yellow onion is the sauteed one, at three times the calories of the raw.
     "yellow onion": "onion", "yellow onions": "onions",
+    // Without the packaged catalog the two words found brandy before the makers' cereals.
+    "raisin bran": "raisin bran cereal",
     "spring mix": "green leaf lettuce",
     "salad greens": "green leaf lettuce", "ground black pepper": "black pepper",
     "cracked black pepper": "black pepper",

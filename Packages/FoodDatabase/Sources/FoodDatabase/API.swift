@@ -32,6 +32,8 @@ public final class FoodCatalog: Sendable {
     /// the first result of a one-word search (see `Variety`). Remembered for the launch, so a
     /// kind's own search runs once however often "milk" is typed.
     let kindFoods = Mutex<[String: Ranked?]>([:])
+    /// The words whose kinds are being looked up ahead of them (see `warmKinds`).
+    let warming = Mutex<Set<String>>([])
 
     /// Opens the catalogs at these URLs. `region` is the phone's ISO region ("us"), which ranks
     /// packaged foods sold here above those sold only elsewhere.
@@ -85,6 +87,10 @@ public final class FoodCatalog: Sendable {
         // What's typed in place of words is read as the words first (see `Shorthand`).
         let asked = Shorthand.spelledOut(query)
         let found = searchCatalog(asked, known: known)
+        // The foods the word being typed will go on to are looked up ahead of it, so "milk"
+        // has its kinds when its last letter is typed.
+        let words = asked.split(whereSeparator: \.isWhitespace)
+        if found.brand.isEmpty, words.count == 1, let likely = EverydayPhrases.likely([words[0].lowercased()]) { warmKinds(of: likely) }
         // The person's own foods come first, ranked like the catalog below them, so rows already on
         // screen don't move when the catalog answers. A typo the catalog corrected finds them too.
         let typed = found.typed ?? found.text

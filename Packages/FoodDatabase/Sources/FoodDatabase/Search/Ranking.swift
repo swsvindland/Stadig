@@ -2530,7 +2530,13 @@ func scoreFoods(
         // which: "Snack mix" before "Snacks, trail mix, regular", "Oatmeal" and "Beer" before
         // the kinds of them. By less than the usual one, and not a name that goes on to its
         // skin, what it comes with or another food it may be.
-        let whole = exact && tokens(row.food.name).count == target.count
+        // By the words whole, or the word a last one is on its way to: "bran" isn't brandy.
+        let whole =
+            exact
+            && {
+                let name = tokens(row.food.name).map(stem).sorted()
+                return name == saidStems.sorted() || name == begunStems?.sorted()
+            }()
         var score =
             3 * row.name + (leads ? 0.75 : 0)
             // A generic food USDA names by exactly the words said, inverted, ranks above a blend or
