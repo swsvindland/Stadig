@@ -1137,6 +1137,22 @@ func readQuery(_ query: String) -> QueryReading {
             roles.append(much && (countWords.contains(word) || unitWords.contains(word)) ? .amount : .name)
         }
     }
+    // A small word typed last after a food's word, with nothing after it, may be the next word
+    // begun: "red on" is a red onion, "french to" French toast, "blood or" a blood orange and
+    // "cream of" as far as cream of wheat is typed. A space after it says it's the small word,
+    // as does an amount before it ("cup of"). After a food that goes on another, "on" is
+    // that: "eggs on" is on its way to eggs on toast. Not "and", which every other name has.
+    if found.count > 1, let last = found.last, last.end == text.count, roles[found.count - 2] == .name {
+        let before = zip(found, roles).dropLast().filter { $0.1 == .name }.map(\.0.word)
+        let begun =
+            switch last.word {
+            case "to", "or": true
+            case "on": !EverydayPhrases.isName(before)
+            case "of": before.last.map(ofFoods.contains) == true
+            default: false
+            }
+        if begun { roles[found.count - 1] = .name }
+    }
     func pick(_ role: Role) -> [String] {
         zip(found, roles).filter { $0.1 == role && !($0.0.word.unicodeScalars.first.map(isDigit) ?? false) }.map(\.0.word)
     }
@@ -1162,6 +1178,10 @@ func readQuery(_ query: String) -> QueryReading {
     }
     return QueryReading(words: Array(names.prefix(8)), counts: counts, sizes: sizes, letter: letter)
 }
+
+/// The foods named with "of": cream of wheat and of mushroom, hearts of palm, a rack or a leg
+/// of lamb.
+private let ofFoods: Set<String> = ["cream", "hearts", "heart", "rack", "leg"]
 
 /// Whether a word with another typed after it is two letters that are a word of their own:
 /// the "dr" of "dr pepper" isn't dried or dressing begun, nor the "la" of "la croix" lasagna.

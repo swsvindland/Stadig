@@ -3910,6 +3910,23 @@ struct StaplesTests {
         #expect(seen("Ground black pepper") == "Spices, pepper, black" && seen("Frozen banana") == "Bananas, raw")
     }
 
+    @Test("a small word typed last, with nothing after it, may be the next word begun")
+    func smallWordsBegun() {
+        // After a food's word, "on", "to" and "or" start onion, toast and orange; a space after
+        // one says it's the small word.
+        #expect(readQuery("red on").words == ["red", "on"] && readQuery("red on ").words == ["red"])
+        #expect(readQuery("french to").words == ["french", "to"] && readQuery("blood or").words == ["blood", "or"])
+        // "Of" after the few foods named with it, not after an amount.
+        #expect(readQuery("cream of").words == ["cream", "of"] && !readQuery("cup of").words.contains("of"))
+        // Not after a food that goes on another, nor the words every other name has.
+        #expect(readQuery("eggs on").words == ["eggs"] && readQuery("ham and").words == ["ham"] && readQuery("toast with").words == ["toast"])
+        #expect(catalog.top("french to", 1) == ["French toast"] && catalog.top("corn to", 1).first?.hasPrefix("Tortillas") == true)
+        #expect(catalog.top("chopped on", 1) == ["Onions, raw"] && catalog.top("sweet on", 1) == ["Onions, sweet, raw"])
+        #expect(
+            catalog.top("cream of", 1).first?.hasPrefix("Cream of") == true && catalog.top("hearts of", 1).first?.hasPrefix("Hearts of palm") == true)
+        #expect(catalog.top("eggs on", 1).first?.hasPrefix("Egg, whole") == true)
+    }
+
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")
     func oddsAndEnds() {
         // Curry with no more said is chicken curry; the kinds asked for are themselves.
