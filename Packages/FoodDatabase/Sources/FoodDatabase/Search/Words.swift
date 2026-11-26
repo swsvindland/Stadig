@@ -45,6 +45,7 @@ let alternatives: [String: [String]] = [
     // Other spellings, and what the same food is called in Britain.
     "omelette": ["omelette", "omelet"], "omelettes": ["omelette", "omelet"], "yoghurt": ["yoghurt", "yogurt"], "yoghurts": ["yoghurt", "yogurt"],
     "chilli": ["chilli", "chili"], "barbeque": ["barbeque", "barbecue"], "whisky": ["whisky", "whiskey"], "houmous": ["houmous", "hummus"],
+    "chile": ["chile", "chili"], "chiles": ["chile", "chili"],
     "soya": ["soya", "soy"], "skimmed": ["skimmed", "skim", "nonfat"], "prawn": ["prawn", "shrimp"], "prawns": ["prawn", "shrimp"],
     "courgette": ["courgette", "zucchini"], "courgettes": ["courgette", "zucchini"], "aubergine": ["aubergine", "eggplant"],
     "aubergines": ["aubergine", "eggplant"], "beetroot": ["beetroot", "beet"], "sweetcorn": ["sweetcorn", "corn"],
@@ -400,6 +401,27 @@ let shortNames: [String: String] = [
     // their own: diced tomatoes aren't the fresh tomato the cut otherwise leaves.
     "diced tomatoes": "canned tomatoes", "sliced water chestnuts": "canned water chestnuts", "sliced beets": "canned beets",
     "chopped salad": "salad", "cubed steak": "cube steak",
+    // A shape or a way of preparing that names what's sold so, or another food altogether.
+    "jicama sticks": "jicama", "corn kernels": "corn", "romaine hearts": "romaine lettuce", "romaine heart": "romaine lettuce",
+    "hearts of romaine": "romaine lettuce", "celery hearts": "celery", "pickle chips": "pickle slices", "dill pickle chips": "dill pickles",
+    "coconut flakes": "coconut meat dried sweetened shredded", "flaked coconut": "coconut meat dried sweetened shredded",
+    "zoodles": "zucchini", "zucchini noodles": "zucchini",
+    "spiralized zucchini": "zucchini", "cauliflower rice": "cauliflower", "riced cauliflower": "cauliflower", "broccoli rice": "broccoli",
+    "riced broccoli": "broccoli", "beaten egg": "raw egg", "beaten eggs": "raw eggs", "whisked egg": "raw egg", "whisked eggs": "raw eggs",
+    "green chiles": "green chili peppers", "green chilies": "green chili peppers", "canned green chiles": "green chili peppers",
+    "canned green chilies": "green chili peppers", "diced green chiles": "green chili peppers", "diced green chilies": "green chili peppers",
+    "chopped green chiles": "green chili peppers", "crushed red pepper flakes": "spices pepper red cayenne", "shaved beef": "steak",
+    "stew meat": "beef stew meat", "stewing beef": "beef stew meat", "pepitas": "pumpkin seed kernels",
+    "shelled pumpkin seeds": "pumpkin seed kernels", "whole cloves": "cloves",
+    "peppercorns": "black pepper", "whole peppercorns": "black pepper", "black peppercorns": "black pepper",
+    "whole grain rice": "brown rice", "ice water": "water", "iced water": "water", "rice sticks": "rice noodles",
+    "crushed pineapple": "canned pineapple", "pineapple tidbits": "canned pineapple", "pineapple rings": "canned pineapple",
+    "crushed tomatoes": "canned crushed tomatoes", "peeled tomatoes": "canned tomatoes", "whole peeled tomatoes": "canned tomatoes",
+    "shaved ice": "snow cone", "shave ice": "snow cone", "crushed ice": "ice cubes", "shaved turkey": "sliced turkey",
+    "shaved ham": "sliced ham", "shaved chicken": "sliced chicken", "shaved roast beef": "sliced roast beef", "pureed pumpkin": "pumpkin puree",
+    "crab sticks": "imitation crab", "crab stick": "imitation crab",
+    "sirloin tips": "sirloin steak", "steak tips": "sirloin steak", "beef tips": "sirloin steak", "mustard leaves": "mustard greens",
+    "beet leaves": "beet greens", "turnip leaves": "turnip greens", "moringa leaves": "drumstick leaves", "romaine leaves": "romaine lettuce",
     // Tuna in a packet or a pouch is the tuna, packed in water.
     "tuna packet": "tuna canned in water", "tuna pouch": "tuna canned in water",
 ]
@@ -488,7 +510,8 @@ let typedAlternatives: Set<String> = [
     "omelette", "omelettes", "yoghurt", "yoghurts", "chilli", "barbeque", "whisky", "houmous", "soya", "skimmed", "prawn", "prawns", "courgette",
     "courgettes", "aubergine", "aubergines", "beetroot", "sweetcorn", "kiwi", "kiwis", "portobello", "portabello", "lager", "pilsner", "stout",
     "venison", "calamari", "crawfish", "fresh", "mint", "fry", "sodas", "cokes", "lagers", "pilsners", "stouts", "portobellos", "chillis",
-    "beetroots", "catsup", "lasagne", "decaf", "mince", "minced", "rocket", "sultana", "sultanas", "crisps", "swede", "swedes", "tinned",
+    "beetroots", "catsup", "lasagne", "decaf", "mince", "minced", "rocket", "sultana", "sultanas", "crisps", "swede", "swedes", "tinned", "chile",
+    "chiles",
     "wholemeal", "gammon", "mangetout", "capsicum", "capsicums", "rockmelon", "cornflour", "sweets", "goujons", "veggies", "taters", "spuds",
     "spud", "cuke", "cukes", "slaw", "silverbeet", "rapeseed", "groundnut", "butty", "sarnie", "sanga", "sando", "snags", "bangers", "rashers",
     "rasher", "bikkies", "bikkie", "chook", "liquorice", "chamoy", "esquites", "sope", "sopes", "tlayuda",
@@ -681,9 +704,16 @@ func nameWords(_ name: String) -> [String] {
     if list.first == "half", list.count > 1, !list.dropFirst().contains("half") { list.removeFirst() }
     // A bowl named last is a dish: a poke bowl, a burrito bowl.
     let dish = list.count > 1 && (list.last == "bowl" || list.last == "bowls") ? list.count - 1 : -1
-    let food = list.indices.filter { $0 == dish || list[$0] == "mini" || !countWords.contains(list[$0]) }.map { list[$0] }
+    // A shape said after the food is left for the ranking, which knows the foods named by one:
+    // potato wedges aren't a potato, nor grape leaves grapes.
+    let food = list.indices.filter { $0 == dish || list[$0] == "mini" || !countWords.contains(list[$0]) || saysShape(list, at: $0) }
+        .map { list[$0] }
     return Array((food.isEmpty ? list : food).prefix(6))
 }
+
+/// What a model names on a plate or in a glass that nobody searches for by that name: the ice
+/// in a drink is water, where the word typed is ice cream begun.
+let seenNames = ["ice": "water", "ice cube": "water", "ice cubes": "water", "crushed ice": "water"]
 
 /// What a model says was done to a food before serving it, which names no other food:
 /// "buttered toast" is toast.

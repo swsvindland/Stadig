@@ -839,6 +839,8 @@ extension FoodCatalog {
                 guard span.contains(where: { length($0) > 1 }) else { continue }
                 // Nor are two letters at the end a brand begun: the "do" of "hot do" isn't Doritos.
                 if size == 1, start + size == words.count, length(words[start]) < 3 { continue }
+                // Nor is the shape a food is cut into: broccoli crowns aren't King's Crown's.
+                if size == 1, saysShape(words, at: start) { continue }
                 if let catalog, isBrand(span, catalog, fixes) {
                     if size == 1, isNamed(words, without: start, catalog, fixes) { continue }
                     // Nor is any of a search a brand where USDA names a food by exactly its
@@ -1674,7 +1676,10 @@ extension FoodCatalog {
         // restaurant chain's: El Pollo Loco isn't coconut, whatever the catalogs have of it.
         let everyday = EverydayPhrases.isName(searched)
         let chain = Chains.chain(in: searched, typed: typed)?.span ?? (Chains.isName(typed) ? 0..<searched.count : nil)
+        // Nor a word for how a food was prepared, typed whole, or the shape it's cut into:
+        // "leftover" pizza isn't Estover's, nor parsley "sprigs" a spritzer.
         for (i, word) in searched.enumerated() where !everyday && !isNumber(word) && fixes[word] == nil && chain?.contains(i) != true {
+            if i < searched.count - 1 ? saysPrepared(word) : saysShape(searched, at: i) { continue }
             let spelling = spell(word, whole: i < searched.count - 1)
             if !spelling.fixes.isEmpty { fixes[word] = spelling.fixes }
             if spelling.doubted { doubted.insert(word) }
@@ -1815,12 +1820,21 @@ extension FoodCatalog {
     /// show what the food is filed under, and with a way of cooking among the words left out,
     /// its cooked ones, however many others there are.
     private func easedJobs(_ words: [String], _ term: (String) -> String, _ lead: (String) -> String) -> [MatchJob] {
-        let rest = words.filter { !isEasable($0, seen: true) }
+        let how = howWords(words)
+        let rest = words.indices.filter { !how.contains($0) }.map { words[$0] }
         guard rest.count < words.count, let first = rest.first(where: { !isNumber($0) }) else { return [] }
         let generic = catalogs.filter { $0.kind == .generic }
         let food = rest.map(term).joined(separator: " AND ")
+        // And with a way of preparing or a shape that may name the food, without the words that
+        // only say it's cooked: "Potato, mashed" for "cooked mashed potatoes", chicken strips
+        // for "fried chicken strips". Only where there is such a word: the eggs of "fresh
+        // scrambled eggs" alone would find the raw ones that say fresh.
+        let naming = words.filter { !saysHow($0) }
+        let named =
+            naming != rest.filter { !saysHow($0) } && naming != rest && naming.count < words.count
+            ? jobs(generic, naming.map(term).joined(separator: " AND "), .typed) : []
         return jobs(generic, food, .typed, lead: lead(first))
-            + (words.contains(where: isHeat) ? jobs(generic, "\(food) AND \(heatedTerm)", .typed, lead: lead(first)) : [])
+            + (words.contains(where: isHeat) ? jobs(generic, "\(food) AND \(heatedTerm)", .typed, lead: lead(first)) : []) + named
     }
 
     /// Catalog searches for a food a model saw, from most to least specific: brand and name, brand
@@ -1886,7 +1900,7 @@ extension FoodCatalog {
     private func rankCandidates(name said: String, brand: String, personal: [PersonalFood], known: [String: Double], out: String?) -> [Ranked] {
         // What's said for a food instead of its name is read by the whole of it first: a
         // "hamburger with cheese" is a cheeseburger, not a hamburger that comes with cheese.
-        let said = brand.isEmpty ? Self.named(said, in: region) : said
+        let said = brand.isEmpty ? seenNames[tokens(said).joined(separator: " ")] ?? Self.named(said, in: region) : said
         // What a model says comes with a food or about it ("toast with butter", "yogurt
         // (nonfat)") is kept apart from its name: the food is found by its own words. A brand's
         // product keeps its whole name.
@@ -1955,14 +1969,21 @@ extension FoodCatalog {
         // filed under, and its cooked ones.
         if brand.isEmpty {
             let said = nameWords(name)
-            let rest = said.filter { !isEasable($0, seen: true) }
+            let how = howWords(said)
+            let rest = said.indices.filter { !how.contains($0) }.map { said[$0] }
             if rest.count < said.count, !rest.isEmpty {
                 // By its other name too: a seared tuna steak is USDA's fresh tuna.
                 let wording = { (word: String) in read.also[word].map { searchTerm(word, [word: $0], only: true) } ?? term(word) }
+                // And with a way of preparing or a shape that may name the food, without the
+                // words that only say it's cooked: "Potato, mashed" for cooked mashed potatoes.
+                let naming = said.filter { !saysHow($0) }
                 for way in read.also.isEmpty ? [term] : [term, wording] {
                     let food = rest.map(way).joined(separator: " AND ")
                     _ = search(food)
                     if said.contains(where: isHeat) { _ = search("\(food) AND \(heatedTerm)") }
+                    if naming != rest.filter({ !saysHow($0) }), naming != rest, naming.count < said.count {
+                        _ = search(naming.map(way).joined(separator: " AND "))
+                    }
                 }
             }
             // And the food with what was said to come with it, where one entry is both:

@@ -117,7 +117,8 @@ public final class FoodCatalog: Sendable {
         // Nor from what it's said to be without: "Salad" for "Salad without dressing".
         let main = seenName(named(withoutSaid(name)?.main ?? name, in: nil)).main
         let said = tokens(main)
-        return shortNames[said.joined(separator: " ")] ?? (said.count == 1 ? describingName(said[0]) : nil) ?? main
+        let whole = said.joined(separator: " ")
+        return seenNames[whole] ?? shortNames[whole] ?? (said.count == 1 ? describingName(said[0]) : nil) ?? main
     }
 
     /// A name as it's read where the whole of it is what people say for a food instead of its

@@ -427,8 +427,8 @@ private let driedByHeat = stems("seaweed nori kelp laver wakame coffee cocoa cac
 private let cutWords = stems("fillet filet slice piece chunk floret spear halves stalk clove cutlet baby shredded")
 
 /// What a food said to be trimmed mustn't have: "skinless" chicken is USDA's "meat only", not its
-/// "meat and skin".
-private let trimWords = ["skinless": "skin", "boneless": "bone"]
+/// "meat and skin", and a peeled apple its "without skin", not the lemon's peel.
+private let trimWords = ["skinless": ["skin"], "boneless": ["bone"], "peeled": ["skin", "peel"]]
 
 /// Said of a food that isn't cooked, which USDA often leaves unsaid too: raw almonds are its
 /// "Nuts, almonds".
@@ -440,13 +440,67 @@ private let rawWords = stems("raw fresh uncooked")
 /// walnuts" a row of labels. A can's "diced tomatoes" come right after the tomato.
 private let plateCuts = stems("sliced diced chopped shredded crumbled grated minced cubed halved quartered torn")
 
+/// What else is done to a food before it's eaten that leaves it the food it was: slivered
+/// almonds are almonds, pitted olives olives, shelled pistachios the nut, melted butter butter
+/// and leftover pizza pizza, where the words found rows of labels. Unlike a cut, some of these
+/// name a dish, so a plain food that lists one and nothing else is the food meant however it
+/// was said: "Potato, mashed" for mashed potatoes.
+private let preparedWords = stems(
+    "slivered crushed shaved julienned matchstick spiralized spiralised pitted shelled seedless trimmed stemmed destemmed hulled cored deveined"
+        + " deboned deseeded mashed smashed pureed flaked melted softened beaten whisked leftover rinsed washed soaked thawed chilled")
+
+/// What "whole" is part of the name of, said right after it: whole milk, whole wheat, a whole
+/// grain. Before anything else it says the food wasn't cut up or that all of it was eaten: a
+/// whole avocado is an avocado, whole almonds almonds and a whole chicken a chicken.
+private let wholeNames: Set<String> = [
+    "milk", "wheat", "grain", "grains", "bean", "beans", "kernel", "berry", "fat", "foods", "meal", "food", "earth", "egg", "eggs", "30",
+]
+
+/// The shape a food is cut or broken into, said after it, as typed: a lemon wedge is its lemon,
+/// carrot sticks carrots, feta crumbles feta and spinach leaves spinach. Not "crumble", which
+/// is a dessert, nor "heart", which is an organ's name as often as a lettuce's, nor one "pat",
+/// which is a patty or Sour Patch Kids begun.
+private let shapeWords: Set<String> = [
+    "wedge", "wedges", "segment", "segments", "sprig", "sprigs", "leaf", "leaves", "crown", "crowns", "shreds", "shavings", "sliver", "slivers",
+    "coin", "coins", "crumbles", "stick", "sticks", "strip", "strips", "cube", "cubes", "ring", "rings", "tip", "tips", "kernel", "kernels",
+    "tidbit", "tidbits", "ribbon", "ribbons", "bulb", "bulbs", "matchsticks", "pats",
+]
+
+/// Foods named by a shape that no plain food is named by, so the labels are the food: peach
+/// rings are a sweet, curry leaves and lime leaves aren't a curry or a lime, ice cubes aren't
+/// ice cream, and tortilla strips, wonton strips and plantain strips are fried.
+private let shapedFoods: Set<String> = [
+    "peach ring", "apple ring", "gummy ring", "ice cube", "curry leaf", "curry leave", "lime leaf", "lime leave", "veggie stick", "meat stick",
+    "pizza stick", "stock cube", "rib tip", "fruit strip", "sour strip", "tortilla strip", "wonton strip", "plantain strip", "plantain coin",
+    "mango strip", "meatless crumble", "soy crumble", "veggie crumble",
+]
+
 /// Whether a word says how a food is cooked or cut, not what it is. `seen` with the ways a
-/// food on a plate is cut, which a search eases and the words that name a food keep.
+/// food on a plate is cut or prepared, which the ranking eases and the words that name a food
+/// keep.
 func isEasable(_ word: String, seen: Bool = false) -> Bool {
     let said = stem(word)
     return heats[said] != nil || cutWords.contains(said) || trimWords[said] != nil || rawWords.contains(said) || labelWords.contains(said)
-        || (seen && plateCuts.contains(said))
+        || (seen && (plateCuts.contains(said) || preparedWords.contains(said)))
 }
+
+/// Which of the words said say how the food is cooked, cut or shaped, by their place: the
+/// words `isEasable` knows, and a shape said right after a word that names a food. "Leaf
+/// lettuce" and a "strip steak" are kinds, where lettuce leaves and steak strips are pieces.
+func howWords(_ words: [String]) -> Set<Int> {
+    var how = Set(words.indices.filter { isEasable(words[$0], seen: true) })
+    for i in words.indices.dropFirst() where shapeWords.contains(words[i]) && !how.contains(i - 1) && !isNumber(words[i - 1]) { how.insert(i) }
+    for i in words.indices.dropLast() where words[i] == "whole" && !wholeNames.contains(words[i + 1]) { how.insert(i) }
+    return how
+}
+
+/// Whether the word at a place among those said is a shape the food before it is cut into.
+func saysShape(_ words: [String], at index: Int) -> Bool {
+    words.indices.contains(index) && shapeWords.contains(words[index]) && howWords(words).contains(index)
+}
+
+/// Whether a word says what was done to a food before it was eaten: slivered, pitted, leftover.
+func saysPrepared(_ word: String) -> Bool { preparedWords.contains(stem(word)) }
 
 /// Whether a word says how a food is cooked.
 func isHeat(_ word: String) -> Bool { heats[stem(word)] != nil }
@@ -477,8 +531,8 @@ struct Ease {
     /// is only ever what "fried" or "sauteed" means, and "fried" means nothing else.
     var heat: Heat?
     var fried = false
-    /// A word the food mustn't have.
-    var unless: String?
+    /// Words the food mustn't have.
+    var unless: [String] = []
     /// The word says the food isn't cooked.
     var raw = false
     /// A way a model says the food on the plate is cut, or a label's word for how it was grown
@@ -487,6 +541,9 @@ struct Ease {
     /// The word is a label's, which puts a food that says it only just ahead: a plain
     /// hamburger is still the hamburger, not the bun that's listed as plain.
     var label = false
+    /// The word is "whole", which a name has for something else: a whole bagel isn't the
+    /// whole grain one, so a food that says it is no nearer.
+    var level = false
     /// No food is spared the word: some plain food lists it, or none comes near it. Then it
     /// says which food is meant, and a food without it lacks it, though it's a word for how a
     /// food comes: fried rice isn't USDA's plain cooked rice, nor fresh mozzarella its block.
@@ -498,7 +555,7 @@ struct Ease {
     init(_ said: String, listed: Bool = false) {
         heat = heats[said]
         fried = said == "fried"
-        unless = trimWords[said]
+        unless = trimWords[said] ?? []
         raw = rawWords.contains(said)
         self.listed = listed
     }
@@ -507,8 +564,10 @@ struct Ease {
     func fits(_ text: FoodText) -> Bool {
         if listed { return false }
         // Not where the food says it's without it: a thigh "without skin" is the skinless one.
-        if let unless, text.all.indices.contains(where: { text.all[$0] == unless && ($0 == 0 || text.all[$0 - 1] != "without") }) {
-            return false
+        // Nor where the skin is a note on the only one there is: zucchini "includes skin".
+        if !unless.isEmpty {
+            let kept = { (i: Int) in i > 0 && (text.all[i - 1] == "without" || text.all[i - 1] == "include") }
+            if text.all.indices.contains(where: { unless.contains(text.all[$0]) && !kept($0) }) { return false }
         }
         if raw { return !text.cooking.cooked && !text.titled.contains(where: keptWords.contains) }
         guard let heat else { return true }
@@ -521,7 +580,7 @@ struct Ease {
     /// that than one that only says "cooked": USDA's own cooked entry says how, and one that
     /// doesn't is a variety's or a restaurant's.
     func nearness(_ text: FoodText) -> Double {
-        guard let heat else { return label ? -0.1 : plate ? -0.3 : 0 }
+        guard let heat else { return level ? 0 : label ? -0.1 : plate ? -0.3 : 0 }
         let kinds = text.cooking.kinds
         return kinds.contains(heat) ? 0.3 : kinds.isEmpty ? 0 : 0.1
     }
@@ -1810,9 +1869,9 @@ func scoreFoods(
     // whose product is named as its label names it.
     var eases: [String: Ease] = [:]
     if !asked, seen.brand.isEmpty, target.count > 1 {
-        let easable = target.filter { isEasable($0, seen: true) }
-        let rest = target.filter { !isEasable($0, seen: true) }
-        if !easable.isEmpty, !rest.isEmpty {
+        typealias Plain = (text: FoodText, forms: [String], leads: Bool, filed: Bool)
+        // The plain foods that have the words that say what the food is.
+        let plainFoods = { (rest: [String]) -> [Plain] in
             // The other words are whole unless the last of them is the last typed: the "pot" of
             // "pot roast" isn't a potato begun.
             let others = CoverageQuery(
@@ -1830,7 +1889,7 @@ func scoreFoods(
             var before: [String: Int] = [:]
             for food in having { for word in Set(food.match.filed) { before[word, default: 0] += 1 } }
             let under = having.count >= 5 ? Set(before.filter { 2 * $0.value >= having.count }.keys) : []
-            let plain = having.map { food in
+            return having.map { food in
                 (
                     text: food.text, forms: food.match.forms,
                     leads: food.match.leads || (!food.match.filed.isEmpty && food.match.filed.allSatisfy(under.contains)),
@@ -1838,6 +1897,65 @@ func scoreFoods(
                     filed: !food.match.filed.isEmpty && food.match.others == food.match.filed.count
                 )
             }
+        }
+        // Whether a plain food lists a cut or a way of preparing and nothing else: "Ham,
+        // sliced", "Potato, mashed". "Whole" as the food's own word, not its whole wheat crust.
+        let lists = { (word: String, plain: [Plain]) -> Bool in
+            let said = stem(word)
+            return plain.contains { food in
+                let words = food.text.said
+                return food.leads && food.forms.allSatisfy { same($0, said) || same(said, $0) }
+                    && words.indices.contains { i in
+                        (same(words[i], said) || same(said, words[i]))
+                            && !(word == "whole" && i + 1 < words.count && wholeNames.contains(words[i + 1]))
+                    }
+            }
+        }
+        // Whether a shape names a food of its own: a plain food has it beside the food's word
+        // or in the same part of its name ("Potato wedges", "Bread, sticks", "Chicken, heart",
+        // "Chicken tenders or strips"), not only far off (a "Spinach, frozen, chopped or
+        // leaf" leaves spinach leaves the spinach); or the labels are the food, where no plain
+        // food is near. The shape itself, not a cut that shares its letters: "Cubed Tofu"
+        // isn't tofu cubes. Any plain food with the words will do, whichever of them it's
+        // named after: the chicken of chicken tenders.
+        let shaped = { (word: String, rest: [String], plain: [Plain]) -> Bool in
+            let said = stem(word)
+            let names = rest.map(stem)
+            let isName = { (other: String) in names.contains { same(other, $0) || same($0, other) } }
+            if plain.isEmpty || names.contains(where: { shapedFoods.contains("\($0) \(said)") }) { return true }
+            return unique.values.contains { entry in
+                let words = entry.text.said
+                let runs = entry.text.runs
+                guard !entry.text.branded, names.allSatisfy({ name in words.contains { same($0, name) || same(name, $0) } }) else { return false }
+                return words.indices.contains { i in
+                    guard words[i] == said else { return false }
+                    if i > 0, isName(words[i - 1]) { return true }
+                    if i + 1 < words.count, isName(words[i + 1]) { return true }
+                    let run = entry.text.alternate.contains(runs[i]) ? [runs[i], runs[i] - 1] : [runs[i]]
+                    return words.indices.contains { run.contains(runs[$0]) && isName(words[$0]) }
+                }
+            }
+        }
+        var how = howWords(target)
+        var rest = target.indices.filter { !how.contains($0) }.map { target[$0] }
+        // A way of preparing or a shape that names the food is one of its own words, for the
+        // other words too: fried chicken strips are chicken strips. It's looked for among
+        // the foods with the words that say what the food is: cooked mashed potatoes are
+        // "Potato, mashed", which doesn't say it's cooked.
+        let names = rest.filter { !saysHow($0) }
+        let foods = how.isEmpty || names.isEmpty ? [] : plainFoods(names)
+        let naming = how.filter { i in
+            let word = target[i]
+            if isEasable(word, seen: true) || word == "whole" {
+                return (preparedWords.contains(stem(word)) || word == "whole") && lists(word, foods)
+            }
+            return shaped(word, names, foods)
+        }
+        how.subtract(naming)
+        rest = target.indices.filter { !how.contains($0) }.map { target[$0] }
+        let plain = how.isEmpty || rest.isEmpty ? [] : naming.isEmpty && names == rest ? foods : plainFoods(rest)
+        let easable = target.indices.filter(how.contains).map { target[$0] }
+        if !easable.isEmpty, !rest.isEmpty {
             for word in easable {
                 let said = stem(word)
                 var ease = Ease(said)
@@ -1845,13 +1963,16 @@ func scoreFoods(
                 // says it was grown or made: organic chicken breast is chicken breast. Typed,
                 // a plain food that lists the cut and nothing else is still the one meant:
                 // sliced ham is "Ham, sliced", shredded cheese a cheese that says so.
-                let listed = plain.contains { food in
-                    food.leads && food.forms.allSatisfy { same($0, said) || same(said, $0) }
-                        && food.text.said.contains { same($0, said) || same(said, $0) }
-                }
-                if labelWords.contains(said) || (plateCuts.contains(said) && !(search && listed)) {
+                let prepared = preparedWords.contains(said) || word == "whole"
+                if labelWords.contains(said) || prepared || (plateCuts.contains(said) && !(search && lists(word, plain))) {
                     ease.plate = true
                     ease.label = labelWords.contains(said)
+                    ease.level = word == "whole"
+                    eases[word] = ease
+                    continue
+                }
+                // A shape said after the food says no more.
+                if !isEasable(word, seen: true) {
                     eases[word] = ease
                     continue
                 }
@@ -1864,7 +1985,14 @@ func scoreFoods(
                 let listing = plain.filter { food in
                     food.forms.allSatisfy { same($0, said) || same(said, $0) } && food.text.all.contains { same($0, said) || same(said, $0) }
                 }
-                var fits = plain.contains { $0.leads && ease.fits($0.text) }
+                // A cut is also spared by the food named by the other words and where it's
+                // filed: cantaloupe chunks are "Melons, cantaloupe".
+                var fits = plain.contains { ($0.leads || (cutWords.contains(said) && $0.filed)) && ease.fits($0.text) }
+                // A food the catalog only has with its peel is the one peeled.
+                if !fits, said == "peeled", !plain.isEmpty {
+                    ease.unless = []
+                    fits = true
+                }
                 // A food the catalog has no entry cooked that way for is the uncooked one there
                 // is: grilled pineapple is its raw pineapple, smoked gouda its gouda and baked
                 // tofu its tofu, which it otherwise has fried; not a label named so. Not fried,

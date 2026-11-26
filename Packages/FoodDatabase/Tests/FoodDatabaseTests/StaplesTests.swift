@@ -1271,7 +1271,7 @@ let ways: [(String, String)] = [
     ("shredded beef", "^Beef, pot roast"), ("shredded pork", "^Pork"), ("crispy chicken", "^Chicken, fried, coated"),
     ("crispy tofu", "^Tofu, fried"), ("crispy bacon", "^Bacon, cooked"), ("breaded chicken", "^Chicken, fried, coated"),
     ("breaded fish", "^Fish, fried"), ("battered fish", "^Fish, fried"), ("breaded shrimp", "shrimp.*breaded and fried|^Shrimp, fried"),
-    ("tempura shrimp", "^Shrimp, fried"), ("mashed sweet potatoes", "^Sweet potato, canned, mashed"), ("mashed cauliflower", "(?i)cauliflower"),
+    ("tempura shrimp", "^Shrimp, fried"), ("mashed sweet potatoes", "^Sweet potato"), ("mashed cauliflower", "(?i)cauliflower"),
     ("mashed potatoes", "^Potato, mashed"), ("stuffed peppers", "^Stuffed pepper, with meat"), ("stuffed mushrooms", "^Mushrooms, stuffed"),
     ("creamed spinach", "^Spinach, creamed"), ("creamed corn", "^Corn.*cream style"),
     ("candied yams", "^Sweet potato, cooked, candied, home\\-prepared"), ("caramelized onions", "^Onions, yellow, sauteed"),
@@ -1883,6 +1883,96 @@ let cutFoods: [(String, String)] = [
     ("slice of pizza", "^Pizza"), ("cheese slice", "^Cheese"), ("ground beef", "^Beef, ground"),
 ]
 
+/// A food typed with the shape it's cut or broken into (a lemon wedge, carrot sticks, feta
+/// crumbles, spinach leaves), which is the food, and after them the foods named by a shape,
+/// which are themselves: potato wedges, fish sticks, chicken strips, grape leaves.
+let shapedFoods: [(String, String)] = [
+    ("lemon wedge", "^Lemons, raw"), ("lime wedges", "^Limes, raw"), ("orange wedges", "^Oranges, raw"), ("apple wedges", "^Apples, raw"),
+    ("watermelon wedge", "^Watermelon, raw"), ("tomato wedges", "^Tomatoes, red, ripe, raw"), ("cabbage wedge", "^Cabbage, raw"),
+    ("lettuce wedge", "^Lettuce, iceberg"), ("cantaloupe wedge", "^Melons, cantaloupe"), ("carrot sticks", "^Carrots, raw"),
+    ("celery sticks", "^Celery, raw"), ("cucumber sticks", "^Cucumber"), ("jicama sticks", "^Yambean"),
+    ("zucchini sticks", "^Squash, summer, zucchini"), ("pretzel sticks", "^Snacks, pretzels"), ("cinnamon stick", "^Spices, cinnamon"),
+    ("butter stick", "^Butter, salted"), ("pepper strips", "^Peppers, sweet"), ("bell pepper strips", "^Peppers, sweet"),
+    ("bacon strips", "^Bacon, cooked"), ("cheese cubes", "^Cheese, cheddar"), ("melon cubes", "^Melons"), ("watermelon cubes", "^Watermelon, raw"),
+    ("tofu cubes", "^Tofu"), ("mango cubes", "^Mangos, raw"), ("sugar cubes", "^Sugars, granulated"), ("blue cheese crumbles", "^Cheese, blue"),
+    ("feta crumbles", "^Cheese, feta"), ("bacon crumbles", "^Bacon, cooked"), ("goat cheese crumbles", "^Cheese, goat"),
+    ("orange segments", "^Oranges, raw"), ("grapefruit segments", "^Grapefruit, raw"), ("corn kernels", "^Corn, sweet"),
+    ("spinach leaves", "^Spinach, raw"), ("spinach leaf", "^Spinach, raw"), ("basil leaves", "^Basil, fresh"), ("lettuce leaves", "^Lettuce"),
+    ("mint leaves", "^(Peppermint|Spearmint), fresh"), ("cabbage leaves", "^Cabbage, raw"), ("kale leaves", "^Kale, raw"),
+    ("romaine leaves", "^Lettuce, cos or romaine"), ("bay leaves", "^Spices, bay leaf"), ("parsley sprigs", "^Parsley, fresh"),
+    ("cilantro sprigs", "^Coriander \\(cilantro\\) leaves, raw"), ("thyme sprigs", "^Thyme, fresh"), ("rosemary sprig", "^Rosemary, fresh"),
+    ("mint sprig", "^(Peppermint|Spearmint), fresh"), ("dill sprigs", "^Dill weed, fresh"), ("romaine hearts", "^Lettuce, cos or romaine"),
+    ("celery hearts", "^Celery, raw"), ("asparagus tips", "^Asparagus"), ("steak tips", "^Beef, steak, sirloin"),
+    ("beef tips", "^Beef, steak, sirloin"), ("sirloin tips", "^Beef, steak, sirloin"), ("wing tips", "^Chicken wing"),
+    ("broccoli crowns", "^Broccoli, raw"), ("almond slivers", "^Nuts, almonds"), ("chocolate shavings", "^Chocolate"),
+    ("parmesan shavings", "^Cheese, parmesan"), ("carrot shreds", "^Carrots, raw"), ("cheese shreds", "^Cheese"),
+    ("cabbage shreds", "^Cabbage, raw"), ("coconut shreds", "^Nuts, coconut meat"), ("coconut flakes", "^Nuts, coconut meat, dried"),
+    ("pepper rings", "^Peppers"), ("squid rings", "^Mollusks, squid"), ("calamari rings", "^Calamari"), ("pineapple rings", "^Pineapple, canned"),
+    ("carrot coins", "^Carrots, raw"), ("garlic bulb", "^Garlic, raw"), ("popcorn kernels", "^Popcorn"),
+    ("cantaloupe chunks", "^Melons, cantaloupe"), ("pickle chips", "^Pickles"),
+    ("butter pats", "^Butter, salted"), ("crab sticks", "^Imitation crab"), ("zoodles", "^Squash, summer, zucchini"),
+    ("zucchini noodles", "^Squash, summer, zucchini"), ("potato wedges", "^Potato wedges"), ("fish sticks", "^Fish sticks"),
+    ("bread sticks", "^Bread, sticks"), ("french toast sticks", "^French toast sticks"), ("mozzarella sticks", "(?i)mozzarella sticks"),
+    ("cheese sticks", "^Cheese, mozzarella"), ("beef sticks", "^Snacks, beef sticks"), ("chicken strips", "^Chicken tenders or strips"),
+    ("steak strips", "^Beef, steak, strip"), ("strip steak", "^Beef, steak, strip"), ("cube steak", "^Beef, steak, cube"),
+    ("onion rings", "(?i)onion rings"), ("peach rings", "(?i)^peach rings"), ("apple rings", "(?i)^apple rings"), ("ice cubes", "(?i)^ice cube"),
+    ("grape leaves", "^Grape leaves"), ("fennel bulb", "^Fennel, bulb"), ("chicken hearts", "^Chicken, heart"),
+    ("beef heart", "^Beef, variety meats and by-products, heart"), ("leaf lettuce", "^Lettuce, (red|green) leaf"),
+    ("sunflower kernels", "^Seeds, sunflower seed kernels"), ("hearts of palm", "^Hearts of palm"),
+]
+
+/// A food typed with what was done to it before it was eaten (slivered, pitted, peeled,
+/// shelled, mashed, melted, leftover) or with "whole", and the foods those words name.
+let preparedFoods: [(String, String)] = [
+    ("slivered almonds", "^Nuts, almonds"), ("crushed garlic", "^Garlic, raw"), ("crushed peanuts", "^Peanuts"),
+    ("crushed walnuts", "^Nuts, walnuts"), ("crushed pineapple", "^Pineapple, canned"), ("pineapple tidbits", "^Pineapple, canned"),
+    ("crushed tomatoes", "^Tomatoes, crushed, canned"), ("crushed red pepper", "^Spices, pepper, red"), ("crushed ice", "(?i)^ice cube"),
+    ("crushed crackers", "^Crackers"), ("crushed pretzels", "^Snacks, pretzels"), ("crushed oreos", "(?i)oreo"),
+    ("mashed avocado", "^Avocados, raw"), ("smashed avocado", "^Avocados, raw"), ("mashed banana", "^Bananas, raw"),
+    ("mashed potatoes", "^Potato, mashed"), ("mashed potato", "^Potato, mashed"), ("mashed sweet potato", "^Sweet potato"),
+    ("mashed cauliflower", "^Cauliflower"), ("smashed burger", "^Hamburger"), ("pureed pumpkin", "^Pumpkin, canned"),
+    ("pumpkin puree", "^Pumpkin, canned"), ("shaved parmesan", "^Cheese, parmesan"), ("shaved ham", "^Ham, sliced"),
+    ("shaved turkey", "^Turkey, prepackaged or deli"), ("shaved steak", "^Steak, cooked|^Beef, steak"),
+    ("shaved beef", "^Steak, cooked|^Beef, steak"), ("shaved ice", "^Snow cone"), ("shaved chocolate", "^Chocolate"),
+    ("shaved brussels sprouts", "^Brussels sprouts"), ("shaved carrots", "^Carrots, raw"), ("julienned carrots", "^Carrots, raw"),
+    ("matchstick carrots", "^Carrots, raw"), ("spiralized zucchini", "^Squash, summer, zucchini"), ("spiralized carrots", "^Carrots"),
+    ("riced cauliflower", "^Cauliflower, raw"), ("cauliflower rice", "^Cauliflower, raw"), ("riced broccoli", "^Broccoli"),
+    ("pitted olives", "^Olives, ripe"), ("pitted dates", "^Dates"), ("pitted cherries", "^Cherries"), ("pitted prunes", "^Prunes|^Plums, dried"),
+    ("pitted green olives", "^Olives, pickled, canned or bottled, green"), ("peeled shrimp", "^Shrimp, cooked"),
+    ("peeled deveined shrimp", "^Shrimp, cooked"), ("deveined shrimp", "^Shrimp, cooked"), ("peeled apple", "^Apples, raw, without skin"),
+    ("peeled potatoes", "^Potatoes, .*flesh"), ("peeled potato", "^Potatoes, .*flesh"), ("peeled banana", "^Bananas, raw"),
+    ("peeled orange", "^Oranges, raw, all"), ("peeled cucumber", "^Cucumber, peeled"), ("peeled carrots", "^Carrots, raw"),
+    ("peeled garlic", "^Garlic, raw"), ("peeled lemon", "^Lemons, raw, without peel"), ("peeled kiwi", "^Kiwifruit"),
+    ("peeled mango", "^Mangos, raw"), ("peeled zucchini", "^Squash, summer, zucchini"), ("peeled eggplant", "^Eggplant, raw"),
+    ("peeled hard boiled egg", "^Egg, whole, cooked, hard-boiled"), ("peeled tomatoes", "^Tomatoes, red, ripe, canned"),
+    ("shelled pistachios", "^Nuts, pistachio"), ("shelled edamame", "^Edamame"), ("shelled walnuts", "^Nuts, walnuts"),
+    ("shelled peanuts", "^Peanuts"), ("shelled sunflower seeds", "^Seeds, sunflower seed kernels"),
+    ("shelled pumpkin seeds", "^Seeds, pumpkin and squash seed kernels"), ("shelled peas", "^Peas, green"),
+    ("seedless watermelon", "^Watermelon, raw"), ("seedless grapes", "^Grapes"), ("seedless raisins", "^Raisins"),
+    ("seedless cucumber", "^Cucumber"), ("trimmed green beans", "^Beans, snap, green"), ("trimmed asparagus", "^Asparagus"),
+    ("stemmed strawberries", "^Strawberries, raw"), ("stemmed kale", "^Kale, raw"), ("hulled strawberries", "^Strawberries, raw"),
+    ("hulled hemp seeds", "^Seeds, hemp seed, hulled"), ("hulled barley", "^Barley, hulled"), ("cored apple", "^Apples, raw"),
+    ("cored pineapple", "^Pineapple, raw"), ("deboned chicken", "^Chicken, cooked"), ("melted butter", "^Butter, salted"),
+    ("melted cheese", "^Cheese"), ("melted chocolate", "^Chocolate"), ("softened butter", "^Butter, salted"), ("beaten egg", "^Egg, whole, raw"),
+    ("beaten eggs", "^Egg, whole, raw"), ("whisked eggs", "^Egg, whole, raw"), ("leftover pizza", "^Pizza"),
+    ("leftover chicken", "^Chicken, cooked"), ("leftover turkey", "^Turkey, cooked"), ("rinsed black beans", "^Beans, black"),
+    ("washed spinach", "^Spinach, raw"), ("soaked almonds", "^Nuts, almonds"), ("thawed shrimp", "^Shrimp"),
+    ("chilled watermelon", "^Watermelon, raw"), ("flaked almonds", "^Nuts, almonds"), ("flaked salmon", "^Fish, salmon"),
+    ("flaked coconut", "^Nuts, coconut meat, dried"), ("green chiles", "^Peppers, chili, green"), ("diced green chiles", "^Peppers, chili, green"),
+    ("canned green chiles", "^Peppers, chili, green"), ("stew meat", "^Beef, stew meat"), ("pepitas", "^Seeds, pumpkin and squash seed kernels"),
+    ("peppercorns", "^Spices, pepper, black"), ("whole avocado", "^Avocados, raw"),
+    ("a whole avocado", "^Avocados, raw"), ("whole banana", "^Bananas, raw"), ("whole apple", "^Apples, raw"), ("whole lemon", "^Lemons"),
+    ("whole chicken", "^Chicken, cooked"), ("whole rotisserie chicken", "^Chicken, rotisserie"), ("whole strawberries", "^Strawberries, raw"),
+    ("whole almonds", "^Nuts, almonds"), ("whole cashews", "^Nuts, cashew"), ("whole pecans", "^Nuts, pecans"), ("whole walnuts", "^Nuts, walnuts"),
+    ("whole oats", "^Oats"), ("whole flaxseed", "^Seeds, flaxseed"), ("whole pizza", "^Pizza, cheese, from restaurant"),
+    ("whole cloves", "^Spices, cloves"), ("whole carrot", "^Carrots, raw"), ("whole pickle", "^Pickles"), ("whole bagel", "^Bagels, plain"),
+    ("whole sandwich", "^Sandwich"), ("whole milk", "^Milk, whole"), ("whole wheat bread", "^Bread, whole-wheat"),
+    ("whole grain bread", "^Bread, multi-grain"), ("whole grain rice", "^Rice, brown"), ("whole egg", "^Egg, whole"),
+    ("whole wheat pasta", "^Pasta, whole-wheat"), ("whole milk yogurt", "^Yogurt, plain, whole milk"),
+    ("whole kernel corn", "^Corn, .*whole kernel"), ("whole wheat tortilla", "^Tortillas, .*whole wheat"),
+    ("whole wheat pizza", "^Pizza, cheese, whole wheat"),
+]
+
 /// A food typed with what it's bought, served or counted by ("bag of chips", "head of lettuce",
 /// "12 pack coke") or with its number as a word ("two eggs", "three slices of pizza"), each
 /// with the food alone: the same food comes first for both.
@@ -2398,7 +2488,8 @@ struct EverydayFormTests {
         #expect(nameWords("Glass of whole milk") == ["whole", "milk"])
         #expect(nameWords("Pan-seared salmon fillet") == ["seared", "salmon", "fillet"])
         #expect(nameWords("Buttered toast") == ["toast"])
-        #expect(nameWords("Watermelon cubes") == ["watermelon"])
+        // A shape after the food is left for the ranking, which knows the foods named by one.
+        #expect(nameWords("Watermelon cubes") == ["watermelon", "cubes"] && nameWords("2 slices of pizza") == ["pizza"])
         #expect(catalogDish("Fried egg, sunny side up") == "fried egg")
         // The food a name is for, as a caller can ask it.
         #expect(FoodCatalog.food(in: "Whole wheat toast with butter") == "Whole wheat toast")
@@ -3672,6 +3763,61 @@ struct StaplesTests {
         #expect(catalog.top("grated cheese", 1) == ["Cheese, parmesan, grated"])
         // And what's sold in a can by that name is the canned food.
         #expect(catalog.top("diced tomatoes", 1).first?.contains("canned") == true)
+    }
+
+    @Test("a food typed with the shape it's cut into is the food, and a food named by a shape is itself")
+    func foodsTypedWithTheirShape() {
+        var missed: [String] = []
+        for (query, pattern) in shapedFoods where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Foods typed with their shape: \(shapedFoods.count - missed.count) of \(shapedFoods.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(shapedFoods.count), "\(missed.joined(separator: " | "))")
+        // The shape after the food says nothing of which food.
+        #expect(catalog.top("lemon wedge", 1).first?.hasPrefix("Lemons, raw") == true && catalog.top("carrot sticks", 1) == ["Carrots, raw"])
+        #expect(catalog.top("feta crumbles", 1) == ["Cheese, feta"] && catalog.top("spinach leaves", 1) == ["Spinach, raw"])
+        // A food a plain food names by the shape is its own.
+        #expect(catalog.top("potato wedges", 1).first?.hasPrefix("Potato wedges") == true && catalog.top("fish sticks", 1) == ["Fish sticks"])
+        #expect(catalog.top("chicken strips", 1) == ["Chicken tenders or strips"] && catalog.top("grape leaves", 1) == ["Grape leaves, raw"])
+        #expect(catalog.top("chicken hearts", 1).first?.hasPrefix("Chicken, heart") == true)
+        // Said first, the word is a kind: leaf lettuce, a strip steak.
+        #expect(howWords(["lettuce", "leaves"]) == [1] && howWords(["leaf", "lettuce"]).isEmpty && howWords(["2", "strips"]).isEmpty)
+        #expect(catalog.top("strip steak", 1) == ["Beef, steak, strip, cooked"])
+        // Nor is it a brand's word: broccoli crowns aren't King's Crown's. Maple Leaf still is one.
+        #expect(catalog.top("broccoli crowns", 1) == ["Broccoli, raw"])
+        #expect(catalog.names("maple leaf", 1).first?.hasSuffix("[Maple Leaf]") == true)
+        // A model's name is read the same way, where the shape used to be dropped as an amount.
+        let seen = { (name: String) in self.catalog.candidates(name: name, brand: nil).first?.food.name ?? "" }
+        #expect(seen("Lemon wedge").hasPrefix("Lemons, raw") && seen("Grape leaves") == "Grape leaves, raw")
+        #expect(matches("(?i)wedge", seen("Potato wedges")) && seen("Bacon strips") == "Bacon, cooked")
+        #expect(seen("Watermelon cubes") == "Watermelon, raw")
+        // The ice in a glass is water; typed, the word is ice cream begun.
+        #expect(seen("Ice cubes").hasPrefix("Water") && seen("Ice").hasPrefix("Water") && FoodCatalog.food(in: "Ice cubes") == "water")
+        #expect(catalog.top("ice", 1) == ["Ice cream"])
+    }
+
+    @Test("a food typed with how it was prepared, or as whole, is the food")
+    func foodsTypedWithHowTheyArePrepared() {
+        var missed: [String] = []
+        for (query, pattern) in preparedFoods where catalog.top(query, 1).first.map({ matches(pattern, $0) }) != true {
+            missed.append("\(query): \(catalog.top(query, 1).first ?? "nothing")")
+        }
+        print("Foods typed with how they're prepared: \(preparedFoods.count - missed.count) of \(preparedFoods.count) first")
+        #expect(Double(missed.count) <= 0.05 * Double(preparedFoods.count), "\(missed.joined(separator: " | "))")
+        // A plain food that lists the word and nothing else is the one meant, typed or seen.
+        #expect(catalog.top("mashed potatoes", 1) == ["Potato, mashed"] && catalog.top("hulled barley", 1) == ["Barley, hulled"])
+        #expect(catalog.candidates(name: "Mashed potatoes", brand: nil).first?.food.name == "Potato, mashed")
+        #expect(catalog.candidates(name: "Slivered almonds", brand: nil).first?.food.name == "Nuts, almonds")
+        // Peeled is the food without its skin or peel, where the catalog has it both ways.
+        #expect(catalog.top("peeled apple", 1) == ["Apples, raw, without skin"] && catalog.top("peeled lemon", 1) == ["Lemons, raw, without peel"])
+        #expect(catalog.top("peeled zucchini", 1).first?.hasPrefix("Squash, summer, zucchini") == true)
+        // Whole is part of some names and says nothing in the rest.
+        #expect(howWords(["whole", "avocado"]) == [0] && howWords(["whole", "milk"]).isEmpty && howWords(["whole", "wheat", "bread"]).isEmpty)
+        #expect(catalog.top("whole bagel", 1).first?.hasPrefix("Bagels, plain") == true)
+        #expect(catalog.top("whole pizza", 1).first.map { matches("whole", $0) } == false)
+        #expect(catalog.names("whole foods almond milk", 1).first.map { matches("(?i)whole foods", $0) } == true)
+        // A word for how a food was prepared isn't a brand misspelt.
+        #expect(catalog.searchCatalog("leftover pizza", known: [:]).fixes.isEmpty)
     }
 
     @Test("small things: the usual curry, nori, a chain's own words, a food's own word and a label no one scans")
