@@ -347,6 +347,18 @@ struct CompletionTests {
         #expect(FoodCompletions.suggest("hot cof", from: hot).first == "hot coffee")
     }
 
+    @Test func whatOnlySaysAFoodWasEatenIsNotOfferedBack() {
+        let found = ["Rice, white, cooked", "Ribs", "Egg, whole, cooked, fried", "Potato, french fries"].map { food($0) }
+        // The food goes on as it would typed alone, without the words around it.
+        #expect(FoodCompletions.suggest("a lot of ri", from: found) == FoodCompletions.suggest("ri", from: found))
+        #expect(FoodCompletions.suggest("i had 2 eg", from: found) == FoodCompletions.suggest("2 eg", from: found))
+        #expect(FoodCompletions.suggest("i had 2 eg", from: found).first == "2 eggs")
+        #expect(FoodCompletions.suggest("for breakfast eg", from: found) == FoodCompletions.suggest("eg", from: found))
+        // And what's said after it, whole or on its way.
+        #expect(FoodCompletions.suggest("fries for lu", from: found) == FoodCompletions.suggest("fries", from: found))
+        #expect(FoodCompletions.suggest("fries from mc", from: found) == FoodCompletions.suggest("fries", from: found))
+    }
+
     @Test func theCatalogsResultsComplete() {
         let found = Catalogs.usda.search("chick", limit: 60)
         #expect(FoodCompletions.suggest("chick", from: found).contains("chicken"))

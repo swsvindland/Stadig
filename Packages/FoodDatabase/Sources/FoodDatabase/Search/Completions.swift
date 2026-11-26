@@ -74,6 +74,13 @@ public enum FoodCompletions {
             guard !food.isEmpty, before.count > 1 else { return [] }
             return suggest(food, from: matches, limit: limit, label: label).prefix(afterLead).map { "\(before) \($0)" }
         }
+        // What only says a food was eaten, when or loosely how much isn't offered back: "i
+        // had 2 eg" goes on to "2 eggs", "a lot of ri" to rice, as the search reads them.
+        let spoken = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        let plainly = Shorthand.plainly(spoken, typing: !(query.last?.isWhitespace ?? true))
+        if plainly != spoken {
+            return suggest(plainly.joined(separator: " ") + (query.last?.isWhitespace == true ? " " : ""), from: matches, limit: limit, label: label)
+        }
         let whole = phrases(query, from: matches, limit: limit, label: label)
         let typed = phraseWords(query)
         // A chain with a food begun after it goes on to the ones it's known for that start

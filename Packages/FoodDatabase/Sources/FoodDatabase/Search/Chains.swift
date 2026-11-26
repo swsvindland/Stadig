@@ -252,6 +252,19 @@ enum Chains {
     /// Whether a search is a chain's name and nothing else, however it's written.
     static func isName(_ typed: String) -> Bool { written[tokens(typed).joined()] != nil }
 
+    /// What's ordered most at a chain whose name is a food's word too (`sells`), for a meal
+    /// said to be from one with no food named: "lunch at chipotle" is no chipotle dip.
+    static func usual(at typed: String) -> [String] {
+        let orders = ["chipotle": ["burrito", "bowl"], "chilis": ["fajitas"], "cava": ["bowl"]]
+        return written[tokens(typed).joined()].flatMap { orders[$0] } ?? []
+    }
+
+    /// Whether the letters typed begin a chain's name: "mcd", "five g".
+    static func isBegun(_ typed: String) -> Bool {
+        let letters = tokens(typed).joined()
+        return !letters.isEmpty && written.keys.contains { $0.hasPrefix(letters) }
+    }
+
     /// What a chain typed with nothing else is known for, and the kind of place it is (as
     /// `Found.place`); nil for any other search, and for a chain with nothing listed. Also
     /// the one chain a name is most of the way to ("five guy", "taco bel", from six letters
